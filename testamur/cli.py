@@ -303,6 +303,31 @@ def actionsim(world_dir: str = typer.Option("data/world", "--world"), db: str = 
 
 
 @app.command()
+def ask(question: str, db: str = "data/harness.db", tenant: int = 1):
+    """Ask the assistant about suppliers and their evidence; every answer cites the page it read."""
+    from .assistant import Assistant
+    a = Assistant(_engine(db)).ask(tenant, question)
+    typer.echo(a.text)
+    for c in a.citations:
+        typer.echo(f"  [document {c.document_id}, page {c.page}] {c.quote}")
+    for w in a.warnings:
+        typer.echo(f"  ! {w}")
+
+
+@app.command()
+def golden(world_dir: str = typer.Option("data/world", "--world"), db: str = "data/harness.db",
+           report: str = "reports/assistant-golden.md"):
+    """Score the assistant on a golden question set built from the world's truth, traps included."""
+    from .golden import build, evaluate, write
+    from .synth.world import load_world
+    world = load_world(world_dir)
+    eng = _engine(db)
+    r = evaluate(world, eng.store, eng, build(world))
+    write(r, report, "testamur golden " + " ".join(sys.argv[2:]), world.seed, world.size)
+    typer.echo(f"{r['right']} of {r['questions']} answered right; report -> {report}")
+
+
+@app.command()
 def status(db: str = "data/harness.db", tenant: int = 1):
     """Requirement statuses for one tenant."""
     from .store import Engagement, RequirementState, Store, Supplier

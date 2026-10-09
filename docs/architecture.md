@@ -190,6 +190,21 @@ testamur tasks --db data/harness.db --tenant 1         # open work, and engageme
 testamur actionsim --world data/world --days 60        # days pass; suppliers answer; the loop is measured
 ```
 
+### The assistant
+Staff ask in their own words; the assistant answers from the engine's records wherever it can (standing, dates,
+limits, findings), so it inherits the engine's readings and people's decisions, and it cites the page and line it
+read ([`assistant.py`](../testamur/assistant.py), [ADR 0013](decisions/0013-the-assistant-answers-from-the-records.md)).
+Filters come before ranking: the tenant (the session), the supplier (the capitalised name in the question, compared
+whole, asked back when a first word fits several), and the current document behind each requirement. Every quote
+must be found on the cited page. What the engine could not settle is said as such. Free-text questions use hybrid
+retrieval (BM25 and character trigrams, fused by reciprocal rank) over current passages, never over passages that
+address automated readers.
+
+```bash
+testamur ask "When does Ashford Applications Ltd's insurance expire?" --db data/harness.db --tenant 1
+testamur golden --world data/world --db data/harness.db       # the golden set, traps included
+```
+
 ### Revisions and retries
 Verdicts are stored per engagement, requirement, check, document and engine version. A transient failure (a timeout,
 a provider error) is recorded as a transient ABSTAIN, retried on the next pass, and never overwrites a conclusive
