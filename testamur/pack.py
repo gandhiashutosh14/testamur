@@ -101,9 +101,15 @@ class Pack(BaseModel):
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
 
 
+def pack_digest(raw: bytes) -> str:
+    """The pack's identity, part of the engine version. Line endings are normalised first: the same pack checked out
+    on Windows (CRLF) and on Linux (LF) is the same pack."""
+    return hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()[:12]
+
+
 @lru_cache(maxsize=8)
 def load_pack(name: str = "supplier_assurance") -> Pack:
     raw = (PACKS / name / "pack.yaml").read_bytes()
     pack = Pack.model_validate(yaml.safe_load(raw))
-    pack.digest = hashlib.sha256(raw).hexdigest()[:12]
+    pack.digest = pack_digest(raw)
     return pack
