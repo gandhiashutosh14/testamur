@@ -21,7 +21,7 @@ import bm25s
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .engine import Engine
+from .engine import KEY_DATE, Engine
 from .match import EXACT as EXACT_NAME
 from .model import Extraction, Status, Verdict
 from .modeltier import passages, quote_in
@@ -126,8 +126,11 @@ class Assistant:
                 return Answer(f"{supplier.legal_name}'s {LABELS[rid]} is waiting for a person: a document that may be "
                               "theirs has not been matched yet, so I will not answer from older evidence.", "pending",
                               supplier_id=supplier.id, requirement_id=rid)
-            return Answer(f"There is no current {LABELS[rid]} document for {supplier.legal_name}.", "refuse",
-                          supplier_id=supplier.id, requirement_id=rid)
+            on_file = self._latest_on_file(s, supplier, rid)   # e.g. a parent's group policy, required of no engagement
+            if on_file is None:
+                return Answer(f"There is no current {LABELS[rid]} document for {supplier.legal_name}.", "refuse",
+                              supplier_id=supplier.id, requirement_id=rid)
+            docs = {on_file.id}
         doc = s.get(Document, max(docs))           # several engagements share the same current document as a rule
         reading = (doc.fields or {}).get(fld)
         if not reading:
@@ -156,6 +159,17 @@ class Assistant:
             answer.warnings.append("A newer document that may be theirs is waiting for review; this answer is from "
                                    "the evidence accepted so far.")
         return self._warn(doc, answer)
+
+    def _latest_on_file(self, s: Session, supplier: Supplier, rid: str) -> Document | None:
+        """The supplier's newest matched document of the requirement's type, whether or not any engagement requires
+        it: the same rule the engine uses to pick the current document (key date, then first upload)."""
+        doc_type = self.pack.requirements[rid].doc_type
+        docs = s.scalars(select(Document).where(Document.supplier_id == supplier.id, Document.doc_type == doc_type,
+                                                Document.state == "matched")).all()
+        if not docs:
+            return None
+        key = KEY_DATE.get(doc_type)
+        return max(docs, key=lambda d: (((d.fields or {}).get(key) or {}).get("value") or "" if key else "", d.id))
 
     def _pending_for(self, s: Session, supplier: Supplier, rid: str) -> bool:
         doc_type = self.pack.requirements[rid].doc_type

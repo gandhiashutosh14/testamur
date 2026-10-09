@@ -283,8 +283,18 @@ check saying PASS against a FAIL, no document attached to the wrong supplier. Ot
 cost (a re-index pays for nothing) and about how much it hands to people (deferral rate).
 
 `scripts/prove_tests_fire.py` breaks each safety rule on purpose and requires the tests to fail: a test that asserts
-"this must not happen" is trusted only after it has been seen catching it.
+"this must not happen" is trusted only after it has been seen catching it. How a change ships, gate by gate, is in
+[delivery.md](delivery.md).
 
 ## What is deliberately not here yet
 
-The roadmap in the README lists what follows: real-contract evaluation of the clause tier and delivery gates.
+- **Real contracts.** The clause tier is measured on synthetic clauses; an evaluation on expert-labelled public
+  contracts is the next measurement.
+- **A web API and sign-in for people.** People work through the command line; agents through the tool server.
+- **A generative layer in the assistant.** It answers from records and quotes passages; a model could phrase answers
+  behind the same citation check.
+- **Per-tenant policy.** One domain pack serves every tenant; budgets, audit rates and action policy are pack-wide.
+- **The outside world.** Reminders are written, not e-mailed; webhooks are signed and retried, but the receivers in
+  the simulations are simulated.
+- **Production operations.** Postgres runs in CI, not under load; there is no deployment, backup or monitoring
+  configuration.
