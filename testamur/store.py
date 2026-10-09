@@ -482,6 +482,7 @@ class Store:
                 conn.isolation_level = None          # let SQLAlchemy's begin event issue BEGIN IMMEDIATE
                 cur = conn.cursor()
                 cur.execute("PRAGMA journal_mode=WAL")
+                cur.execute("PRAGMA foreign_keys=ON")            # as Postgres does: SQLite ignores them by default
                 cur.execute(f"PRAGMA busy_timeout={busy_timeout_ms}")
                 cur.close()
 

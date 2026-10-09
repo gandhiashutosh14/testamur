@@ -24,6 +24,7 @@ def store(tmp_path):
             Supplier(id=4, tenant_id=1, legal_name="Kestrel Holdings plc"),
             Supplier(id=5, tenant_id=1, legal_name="Oakhurst Cleaning Ltd"),
         ])
+        s.flush()                                   # engagements refer to these suppliers: insert them first
         for i, (sid, bu) in enumerate([(1, 1), (2, 1), (3, 1), (5, 2)], start=1):
             s.add(Engagement(id=i, tenant_id=1, business_unit_id=bu, supplier_id=sid, tier="high",
                              engagement_type="services", service_category="facilities",

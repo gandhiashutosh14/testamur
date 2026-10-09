@@ -67,12 +67,15 @@ def git_stamp(cwd: Path) -> str:
 
 
 def load_registry(store: Store, world: World) -> None:
+    """The world's tenants, business units, suppliers, engagements and attestations, in the order their foreign keys
+    need (the flush between groups makes the order explicit; Postgres enforces it, and so does SQLite here)."""
     with store.system() as s:
         s.add_all([Tenant(id=t.id, name=t.name) for t in world.tenants])
         s.add_all([BusinessUnit(id=b.id, tenant_id=b.tenant_id, name=b.name) for b in world.business_units])
         s.add_all([Supplier(id=x.id, tenant_id=x.tenant_id, legal_name=x.legal_name, address=x.address,
                             company_number=x.company_number, vat_number=x.vat_number, lei=x.lei, iban=x.iban,
                             parent_id=x.parent_id) for x in world.suppliers])
+        s.flush()
         s.add_all([Engagement(id=e.id, tenant_id=e.tenant_id, business_unit_id=e.business_unit_id,
                               supplier_id=e.supplier_id, tier=e.tier, engagement_type=e.engagement_type,
                               service_category=e.service_category, start_date=e.start_date, end_date=e.end_date)
