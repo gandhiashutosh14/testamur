@@ -1,7 +1,9 @@
-"""Suite-wide rule: a skipped test is not a passed test.
+"""Suite-wide rules: a skipped test is not a passed test, and a suite that shrank is not a passing suite.
 
-Any skip not on the allow-list below (with its reason) fails the run, so a test that silently stopped running
-cannot leave the build green."""
+Any skip not on the allow-list below (with its reason) fails the run, so a test that silently stopped running cannot
+leave the build green. A full run that collects fewer tests than the floor fails too, so a deleted test file or one
+that no longer collects cannot either. Raise the floor when tests are added; lowering it needs a reason in the commit
+message."""
 from __future__ import annotations
 
 import shutil
@@ -17,12 +19,26 @@ from testamur.synth.world import build_world
 ALLOWED_SKIPS: dict[str, str] = {
     # "tests/test_x.py::test_y": "why skipping is legitimate",
 }
+MIN_TESTS = 140
+
+
+def pytest_collection_finish(session):
+    whole_suite = session.config.args_source == pytest.Config.ArgsSource.TESTPATHS and not (
+        session.config.option.keyword or session.config.option.markexpr)
+    session.config.stash[_SHRANK] = len(session.items) < MIN_TESTS if whole_suite else False
+
+
+_SHRANK = pytest.StashKey[bool]()
 
 
 def pytest_sessionfinish(session, exitstatus):
     reporter = session.config.pluginmanager.get_plugin("terminalreporter")
     if reporter is None:
         return
+    if session.config.stash.get(_SHRANK, False):
+        reporter.write_line(f"FAILED: the suite collected fewer than {MIN_TESTS} tests: tests were lost, or the floor "
+                            "was not raised", red=True)
+        session.exitstatus = 1
     unexpected = [r.nodeid for r in reporter.stats.get("skipped", []) if r.nodeid not in ALLOWED_SKIPS]
     if unexpected:
         reporter.write_line(f"FAILED: {len(unexpected)} test(s) skipped without an allow-listed reason:", red=True)

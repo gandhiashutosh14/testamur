@@ -20,29 +20,35 @@ jobs:
   record:
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      MODEL_REPO: ${{ inputs.model_repo }}
+      MODEL_FILE: ${{ inputs.model_file }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.11"
       - run: python -m pip install -e ".[ocr]"
       - run: python -m pip install "llama-cpp-python>=0.3" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: models
           key: gguf-${{ inputs.model_file }}
       - name: Download the model
         run: |
+          case "$MODEL_FILE$MODEL_REPO" in *[!A-Za-z0-9._/-]*) echo "unexpected characters in the inputs"; exit 1;; esac
           mkdir -p models
-          [ -f "models/${{ inputs.model_file }}" ] || curl -sSL -o "models/${{ inputs.model_file }}" \
-            "https://huggingface.co/${{ inputs.model_repo }}/resolve/main/${{ inputs.model_file }}"
+          [ -f "models/$MODEL_FILE" ] || curl -sSL -o "models/$MODEL_FILE" \
+            "https://huggingface.co/$MODEL_REPO/resolve/main/$MODEL_FILE"
           ls -la models
       - run: testamur world --seed 7 --size small --out data/world
       - name: Run the harness live and record every model call
         run: |
           testamur harness --world data/world --db data/harness.db --report artifacts/harness-small-live.md \
-            --model-path "models/${{ inputs.model_file }}" --cassette artifacts/small-seed7-linux.jsonl
-      - uses: actions/upload-artifact@v4
+            --model-path "models/$MODEL_FILE" --cassette artifacts/small-seed7-linux.jsonl
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: cassette-and-live-report

@@ -1,0 +1,22 @@
+# What the platform vouches for, whom it shows what, and the machinery that keeps both honest: a change to any of
+# these needs the owner's review (scripts/risk.py labels the same paths high risk).
+/testamur/status.py              @gandhiashutosh14
+/testamur/checks.py              @gandhiashutosh14
+/testamur/textnorm.py            @gandhiashutosh14
+/testamur/understand.py          @gandhiashutosh14
+/testamur/match.py               @gandhiashutosh14
+/testamur/engine.py              @gandhiashutosh14
+/testamur/store.py               @gandhiashutosh14
+/testamur/accuracy.py            @gandhiashutosh14
+/testamur/modeltier.py           @gandhiashutosh14
+/testamur/actions.py             @gandhiashutosh14
+/testamur/agents.py              @gandhiashutosh14
+/testamur/mcp_server.py          @gandhiashutosh14
+/testamur/assistant.py           @gandhiashutosh14
+/testamur/budget.py              @gandhiashutosh14
+/testamur/packs/                 @gandhiashutosh14
+/gates.yaml                      @gandhiashutosh14
+/scripts/prove_tests_fire.py     @gandhiashutosh14
+/scripts/risk.py                 @gandhiashutosh14
+/tests/conftest.py               @gandhiashutosh14
+/.github/                        @gandhiashutosh14

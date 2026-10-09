@@ -112,6 +112,8 @@ MUTANTS = [
      "        if not confirm:", "        if False:", "tests/test_mcp.py"),
     ("a proposal can be applied twice", "testamur/agents.py",
      '        if p.status != "proposed":', "        if False:", "tests/test_mcp.py"),
+    ("a change to the safety core is not classified high risk", "scripts/risk.py",
+     '            level = "high"', '            level = "medium"', "tests/test_risk.py"),
     ("tenant filtering is removed from reads", "testamur/store.py",
      "    state.statement = state.statement.options(", "    return\n    state.statement = state.statement.options(",
      "tests/test_tenancy.py"),

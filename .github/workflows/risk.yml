@@ -1,0 +1,41 @@
+name: risk
+
+# Labels each pull request by what it touches, and holds a high-risk one until a person has approved it (and keeps it
+# out of auto-merge). The classifier runs from the base branch, so a pull request cannot change the rules it is
+# judged by. See scripts/risk.py.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, auto_merge_enabled]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  contents: read
+
+jobs:
+  risk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.11"
+      - name: Classify, label, and hold a high-risk change for review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags origin "$HEAD"
+          python scripts/risk.py --base "$BASE" --head "$HEAD" --pr "$PR"
