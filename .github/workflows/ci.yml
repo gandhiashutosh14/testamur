@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: tests, lint and the proof that safety tests fire (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ".[dev,ocr]"
+      - run: ruff check testamur tests scripts
+      - name: Tests (a skipped test fails the run unless allow-listed)
+        run: pytest -q
+      - name: Break each safety rule on purpose; the tests must go red every time
+        run: python scripts/prove_tests_fire.py
+
+  harness:
+    name: offline harness and merge gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[ocr]"
+      - name: Generate the world (seed 7, small)
+        run: testamur world --seed 7 --size small --out data/world
+      - name: Run the engine over it and enforce the gates
+        run: |
+          set -o pipefail
+          if [ -f reports/cassettes/small-seed7-linux.jsonl ]; then
+            MODEL="--cassette reports/cassettes/small-seed7-linux.jsonl"   # replay-only: a miss fails the job
+          else
+            MODEL=""
+          fi
+          testamur harness --world data/world --db data/harness.db --report artifacts/harness-small.md $MODEL
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: harness-small
+          path: artifacts/

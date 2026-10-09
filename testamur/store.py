@@ -1,0 +1,282 @@
+"""Storage, with tenant isolation enforced by the session rather than by remembering to filter.
+
+Every tenant-owned table carries `tenant_id`. A session opened for a tenant gets that tenant's filter added to
+every ORM read automatically, and refuses to flush a row that belongs to another tenant. A session opened without a
+tenant cannot read tenant data at all: it fails closed. Only the explicit system session (used to load the
+registry and by the harness) may read across tenants, and it says so at the call site.
+
+SQLite locally (WAL mode); the same models run on Postgres."""
+from __future__ import annotations
+
+from contextlib import contextmanager
+from datetime import UTC, date, datetime
+from typing import Any
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    create_engine,
+    event,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker, with_loader_criteria
+
+
+class TenantScopeError(RuntimeError):
+    """Raised when tenant data is read or written without the right tenant in scope."""
+
+
+def utcnow() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
+class Base(DeclarativeBase):
+    type_annotation_map = {dict[str, Any]: JSON, list[Any]: JSON}
+
+
+class TenantScoped:
+    """Mixin: rows that belong to exactly one tenant."""
+    tenant_id: Mapped[int] = mapped_column(Integer, index=True)
+
+
+class Tenant(Base):
+    __tablename__ = "tenants"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+
+
+class BusinessUnit(TenantScoped, Base):
+    __tablename__ = "business_units"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+
+
+class Supplier(TenantScoped, Base):
+    __tablename__ = "suppliers"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    legal_name: Mapped[str] = mapped_column(String(300))
+    address: Mapped[str] = mapped_column(String(300), default="")
+    company_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    vat_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    lei: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    iban: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    parent_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class Engagement(TenantScoped, Base):
+    __tablename__ = "engagements"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    business_unit_id: Mapped[int] = mapped_column(ForeignKey("business_units.id"))
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
+    tier: Mapped[str] = mapped_column(String(20))
+    engagement_type: Mapped[str] = mapped_column(String(40))
+    service_category: Mapped[str] = mapped_column(String(60))
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+
+
+class Attestation(TenantScoped, Base):
+    __tablename__ = "attestations"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    supplier_id: Mapped[int] = mapped_column(Integer)
+    requirement_id: Mapped[str] = mapped_column(String(60))
+    verified_by: Mapped[str] = mapped_column(String(120))
+    verified_on: Mapped[date] = mapped_column(Date)
+    note: Mapped[str] = mapped_column(Text, default="")
+
+
+class Blob(TenantScoped, Base):
+    """Content-addressed file store. Deduplication is per tenant: sharing across tenants would save a little and
+    reveal to one tenant that another holds the same file."""
+    __tablename__ = "blobs"
+    sha256: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    size: Mapped[int] = mapped_column(Integer)
+    mime: Mapped[str] = mapped_column(String(60))
+    path: Mapped[str] = mapped_column(String(400))
+    first_seen: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class UploadRow(TenantScoped, Base):
+    __tablename__ = "uploads"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    business_unit_id: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64), index=True)
+    filename: Mapped[str] = mapped_column(String(300))
+    channel: Mapped[str] = mapped_column(String(40))
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime)
+    claimed_supplier_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    external_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)
+
+
+class Document(TenantScoped, Base):
+    """One per distinct file (per tenant). Re-uploading the same bytes adds an upload event, not a document."""
+    __tablename__ = "documents"
+    __table_args__ = (UniqueConstraint("tenant_id", "sha256"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    sha256: Mapped[str] = mapped_column(String(64))
+    doc_type: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    class_method: Mapped[str] = mapped_column(String(40), default="")
+    class_score: Mapped[float] = mapped_column(Float, default=0.0)
+    supplier_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    covers: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    match_method: Mapped[str] = mapped_column(String(40), default="")
+    match_score: Mapped[float] = mapped_column(Float, default=0.0)
+    match_detail: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    fields: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    conflicts: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    identifiers: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    hostile: Mapped[bool] = mapped_column(Boolean, default=False)
+    state: Mapped[str] = mapped_column(String(30), default="new")     # matched | needs_review | unknown
+    engine_version: Mapped[str] = mapped_column(String(80), default="")
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class ExtractionRow(TenantScoped, Base):
+    """OCR and text-layer output, keyed by content and extractor version: the same pages are never paid for twice."""
+    __tablename__ = "extractions"
+    sha256: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    extractor: Mapped[str] = mapped_column(String(60), primary_key=True)
+    version: Mapped[str] = mapped_column(String(40), primary_key=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    ocr_pages: Mapped[int] = mapped_column(Integer, default=0)
+    seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class VerdictRow(TenantScoped, Base):
+    __tablename__ = "verdicts"
+    __table_args__ = (UniqueConstraint("tenant_id", "engagement_id", "requirement_id", "check_id", "document_id",
+                                       "engine_version"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    engagement_id: Mapped[int] = mapped_column(Integer, index=True)
+    requirement_id: Mapped[str] = mapped_column(String(60))
+    check_id: Mapped[str] = mapped_column(String(60))
+    document_id: Mapped[int] = mapped_column(Integer, index=True)
+    verdict: Mapped[str] = mapped_column(String(10))
+    severity: Mapped[str] = mapped_column(String(10))
+    tier: Mapped[str] = mapped_column(String(10))
+    reason: Mapped[str] = mapped_column(Text, default="")
+    evidence: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    fix_hint: Mapped[str | None] = mapped_column(Text, nullable=True)
+    transient: Mapped[bool] = mapped_column(Boolean, default=False)
+    lapsed: Mapped[bool] = mapped_column(Boolean, default=False)
+    engine_version: Mapped[str] = mapped_column(String(80))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class RequirementState(TenantScoped, Base):
+    __tablename__ = "requirement_states"
+    engagement_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    requirement_id: Mapped[str] = mapped_column(String(60), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    status: Mapped[str] = mapped_column(String(40))
+    document_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    via_parent: Mapped[bool] = mapped_column(Boolean, default=False)
+    reasons: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class ModelCall(TenantScoped, Base):
+    """Every language-model call, keyed by the model and the exact prompt: the idempotency gate at the provider
+    boundary. A repeated question is answered from here and not paid for again."""
+    __tablename__ = "model_calls"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    model: Mapped[str] = mapped_column(String(120))
+    response: Mapped[str] = mapped_column(Text)
+    prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    completion_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class UsageRow(TenantScoped, Base):
+    __tablename__ = "usage"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    day: Mapped[date] = mapped_column(Date)
+    provider: Mapped[str] = mapped_column(String(20))     # ocr | model
+    units: Mapped[float] = mapped_column(Float)            # OCR pages, or model tokens
+    cached: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class AuditRow(TenantScoped, Base):
+    __tablename__ = "audit"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    actor: Mapped[str] = mapped_column(String(80))
+    action: Mapped[str] = mapped_column(String(80))
+    target: Mapped[str] = mapped_column(String(200))
+    detail: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+@event.listens_for(Session, "do_orm_execute")
+def _scope_reads(state):
+    if not state.is_select or state.execution_options.get("all_tenants") or state.session.info.get("system"):
+        return
+    tenant_id = state.session.info.get("tenant_id")
+    if tenant_id is None:
+        raise TenantScopeError("tenant data read in a session with no tenant")
+    state.statement = state.statement.options(
+        with_loader_criteria(TenantScoped, lambda cls: cls.tenant_id == tenant_id, include_aliases=True))
+
+
+@event.listens_for(Session, "before_flush")
+def _scope_writes(session, flush_context, instances):
+    if session.info.get("system"):
+        return
+    tenant_id = session.info.get("tenant_id")
+    for obj in list(session.new) + list(session.dirty):
+        if isinstance(obj, TenantScoped):
+            if tenant_id is None:
+                raise TenantScopeError(f"write of {type(obj).__name__} in a session with no tenant")
+            if obj.tenant_id is None:
+                obj.tenant_id = tenant_id
+            elif obj.tenant_id != tenant_id:
+                raise TenantScopeError(f"{type(obj).__name__} of tenant {obj.tenant_id} written in tenant {tenant_id}")
+
+
+class Store:
+    def __init__(self, url: str = "sqlite:///data/testamur.db"):
+        self.engine = create_engine(url, future=True)
+        if url.startswith("sqlite"):
+            @event.listens_for(self.engine, "connect")
+            def _pragmas(conn, _):
+                cur = conn.cursor()
+                cur.execute("PRAGMA journal_mode=WAL")
+                cur.execute("PRAGMA busy_timeout=5000")
+                cur.close()
+        Base.metadata.create_all(self.engine)
+        self._factory = sessionmaker(self.engine, expire_on_commit=False)
+
+    @contextmanager
+    def tenant(self, tenant_id: int):
+        """A session that can only see and write the given tenant's rows."""
+        if tenant_id is None:
+            raise TenantScopeError("a tenant session needs a tenant")
+        with self._factory() as s:
+            s.info["tenant_id"] = tenant_id
+            yield s
+            s.commit()
+
+    @contextmanager
+    def system(self):
+        """Cross-tenant access, for loading the registry and for measurement. Never used on a request path."""
+        with self._factory() as s:
+            s.info["system"] = True
+            yield s
+            s.commit()
+
+    @contextmanager
+    def unscoped(self):
+        """A session with no tenant at all. Exists so tests can prove it fails closed."""
+        with self._factory() as s:
+            yield s

@@ -1,0 +1,95 @@
+"""Load and validate a domain pack. The pack is the contract between domain experts and the engine: adding a document
+type or tightening a check is a reviewed change to YAML, not to code."""
+from __future__ import annotations
+
+import hashlib
+import re
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
+
+import yaml
+from pydantic import BaseModel, Field, model_validator
+
+from .model import Severity, Tier
+
+PACKS = Path(__file__).parent / "packs"
+
+
+class FieldSpec(BaseModel):
+    labels: list[str]
+    type: str                                   # text | money | date | list
+
+
+class DocTypeSpec(BaseModel):
+    title_keywords: list[str]
+    filename_aliases: list[str] = Field(default_factory=list)
+    key_labels: list[str] = Field(default_factory=list)
+    fields: dict[str, FieldSpec] = Field(default_factory=dict)
+
+
+class CheckSpec(BaseModel):
+    tier: Tier
+    severity: Severity
+    rule: str
+    params: dict[str, Any] = Field(default_factory=dict)
+    hint: str = ""
+
+
+class Applicability(BaseModel):
+    tiers: list[str] | None = None
+    engagement_types: list[str] | None = None
+
+    def matches(self, tier: str, engagement_type: str) -> bool:
+        return (self.tiers is None or tier in self.tiers) and \
+               (self.engagement_types is None or engagement_type in self.engagement_types)
+
+
+class RequirementSpec(BaseModel):
+    doc_type: str
+    applies_to: Applicability = Field(default_factory=Applicability)
+    checks: list[str]
+    check_applies: dict[str, Applicability] = Field(default_factory=dict)
+    group_cover: bool = False
+
+
+class Pack(BaseModel):
+    name: str
+    version: int
+    tier_minimum_liability: dict[str, int]
+    accredited_bodies: list[str]
+    doc_types: dict[str, DocTypeSpec]
+    checks: dict[str, CheckSpec]
+    requirements: dict[str, RequirementSpec]
+    service_terms: dict[str, list[str]]
+    injection_markers: list[str]
+    digest: str = ""
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Pack:
+        for rid, req in self.requirements.items():
+            if req.doc_type not in self.doc_types:
+                raise ValueError(f"requirement {rid}: unknown doc_type {req.doc_type}")
+            for cid in req.checks:
+                if cid not in self.checks:
+                    raise ValueError(f"requirement {rid}: unknown check {cid}")
+            for cid in req.check_applies:
+                if cid not in req.checks:
+                    raise ValueError(f"requirement {rid}: check_applies names {cid}, which it does not run")
+        for cid, chk in self.checks.items():
+            if chk.tier == Tier.MODEL and not {"claim", "counterclaim", "search"} <= set(chk.params):
+                raise ValueError(f"check {cid}: a model-tier check needs claim, counterclaim and search")
+        for marker in self.injection_markers:
+            re.compile(marker)
+        return self
+
+    def injection_patterns(self) -> list[re.Pattern[str]]:
+        return [re.compile(m, re.I) for m in self.injection_markers]
+
+
+@lru_cache(maxsize=8)
+def load_pack(name: str = "supplier_assurance") -> Pack:
+    raw = (PACKS / name / "pack.yaml").read_bytes()
+    pack = Pack.model_validate(yaml.safe_load(raw))
+    pack.digest = hashlib.sha256(raw).hexdigest()[:12]
+    return pack

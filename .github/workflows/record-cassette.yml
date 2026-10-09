@@ -1,0 +1,49 @@
+name: record-cassette
+
+# Runs the model tier live on the CI platform with an open-weight model on CPU and records every call, so the
+# harness job can replay them exactly. Manual: it downloads a 2.5 GB model and takes about an hour.
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_repo:
+        description: Hugging Face repository of the GGUF model
+        default: unsloth/Qwen3-4B-Instruct-2507-GGUF
+      model_file:
+        description: GGUF file name
+        default: Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[ocr]"
+      - run: python -m pip install "llama-cpp-python>=0.3" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+      - uses: actions/cache@v4
+        with:
+          path: models
+          key: gguf-${{ inputs.model_file }}
+      - name: Download the model
+        run: |
+          mkdir -p models
+          [ -f "models/${{ inputs.model_file }}" ] || curl -sSL -o "models/${{ inputs.model_file }}" \
+            "https://huggingface.co/${{ inputs.model_repo }}/resolve/main/${{ inputs.model_file }}"
+          ls -la models
+      - run: testamur world --seed 7 --size small --out data/world
+      - name: Run the harness live and record every model call
+        run: |
+          testamur harness --world data/world --db data/harness.db --report artifacts/harness-small-live.md \
+            --model-path "models/${{ inputs.model_file }}" --cassette artifacts/small-seed7-linux.jsonl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cassette-and-live-report
+          path: artifacts/

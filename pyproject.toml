@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "testamur"
+version = "0.1.0a1"
+description = "Evidence assurance for supplier compliance: read messy documents, match them to the right supplier, check them at the cheapest tier that can decide, and never say PASS without evidence."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Ashutosh Gandhi" }]
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.7",
+    "pyyaml>=6",
+    "sqlalchemy>=2.0",
+    "typer>=0.12",
+    "pypdf>=4",
+    "pypdfium2>=4",
+    "pillow>=10",
+    "numpy>=1.26",
+    "rapidfuzz>=3",
+    "bm25s>=0.2",
+    "reportlab>=4",
+]
+
+[project.optional-dependencies]
+ocr = ["rapidocr>=3.4", "onnxruntime>=1.17", "opencv-python-headless>=4.9"]
+local-llm = ["llama-cpp-python>=0.3"]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+testamur = "testamur.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/gandhiashutosh14/testamur"
+
+[tool.setuptools.packages.find]
+include = ["testamur*"]
+
+[tool.setuptools.package-data]
+testamur = ["packs/*/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]
