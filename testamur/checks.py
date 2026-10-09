@@ -4,6 +4,7 @@ Every rule returns PASS, FAIL or ABSTAIN with the evidence it used. A missing, u
 value is an ABSTAIN, never a PASS: the engine does not round up."""
 from __future__ import annotations
 
+import re
 import string
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -15,6 +16,13 @@ from .pack import CheckSpec, Pack
 from .store import Engagement, Supplier, UploadRow
 from .textnorm import name_similarity
 from .understand import Fields
+
+# A scope that names the service only to exclude it ("excluding logistics operations") does not cover it.
+_EXCLUSION = re.compile(r"\b(?:except|excluding|excludes|excluded|other than|not including|with the exception of|"
+                        r"outside)\b", re.I)
+# What a signature line says when nobody signed it: a template's placeholder, not a name.
+_PLACEHOLDER = re.compile(r"^(?:\W*(?:n/?a|tbc|tbd|to be signed|unsigned|not signed|pending|name|signature|title|date|"
+                          r"print name|authori[sz]ed signatory)\W*|\[.*\]|\(.*\)|[\W_]*)$", re.I)
 
 
 @dataclass
@@ -169,6 +177,9 @@ def _scope_mentions(cid, rid, spec, ctx, p):
         return _result(cid, rid, spec, Verdict.ABSTAIN, why, ctx)
     terms = ctx.pack.service_terms[ctx.engagement.service_category]
     hit = next((t for t in terms if t in fv.value.casefold()), None)
+    if hit and _EXCLUSION.search(fv.value):
+        return _result(cid, rid, spec, Verdict.ABSTAIN, f"the scope mentions '{hit}' but also an exclusion; a person "
+                       "reads which applies", ctx, [_ev(ctx, fv)])
     if hit:
         return _result(cid, rid, spec, Verdict.PASS, f"scope mentions '{hit}'", ctx, [_ev(ctx, fv)])
     return _result(cid, rid, spec, Verdict.FAIL, f"scope does not mention {', '.join(terms)}", ctx, [_ev(ctx, fv)],
@@ -221,7 +232,7 @@ def _both_signed(cid, rid, spec, ctx, p):
     evidence = []
     for name in p["fields"]:
         fv = ctx.fields.values.get(name)
-        if fv is None or not any(ch.isalpha() for ch in str(fv.value)):
+        if fv is None or not any(ch.isalpha() for ch in str(fv.value)) or _PLACEHOLDER.match(str(fv.value).strip()):
             missing.append(name.replace("_signatory", ""))
         else:
             evidence.append(_ev(ctx, fv))

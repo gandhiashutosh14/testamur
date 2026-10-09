@@ -125,10 +125,19 @@ def parse_number(num: str) -> Decimal | None:
         return None
 
 
+_CURRENCY_MARK = re.compile(r"(?<![a-z])(?:eur|gbp|usd)(?![a-z])|[€£$]", re.I)
+_DIGIT_RUN = re.compile(r"\d[\d.,' ]*\d|\d")
+
+
 def parse_money(text: str) -> tuple[Decimal, str] | None:
     """'EUR 5,000,000', '€5m', '5.000.000 EUR'. Returns (amount, currency) or None if the grouping is malformed
-    (OCR often reads '5,000,000' as '5,000000'; that must not become five thousand) or the currency is unknown."""
+    (OCR often reads '5,000,000' as '5,000000'; that must not become five thousand), the currency is unknown, or the
+    text states more than one amount (an aggregate beside a per-occurrence limit, a limit beside an excess): which of
+    them the rule should compare is a question for a person, not the first number on the line."""
     s = _SPACES.sub(" ", (text or "").strip())
+    big = sum(len(re.sub(r"\D", "", run)) >= 4 for run in _DIGIT_RUN.findall(s))
+    if len(_CURRENCY_MARK.findall(s)) > 1 or big > 1:
+        return None
     s = re.split(r"\s+(?:any|each|per|in the|aggregate)\b", s, flags=re.I)[0].strip()
     m = _MONEY.match(s)
     if not m:

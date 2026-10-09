@@ -1,0 +1,133 @@
+# The adversarial false-PASS panel. Each case is a page of text built to tempt one rule into a PASS it must not
+# give; it goes through the real field reader and the real rule. None may PASS, and each must give the verdict
+# listed. The first five cases found real holes when the panel was written (two amounts on one limit line read as
+# the first, template placeholders read as signatures, a scope that excludes the service read as covering it); the
+# rules were fixed and the cases stay. Add a case whenever a new way to fool a rule is found.
+#
+# Defaults: supplier "Brightwater Logistics Ltd", tier high (minimum EUR 5,000,000), service category logistics,
+# as-of date 2026-10-01.
+
+- id: aggregate-beside-occurrence-limit
+  check: ins_limit_meets_tier
+  why: the aggregate meets the minimum; the per-occurrence limit, which is what counts, does not
+  lines: ["General liability limit: EUR 5,000,000 in the aggregate; EUR 1,000,000 any one occurrence"]
+  expect: ABSTAIN
+- id: limit-beside-an-excess
+  check: ins_limit_meets_tier
+  why: an excess of 4.9 million leaves almost nothing of a 5 million limit
+  lines: ["General liability limit: EUR 5,000,000 per claim, subject to an excess of EUR 4,900,000"]
+  expect: ABSTAIN
+- id: signature-placeholders
+  doc_type: master_agreement
+  check: msa_signed
+  why: a template's "N/A" and "to be signed" are not signatures
+  lines: ["Signed for the Supplier: N/A", "Signed for the Customer: to be signed"]
+  expect: FAIL
+- id: bracketed-signature-template
+  doc_type: master_agreement
+  check: msa_signed
+  why: '"[Name, Title]" is the blank the signer was meant to fill in'
+  lines: ["Signed for the Supplier: [Name, Title]", "Signed for the Customer: Name"]
+  expect: FAIL
+- id: scope-that-excludes-the-service
+  doc_type: security_certificate
+  check: sec_scope_covers_service
+  why: the scope names logistics only to exclude it
+  lines: ["Scope: Provision of payroll services; excluding logistics operations"]
+  expect: ABSTAIN
+- id: scope-other-than-the-service
+  doc_type: security_certificate
+  check: sec_scope_covers_service
+  why: '"other than" is an exclusion too'
+  lines: ["Scope: All services other than logistics and warehousing"]
+  expect: ABSTAIN
+- id: decoy-prior-period-expiry
+  check: ins_cover_current
+  why: the only date that looks like an expiry belongs to last year's policy
+  lines: ["CERTIFICATE OF INSURANCE", "Prior period expiry date: 01/01/2027", "Insured: Brightwater Logistics Ltd"]
+  expect: ABSTAIN
+- id: month-first-date
+  check: ins_cover_current
+  why: read day-first, 09/30/2026 is not a date; it must not be guessed into one
+  lines: ["Expiry date: 09/30/2026"]
+  expect: ABSTAIN
+- id: year-only-expiry
+  check: ins_cover_current
+  why: '"2027" could be any day of that year'
+  lines: ["Expiry date: 2027"]
+  expect: ABSTAIN
+- id: impossible-date
+  check: ins_cover_current
+  why: there is no 31 February
+  lines: ["Expiry date: 31/02/2027"]
+  expect: ABSTAIN
+- id: endorsement-contradicts-schedule
+  check: ins_cover_current
+  why: page two shortens the period stated on page one
+  lines: ["Expiry date: 2027-06-01", "ENDORSEMENT", "Expiry date: 2026-06-01"]
+  expect: ABSTAIN
+- id: expired-yesterday
+  check: ins_cover_current
+  why: cover ended the day before the as-of date
+  lines: ["Expiry date: 30/09/2026"]
+  expect: FAIL
+- id: malformed-grouping
+  check: ins_limit_meets_tier
+  why: OCR read 5,000,000 as 5,000000; it must not become five thousand, or five million by guess
+  lines: ["General liability limit: EUR 5,000000"]
+  expect: ABSTAIN
+- id: mixed-separators
+  check: ins_limit_meets_tier
+  why: 5,000.000 has no single reading
+  lines: ["General liability limit: EUR 5,000.000"]
+  expect: ABSTAIN
+- id: another-currency
+  check: ins_limit_meets_tier
+  why: there is no conversion rule; USD 9m is not EUR 9m
+  lines: ["General liability limit: USD 9,000,000"]
+  expect: ABSTAIN
+- id: one-euro-short
+  check: ins_limit_meets_tier
+  why: the minimum is a minimum
+  lines: ["General liability limit: EUR 4,999,999"]
+  expect: FAIL
+- id: thousands-not-millions
+  check: ins_limit_meets_tier
+  why: 500k is not 5m
+  lines: ["General liability limit: EUR 500k"]
+  expect: FAIL
+- id: holding-company-name
+  check: ins_name_matches
+  why: a holding company is a different legal entity
+  lines: ["Insured: Brightwater Logistics Holdings plc"]
+  expect: ABSTAIN
+- id: group-name
+  check: ins_name_matches
+  why: the group is not the supplier
+  lines: ["Insured: Brightwater Group plc"]
+  expect: FAIL
+- id: issued-in-the-future
+  check: ins_issued_recently
+  why: a certificate dated after the as-of date is not recent, it is wrong
+  lines: ["Date of issue: 2027-01-15"]
+  expect: ABSTAIN
+- id: transposed-iban-digits
+  doc_type: bank_letter
+  requirement: bank_details
+  check: bank_iban_valid
+  why: two adjacent digits of the account on file swapped; the check digits catch it
+  lines: ["IBAN: GB33 BUKB 0220 1555 5555 55"]
+  expect: FAIL
+- id: valid-iban-not-on-file
+  doc_type: bank_letter
+  requirement: bank_details
+  check: bank_iban_on_file
+  why: a perfectly valid IBAN that is not the supplier's account is the invoice-fraud pattern
+  lines: ["IBAN: GB77 BARC 2020 1530 0934 59"]
+  expect: FAIL
+- id: blank-signature-lines
+  doc_type: master_agreement
+  check: msa_signed
+  why: lines drawn for signatures are not signatures
+  lines: ["Signed for the Supplier: ____________", "Signed for the Customer: ____________"]
+  expect: FAIL
