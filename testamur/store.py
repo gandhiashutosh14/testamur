@@ -19,12 +19,14 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
     create_engine,
     event,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker, with_loader_criteria
 
@@ -180,6 +182,7 @@ class VerdictRow(TenantScoped, Base):
     transient: Mapped[bool] = mapped_column(Boolean, default=False)
     lapsed: Mapped[bool] = mapped_column(Boolean, default=False)
     engine_version: Mapped[str] = mapped_column(String(80))
+    as_of: Mapped[date | None] = mapped_column(Date, nullable=True)     # set when the verdict depends on the date
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -198,6 +201,7 @@ class CheckReview(TenantScoped, Base):
     verdict: Mapped[str] = mapped_column(String(10))            # PASS | FAIL: a person decides, or leaves it queued
     machine_verdict: Mapped[str] = mapped_column(String(10))
     rule_digest: Mapped[str] = mapped_column(String(16))
+    as_of: Mapped[date | None] = mapped_column(Date, nullable=True)     # set when the check depends on the date
     kind: Mapped[str] = mapped_column(String(10), default="queue")
     reviewer: Mapped[str] = mapped_column(String(120))
     note: Mapped[str] = mapped_column(Text, default="")
@@ -256,7 +260,98 @@ class RequirementState(TenantScoped, Base):
     document_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     via_parent: Mapped[bool] = mapped_column(Boolean, default=False)
     reasons: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    failing: Mapped[list[Any]] = mapped_column(JSON, default=list)      # checks that FAIL, for findings that act
+    version: Mapped[int] = mapped_column(Integer, default=0)            # one more for every change reported
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class OutboxEvent(TenantScoped, Base):
+    """Written in the same transaction as the status change it reports: no change without its event, and no event
+    without its change. The dispatcher (actions.py) turns events into work; `key` makes each event unique."""
+    __tablename__ = "outbox"
+    __table_args__ = (UniqueConstraint("tenant_id", "key"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(120))
+    kind: Mapped[str] = mapped_column(String(40))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    dispatched_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class Task(TenantScoped, Base):
+    """Remediation work for a person: chase a supplier for evidence, or follow a finding up. At most one open task
+    per engagement and requirement, enforced by the database, not by remembering to check."""
+    __tablename__ = "tasks"
+    __table_args__ = (Index("one_open_task", "tenant_id", "engagement_id", "requirement_id", unique=True,
+                            sqlite_where=text("status = 'open'"), postgresql_where=text("status = 'open'")),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    engagement_id: Mapped[int] = mapped_column(Integer, index=True)
+    requirement_id: Mapped[str] = mapped_column(String(60))
+    kind: Mapped[str] = mapped_column(String(20))                       # chase_supplier | follow_up
+    title: Mapped[str] = mapped_column(String(300))
+    detail: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(10), default="open")    # open | done | superseded
+    opened_at: Mapped[datetime] = mapped_column(DateTime)
+    due_at: Mapped[datetime] = mapped_column(DateTime)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    closed_reason: Mapped[str] = mapped_column(Text, default="")
+    event_key: Mapped[str] = mapped_column(String(120))
+
+
+class Notification(TenantScoped, Base):
+    """A message to a supplier, kept as written. `key` makes each one unique; a cooldown keeps reminders apart."""
+    __tablename__ = "notifications"
+    __table_args__ = (UniqueConstraint("tenant_id", "key"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(160))
+    supplier_id: Mapped[int] = mapped_column(Integer)
+    engagement_id: Mapped[int] = mapped_column(Integer, index=True)
+    requirement_id: Mapped[str] = mapped_column(String(60))
+    subject: Mapped[str] = mapped_column(String(300))
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class Hold(TenantScoped, Base):
+    """A purchasing hold on an engagement while a critical requirement is unmet. Placed and released by the engine,
+    announced by webhook; reversible by design. At most one open hold per engagement."""
+    __tablename__ = "holds"
+    __table_args__ = (Index("one_open_hold", "tenant_id", "engagement_id", unique=True,
+                            sqlite_where=text("released_at IS NULL"), postgresql_where=text("released_at IS NULL")),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    engagement_id: Mapped[int] = mapped_column(Integer, index=True)
+    requirements: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    placed_at: Mapped[datetime] = mapped_column(DateTime)
+    released_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class WebhookEndpoint(TenantScoped, Base):
+    """Where a tenant's own systems (purchasing, ticketing) want to hear about changes; messages are signed with
+    the endpoint's secret (Standard Webhooks)."""
+    __tablename__ = "webhook_endpoints"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    url: Mapped[str] = mapped_column(String(400))
+    secret: Mapped[str] = mapped_column(String(120))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class Delivery(TenantScoped, Base):
+    """One message to one endpoint, retried with backoff until delivered or dead. `webhook_id` is stable across
+    retries, so the receiver can ignore a message it has already processed: delivery is at least once, the effect
+    exactly once."""
+    __tablename__ = "deliveries"
+    __table_args__ = (UniqueConstraint("tenant_id", "endpoint_id", "webhook_id"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    endpoint_id: Mapped[int] = mapped_column(Integer)
+    webhook_id: Mapped[str] = mapped_column(String(160))
+    event_type: Mapped[str] = mapped_column(String(60))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(10), default="pending")      # pending | delivered | dead
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_error: Mapped[str] = mapped_column(Text, default="")
 
 
 class ModelCall(TenantScoped, Base):

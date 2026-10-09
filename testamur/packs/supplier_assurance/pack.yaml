@@ -283,3 +283,16 @@ assurance:
   false_pass_budget: {critical: 0.01, major: 0.05, minor: 0.10}
   audit_rate: {critical: 0.10, major: 0.05, minor: 0.02}
   confidence: 0.95
+
+# What a finding turns into. Insurance is chased with the supplier (a task and a reminder, at most one a week); any
+# other unmet requirement becomes a follow-up task for the buyer's staff; while insurance or bank details are expired
+# or not satisfied, the engagement is on a purchasing hold. Due dates by the engagement's risk tier.
+actions:
+  chase_requirements: [insurance]
+  chase_statuses: [MISSING, EXPIRED, NOT_SATISFIED]
+  chase_findings: [ins_renewal_due]
+  follow_up_statuses: [MISSING, EXPIRED, NOT_SATISFIED]
+  hold_requirements: [insurance, bank_details]
+  hold_statuses: [EXPIRED, NOT_SATISFIED]
+  notify_cooldown_days: 7
+  task_due_days: {critical: 5, high: 10, standard: 15, low: 30}

@@ -1,5 +1,7 @@
 """People's decisions are inputs: they change statuses, survive re-runs, apply only under the rule they were made
 under, and never open a door the engine keeps shut (the model still never reads a hostile document)."""
+from datetime import date, timedelta
+
 import pytest
 from sqlalchemy import select
 
@@ -179,3 +181,38 @@ def test_the_queue_lists_what_needs_a_person(env):
     assert {"document_owner", "document_type", "document_security", "check"} <= kinds
     checks = [i for i in engine.queue(1) if i.kind == "check"]
     assert checks and not any(i.retrying for i in checks if "no model is configured" in i.reason)
+
+
+def test_cover_that_lapses_overnight_is_expired_the_next_day_without_a_new_upload(env):
+    world, store, engine = env
+    eid, doc_id = _first_state(store, 1, "insurance", Status.SATISFIED)
+    with store.tenant(1) as s:
+        expiry = date.fromisoformat(s.get(Document, doc_id).fields["expiry_date"]["value"])
+    Engine(store, load_pack(), expiry, engine.blob_root).refresh(1)
+    assert _status(store, 1, eid, "insurance") == Status.SATISFIED_WITH_FINDINGS   # covered, but renewal is due
+    Engine(store, load_pack(), expiry + timedelta(days=1), engine.blob_root).refresh(1)
+    assert _status(store, 1, eid, "insurance") == Status.EXPIRED
+
+
+def test_a_persons_pass_on_a_dated_check_holds_that_day_and_a_fail_holds_after(env):
+    world, store, engine = env
+    found = None
+    for t in world.tenants:
+        with store.tenant(t.id) as s:
+            row = s.scalars(select(VerdictRow).where(VerdictRow.check_id == "ins_renewal_due",
+                                                     VerdictRow.verdict == "FAIL")).first()
+            if row is not None:
+                found = (t.id, row.engagement_id)
+                break
+    assert found, "the tiny world has a certificate due for renewal"
+    tenant, eid = found
+    engine.review_check(tenant, eid, "insurance", "ins_renewal_due", "PASS", "reviewer@buyer",
+                        note="renewal confirmed by the broker by phone")
+    assert _status(store, tenant, eid, "insurance") == Status.SATISFIED
+    tomorrow = Engine(store, load_pack(), engine.as_of + timedelta(days=1), engine.blob_root)
+    tomorrow.refresh(tenant)
+    assert _status(store, tenant, eid, "insurance") == Status.SATISFIED_WITH_FINDINGS   # the PASS was for that day
+    tomorrow.review_check(tenant, eid, "insurance", "ins_cover_current", "FAIL", "reviewer@buyer",
+                          note="the insurer says the policy was cancelled")
+    Engine(store, load_pack(), engine.as_of + timedelta(days=2), engine.blob_root).refresh(tenant)
+    assert _status(store, tenant, eid, "insurance") == Status.NOT_SATISFIED            # a FAIL stays

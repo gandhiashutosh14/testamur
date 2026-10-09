@@ -162,6 +162,34 @@ testamur review recertify ins_limit_meets_tier --by lead@buyer --note "aggregate
 status must then be right, and a re-index must change none), and a planted fault shows the audit sample tripping the
 breaker and the false assurance stopping.
 
+### From finding to action
+```mermaid
+flowchart LR
+    S["Status change"] -->|same transaction| O[("outbox")]
+    O --> D["Dispatcher: one transaction per event"]
+    D --> T["Task: chase the supplier, or follow up"]
+    D --> R["Reminder to the supplier (one a week at most)"]
+    D --> H["Purchasing hold, placed and released"]
+    D --> W[("webhook messages")]
+    W -->|"signed, retried, stable id"| B["Buyer's systems: verify, process once"]
+```
+
+Every status change writes an event in the same transaction as the change; the dispatcher turns each event into
+work in one transaction with its dispatched mark, so a crash re-handles it from scratch and the database keeps every
+action single (one open task per requirement, one open hold per engagement, unique keys on reminders and messages).
+Webhook messages leave after the transaction, signed (Standard Webhooks), retried with backoff and declared dead
+after eight attempts; their id is stable, so the receiver processes each once
+([ADR 0011](decisions/0011-findings-become-work-through-an-outbox.md)). The first workflow automated is the
+supplier chase for insurance: frequent, decided by rules, reversible, measurable
+([ADR 0012](decisions/0012-the-first-workflow.md)). Verdicts that depend on the date carry the date they were judged
+at and are judged again when it moves, so cover that lapses tonight is EXPIRED tomorrow without a new upload.
+
+```bash
+testamur dispatch --db data/harness.db --tenant 1      # findings become tasks, reminders, holds, messages
+testamur tasks --db data/harness.db --tenant 1         # open work, and engagements on hold
+testamur actionsim --world data/world --days 60        # days pass; suppliers answer; the loop is measured
+```
+
 ### Revisions and retries
 Verdicts are stored per engagement, requirement, check, document and engine version. A transient failure (a timeout,
 a provider error) is recorded as a transient ABSTAIN, retried on the next pass, and never overwrites a conclusive
@@ -226,6 +254,5 @@ cost (a re-index pays for nothing) and about how much it hands to people (deferr
 
 ## What is deliberately not here yet
 
-The roadmap in the README lists what follows: accuracy estimated from audit samples of the engine's confident
-verdicts, calibrated thresholds, real-contract evaluation, findings that create work, an assistant over the same
-index, and a tenant-scoped tool server for agents.
+The roadmap in the README lists what follows: real-contract evaluation of the clause tier, an assistant over the
+same index, a tenant-scoped tool server for agents, and delivery gates.

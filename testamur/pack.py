@@ -69,6 +69,20 @@ class Assurance(BaseModel):
     confidence: float = 0.95
 
 
+class ActionPolicy(BaseModel):
+    """What a finding turns into (see actions.py). The first workflow automated is the supplier chase for insurance:
+    frequent, triggered by a rule (a date or a limit), and reversible (a reminder and a task)."""
+    chase_requirements: list[str] = Field(default_factory=lambda: ["insurance"])
+    chase_statuses: list[str] = Field(default_factory=lambda: ["MISSING", "EXPIRED", "NOT_SATISFIED"])
+    chase_findings: list[str] = Field(default_factory=lambda: ["ins_renewal_due"])
+    follow_up_statuses: list[str] = Field(default_factory=lambda: ["MISSING", "EXPIRED", "NOT_SATISFIED"])
+    hold_requirements: list[str] = Field(default_factory=lambda: ["insurance", "bank_details"])
+    hold_statuses: list[str] = Field(default_factory=lambda: ["EXPIRED", "NOT_SATISFIED"])
+    notify_cooldown_days: int = 7
+    task_due_days: dict[str, int] = Field(default_factory=lambda: {"critical": 5, "high": 10, "standard": 15,
+                                                                   "low": 30})
+
+
 class Pack(BaseModel):
     name: str
     version: int
@@ -80,6 +94,7 @@ class Pack(BaseModel):
     service_terms: dict[str, list[str]]
     injection_markers: list[str]
     assurance: Assurance = Field(default_factory=Assurance)
+    actions: ActionPolicy = Field(default_factory=ActionPolicy)
     digest: str = ""
 
     @model_validator(mode="after")

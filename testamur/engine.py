@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 
 from . import __version__, budget
 from .accuracy import check_health
-from .checks import CheckContext, evaluate
+from .checks import TIME_RULES, CheckContext, evaluate
 from .extract import Extractor, sniff_mime
 from .match import NAME_FIELD, covered, match
 from .model import CheckResult, Evidence, Extraction, FieldValue, Severity, Status, Tier, Verdict
@@ -48,6 +48,7 @@ from .store import (
     ExtractionRow,
     FieldCorrection,
     ModelCall,
+    OutboxEvent,
     RequirementState,
     Store,
     Supplier,
@@ -293,18 +294,22 @@ class Engine:
         """A requirement's status and the verdicts behind it as they stand: the engine's, with people's decisions
         in their place, in the pack's order. Reads only; nothing is judged again."""
         with self.store.tenant(tenant_id) as s:
-            st = s.get(RequirementState, {"engagement_id": engagement_id, "requirement_id": requirement_id,
-                                          "tenant_id": tenant_id})
-            if st is None or st.document_id is None:
-                return st, []
-            rows = {v.check_id: v for v in s.scalars(select(VerdictRow).where(
-                VerdictRow.engagement_id == engagement_id, VerdictRow.requirement_id == requirement_id,
-                VerdictRow.document_id == st.document_id, VerdictRow.engine_version == self.version))}
-            decided = self._check_decisions(s, engagement_id, requirement_id, st.document_id)
-            demoted = self._demoted(s)
-            out = [_effective(_from_row(rows[cid]), decided.get(cid), cid in demoted)
-                   for cid in self.pack.requirements[requirement_id].checks if cid in rows]
-            return st, out
+            return self._verdicts(s, tenant_id, engagement_id, requirement_id)
+
+    def _verdicts(self, s: Session, tenant_id: int, engagement_id: int,
+                  requirement_id: str) -> tuple[RequirementState | None, list[CheckResult]]:
+        """`verdicts` inside a session the caller already holds (a second session would wait on the first's lock)."""
+        st = s.get(RequirementState, {"engagement_id": engagement_id, "requirement_id": requirement_id,
+                                      "tenant_id": tenant_id})
+        if st is None or st.document_id is None:
+            return st, []
+        rows = {v.check_id: v for v in s.scalars(select(VerdictRow).where(
+            VerdictRow.engagement_id == engagement_id, VerdictRow.requirement_id == requirement_id,
+            VerdictRow.document_id == st.document_id, VerdictRow.engine_version == self.version))}
+        decided = self._check_decisions(s, engagement_id, requirement_id, st.document_id)
+        demoted = self._demoted(s)
+        return st, [_effective(_from_row(rows[cid]), decided.get(cid), cid in demoted)
+                    for cid in self.pack.requirements[requirement_id].checks if cid in rows]
 
     def review_check(self, tenant_id: int, engagement_id: int, requirement_id: str, check_id: str,
                      verdict: Verdict | str, reviewer: str, note: str = "", kind: str = "queue") -> Status:
@@ -329,9 +334,11 @@ class Engine:
             before = self._demoted(s)
             if kind == "queue" and check_id in before and machine == Verdict.PASS:
                 kind = "confirm"                       # a census of a demoted check's PASSes: counts for accuracy
+            timed = self.pack.checks[check_id].rule in TIME_RULES
             s.add(CheckReview(engagement_id=engagement_id, requirement_id=requirement_id, check_id=check_id,
                               document_id=state.document_id, verdict=verdict.value, machine_verdict=machine,
-                              rule_digest=self.pack.rule_digest(check_id), kind=kind, reviewer=reviewer, note=note))
+                              rule_digest=self.pack.rule_digest(check_id), as_of=self.as_of if timed else None,
+                              kind=kind, reviewer=reviewer, note=note))
             s.add(AuditRow(actor=reviewer, action="check_reviewed",
                            target=f"engagement:{engagement_id}/{requirement_id}/{check_id}",
                            detail={"document": state.document_id, "engine": machine, "person": verdict.value,
@@ -484,12 +491,19 @@ class Engine:
         return out
 
     def _check_decisions(self, s: Session, eid: int, rid: str, doc_id: int) -> dict[str, CheckReview]:
-        """The latest decision per check that still applies: one made under the check's current definition."""
+        """The latest decision per check that still applies: made under the check's current definition; for a check
+        that depends on the date, a PASS only on the day it was made (a FAIL withholds, so it stays until a person
+        lifts it); and not an audit that merely agreed with the engine (a measurement, not an override)."""
         out: dict[str, CheckReview] = {}
         for d in s.scalars(select(CheckReview).where(CheckReview.engagement_id == eid, CheckReview.requirement_id == rid,
                                                      CheckReview.document_id == doc_id).order_by(CheckReview.id)):
-            if d.rule_digest == self.pack.rule_digest(d.check_id):
-                out[d.check_id] = d
+            if d.rule_digest != self.pack.rule_digest(d.check_id):
+                continue
+            if d.verdict == Verdict.PASS and d.as_of is not None and d.as_of != self.as_of:
+                continue
+            if d.kind == "audit" and d.verdict == d.machine_verdict:
+                continue
+            out[d.check_id] = d
         return out
 
     def _fields(self, s: Session, doc_id: int, doc_type: str, ex: Extraction) -> Fields:
@@ -649,17 +663,29 @@ class Engine:
         results = self._results(s, tenant_id, e, rid, req, doc, via_parent, force) if doc is not None else None
         status, reasons = decide(applicable=applicable, results=results, via_parent=via_parent, attested=attested,
                                  pending_review=pending, hostile=bool(doc and doc.hostile and not doc.cleared))
+        failing = sorted(r.check_id for r in results or [] if r.verdict == Verdict.FAIL)
         state = s.get(RequirementState, {"engagement_id": eid, "requirement_id": rid, "tenant_id": tenant_id})
+        before = (state.status, state.failing) if state is not None else (None, [])
         if state is None:
-            s.add(RequirementState(engagement_id=eid, requirement_id=rid, tenant_id=tenant_id, status=status,
-                                   document_id=doc.id if doc else None, via_parent=via_parent, reasons=reasons))
+            state = RequirementState(engagement_id=eid, requirement_id=rid, tenant_id=tenant_id, status=status,
+                                     document_id=doc.id if doc else None, via_parent=via_parent, reasons=reasons,
+                                     failing=failing, version=0)
+            s.add(state)
         else:
             if state.status != status:
                 s.add(AuditRow(actor="engine", action="status_changed", target=f"engagement:{eid}/{rid}",
                                detail={"from": state.status, "to": status}))
-            state.status, state.document_id, state.via_parent, state.reasons = \
-                status, doc.id if doc else None, via_parent, reasons
+            state.status, state.document_id, state.via_parent, state.reasons, state.failing = \
+                status, doc.id if doc else None, via_parent, reasons, failing
             state.updated_at = utcnow()
+        if before != (status, failing):
+            # the transactional outbox: the event commits with the change it reports, or neither does
+            state.version = (state.version or 0) + 1
+            hints = [r.fix_hint for r in results or [] if r.verdict == Verdict.FAIL and r.fix_hint]
+            s.add(OutboxEvent(key=f"status:{eid}/{rid}#{state.version}", kind="requirement.status_changed",
+                              payload={"engagement": eid, "requirement": rid, "supplier": e.supplier_id,
+                                       "from": before[0], "to": status, "failing": failing, "hints": hints,
+                                       "document": doc.id if doc else None, "as_of": self.as_of.isoformat()}))
         s.flush()
 
     # ------------------------------------------------------------------ checks
@@ -673,7 +699,9 @@ class Engine:
 
         def effective(cid: str, r: CheckResult) -> CheckResult:
             return _effective(r, decided.get(cid), cid in demoted)
-        results = {cid: _from_row(v) for cid, v in rows.items() if not v.transient and not force}
+        # reused unless transient, forced, or judged at another date by a rule that depends on the date
+        results = {cid: _from_row(v) for cid, v in rows.items()
+                   if not v.transient and not force and (v.as_of is None or v.as_of == self.as_of)}
         missing = [cid for cid in req.checks if cid not in results]     # new, transient (retried) or forced
         if missing:
             supplier = s.get(Supplier, e.supplier_id)
@@ -743,6 +771,7 @@ class Engine:
         row.verdict, row.severity, row.tier, row.reason = r.verdict, r.severity, r.tier, r.reason
         row.evidence = [ev.model_dump() for ev in r.evidence]
         row.fix_hint, row.transient, row.lapsed = r.fix_hint, r.transient, r.lapsed
+        row.as_of = self.as_of if self.pack.checks[r.check_id].rule in TIME_RULES else None
         if existing is None:
             s.add(row)
         return r

@@ -204,19 +204,23 @@ def health(db: str = "data/harness.db", tenant: int = 1):
 def reviewsim(world_dir: str = typer.Option("data/world", "--world"), db: str = "data/reviewsim.db",
               report: str = "reports/review-sim.md", fault: str = "limit-scale",
               audit_rate: float = typer.Option(None, help="one audit rate for every severity (default: the pack's)"),
-              seed: int = 1, model_path: str = typer.Option(None), model_url: str = typer.Option(None),
+              seed: int = 1, scenarios: str = typer.Option("queue,fault", help="queue, fault, or both"),
+              model_path: str = typer.Option(None), model_url: str = typer.Option(None),
               model_name: str = typer.Option(None), cassette: str = typer.Option(None)):
     """Simulated reviewers who know the truth: work the whole queue, then audit against a planted fault."""
     from .reviewsim import accuracy_scenario, queue_scenario, write
     from .synth.world import load_world
     model = _model(model_path, model_url, model_name, cassette)
-    stem = Path(db)
-    q = queue_scenario(world_dir, stem.with_name(stem.stem + "_queue.db"), model)
-    a = accuracy_scenario(world_dir, stem.with_name(stem.stem + "_fault.db"), model, fault, audit_rate, seed)
+    stem, wanted = Path(db), set(scenarios.split(","))
+    q = queue_scenario(world_dir, stem.with_name(stem.stem + "_queue.db"), model) if "queue" in wanted else None
+    a = (accuracy_scenario(world_dir, stem.with_name(stem.stem + "_fault.db"), model, fault, audit_rate, seed)
+         if "fault" in wanted else None)
     w = load_world(world_dir)
     write(q, a, report, "testamur reviewsim " + " ".join(sys.argv[2:]), w.seed, w.size)
-    typer.echo(f"queue: {q['effort']} -> {q['after']}; re-index changed {q['changed_by_reindex']}")
-    typer.echo(f"fault: before {a['before']}, after audits {a['after_audit']}, final {a['final']}")
+    if q:
+        typer.echo(f"queue: {q['effort']} -> {q['after']}; re-index changed {q['changed_by_reindex']}")
+    if a:
+        typer.echo(f"fault: before {a['before']}, after audits {a['after_audit']}, final {a['final']}")
     typer.echo(f"report -> {report}")
 
 
@@ -256,6 +260,45 @@ def calibrate(seeds: str = "21-30", size: str = "full", alpha: str = "0.01,0.02,
     Path(report).write_text(render(cal, len(rows), seeds, validation, meta), encoding="utf-8")
     for c in cal:
         typer.echo(f"alpha {c['alpha']}: certified threshold {c['threshold']} (n={c['n']})")
+    typer.echo(f"report -> {report}")
+
+
+@app.command()
+def dispatch(db: str = "data/harness.db", tenant: int = 1):
+    """Turn reported status changes into work: tasks, supplier reminders, holds and webhook messages."""
+    from .actions import dispatch as run_dispatch
+    from .store import utcnow
+    eng = _engine(db)
+    done = run_dispatch(eng.store, eng.pack, tenant, utcnow())
+    typer.echo(", ".join(f"{k} {v}" for k, v in sorted(done.items())) or "nothing to dispatch")
+
+
+@app.command()
+def tasks(db: str = "data/harness.db", tenant: int = 1, show_closed: bool = False):
+    """Open remediation work (and closed, with --show-closed), and the engagements on a purchasing hold."""
+    from .store import Hold, Task
+    eng = _engine(db)
+    with eng.store.tenant(tenant) as s:
+        q = select(Task).order_by(Task.due_at) if show_closed else select(Task).where(Task.status == "open").order_by(
+            Task.due_at)
+        for t in s.scalars(q):
+            typer.echo(f"{t.status:10} due {t.due_at:%Y-%m-%d} {t.kind:15} {t.title}")
+        for h in s.scalars(select(Hold).where(Hold.released_at.is_(None))):
+            typer.echo(f"HOLD       engagement {h.engagement_id} since {h.placed_at:%Y-%m-%d}: {', '.join(h.requirements)}")
+
+
+@app.command()
+def actionsim(world_dir: str = typer.Option("data/world", "--world"), db: str = "data/actionsim.db",
+              report: str = "reports/action-sim.md", days: int = 60, response_rate: float = 0.15, seed: int = 1,
+              outage: float = 0.2, ack_loss: float = 0.1, cassette: str = typer.Option(None)):
+    """Simulate days passing: findings become work, suppliers answer, webhooks are retried; the loop is measured."""
+    from .actionsim import run, write
+    from .synth.world import load_world
+    r = run(world_dir, db, days, response_rate, seed, outage, ack_loss, _model(None, None, None, cassette))
+    w = load_world(world_dir)
+    write(r, report, "testamur actionsim " + " ".join(sys.argv[2:]), w.seed, w.size)
+    typer.echo(f"tasks {r['tasks']}; holds placed {r['totals'].get('hold_placed', 0)}, released "
+               f"{r['totals'].get('hold_released', 0)}; deliveries {r['deliveries']}; invariants {r['invariants']}")
     typer.echo(f"report -> {report}")
 
 

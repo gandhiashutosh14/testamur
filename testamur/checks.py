@@ -74,6 +74,10 @@ def _value(ctx: CheckContext, name: str) -> tuple[FieldValue | None, str | None]
     return fv, None
 
 
+# Rules whose verdict depends on the as-of date: a verdict from yesterday is not today's (cover can lapse overnight).
+TIME_RULES = frozenset({"date_covers", "within_days"})
+
+
 def evaluate(cid: str, rid: str, ctx: CheckContext) -> CheckResult:
     spec = ctx.pack.checks[cid]
     rule = RULES[spec.rule]

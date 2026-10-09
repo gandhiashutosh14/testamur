@@ -53,10 +53,13 @@ def wilson_upper(k: int, n: int, z: float = 1.96) -> float:
 
 
 def git_stamp(cwd: Path) -> str:
+    """The commit a result was produced at, '+dirty' if the code differed from it. The outputs themselves (reports/,
+    data/) are not code: a measurement run that rewrites earlier reports is still a run of that commit."""
     try:
         rev = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=cwd, capture_output=True, text=True,
                              check=True).stdout.strip()
-        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=cwd, capture_output=True,
+        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no", "--", ".",
+                                ":(exclude)reports", ":(exclude)data"], cwd=cwd, capture_output=True,
                                text=True).stdout.strip()
         return rev + ("+dirty" if dirty else "")
     except Exception:  # noqa: BLE001
