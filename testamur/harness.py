@@ -249,6 +249,9 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
             outcome["exact"] += 1
         elif es == Status.NEEDS_REVIEW:
             outcome["deferred_to_review"] += 1
+        elif ts == Status.SATISFIED and es == Status.SATISFIED_WITH_FINDINGS and not any(
+                v.verdict == Verdict.FAIL for v in verdicts.get((*key, states[key].document_id), {}).values()):
+            outcome["abstention_as_finding"] += 1          # vouching kept; a non-critical "not sure" asks a person
         elif es in VOUCHING and ts not in VOUCHING:
             outcome["false_assurance"] += 1
             false_assurance.append({"engagement": key[0], "requirement": key[1], "truth": ts.value,
@@ -337,7 +340,8 @@ def render(r: Report) -> str:
     out += ["", "## Requirement status", "",
             f"{st['requirement_instances']} engagement-requirement pairs. Exact: {st.get('exact', 0)} "
             f"({_pct(st['exact_rate'])}). Deferred to review: {st.get('deferred_to_review', 0)} "
-            f"({_pct(st['deferral_rate'])}). False assurance (vouching when the truth is otherwise): "
+            f"({_pct(st['deferral_rate'])}). Vouching kept, with a non-critical abstention shown as a finding: "
+            f"{st.get('abstention_as_finding', 0)}. False assurance (vouching when the truth is otherwise): "
             f"{st.get('false_assurance', 0)}. False alarm: {st.get('false_alarm', 0)}. Other mismatch: "
             f"{st.get('other_mismatch', 0)}.", "", "| Truth -> engine | Count |", "|---|---|"]
     out += [f"| {k} | {v} |" for k, v in st["confusion"].items()]

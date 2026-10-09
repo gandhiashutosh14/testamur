@@ -121,12 +121,21 @@ def truth_statuses(world: World, pack: Pack | None = None) -> dict[tuple[int, st
                            for a in world.attestations)
             results = None
             if up is not None:
-                results = [truth_check(pack, world, cid, rid, e, up, via_parent) for cid in req.checks]
+                results = _skip_decided([truth_check(pack, world, cid, rid, e, up, via_parent) for cid in req.checks])
             status, _ = decide(applicable=applicable, results=results, via_parent=via_parent, attested=attested,
                                hostile=bool(up and up.truth.injection))
             out[(e.id, rid)] = {"status": status, "upload_id": up.id if up else None, "via_parent": via_parent,
                                 "checks": {r.check_id: r.verdict for r in results} if results else {}}
     return out
+
+
+def _skip_decided(results: list[CheckResult]) -> list[CheckResult]:
+    """The cost rule, as the specification: once a deterministic critical check fails, the outcome is decided and the
+    model checks are not paid for. A model check that must go to a person anyway (a hostile document) stays ABSTAIN."""
+    if not any(r.severity == Severity.CRITICAL and r.verdict == Verdict.FAIL and r.tier != Tier.MODEL for r in results):
+        return results
+    return [r.model_copy(update={"verdict": Verdict.SKIPPED})
+            if r.tier == Tier.MODEL and r.verdict in (Verdict.PASS, Verdict.FAIL) else r for r in results]
 
 
 def severity_of(pack: Pack, check_id: str) -> Severity:
