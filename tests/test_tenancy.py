@@ -6,8 +6,8 @@ from testamur.store import Document, Store, Supplier, Tenant, TenantScopeError
 
 
 @pytest.fixture()
-def store(tmp_path):
-    st = Store(f"sqlite:///{tmp_path / 't.db'}")
+def store(db_url):
+    st = Store(db_url)
     with st.system() as s:
         s.add_all([Tenant(id=1, name="A"), Tenant(id=2, name="B"),
                    Supplier(id=1, tenant_id=1, legal_name="Alpha Ltd"), Supplier(id=2, tenant_id=2, legal_name="Beta Ltd")])

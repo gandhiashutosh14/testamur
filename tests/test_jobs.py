@@ -16,8 +16,8 @@ T0 = datetime(2026, 10, 1, 9, 0)
 
 
 @pytest.fixture()
-def store(tmp_path):
-    return Store(f"sqlite:///{tmp_path / 'q.db'}")
+def store(db_url):
+    return Store(db_url)
 
 
 def test_enqueue_is_idempotent_per_tenant(store):
@@ -119,3 +119,23 @@ def test_a_file_one_worker_is_reading_is_not_paid_for_again_by_another(store, tm
     assert engine.prefetch(1, first) == 0                            # and never again
     with store.tenant(1) as s:
         assert s.query(ExtractionClaim).count() == 0 and s.query(ExtractionRow).count() == 1
+
+
+def test_concurrent_workers_never_lease_the_same_job(store):
+    import threading
+    for i in range(40):
+        jobs.enqueue(store, 1, "process_upload", f"k{i}", now=T0)
+    leased, errors = [], []
+
+    def work(name):
+        try:
+            while (job := jobs.lease(store, name, lease_seconds=600, now=T0)) is not None:
+                leased.append(job.id)
+        except Exception as exc:  # noqa: BLE001 - collected and asserted below
+            errors.append(exc)
+    threads = [threading.Thread(target=work, args=(f"w{i}",)) for i in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors and len(leased) == 40 and len(set(leased)) == 40

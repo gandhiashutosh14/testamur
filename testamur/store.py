@@ -203,7 +203,7 @@ class CheckReview(TenantScoped, Base):
     rule_digest: Mapped[str] = mapped_column(String(16))
     as_of: Mapped[date | None] = mapped_column(Date, nullable=True)     # set when the check depends on the date
     kind: Mapped[str] = mapped_column(String(10), default="queue")
-    reviewer: Mapped[str] = mapped_column(String(120))
+    reviewer: Mapped[str] = mapped_column(String(300))
     note: Mapped[str] = mapped_column(Text, default="")
     at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
@@ -217,7 +217,7 @@ class FieldCorrection(TenantScoped, Base):
     field: Mapped[str] = mapped_column(String(60))
     raw: Mapped[str] = mapped_column(Text)
     machine_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
-    reviewer: Mapped[str] = mapped_column(String(120))
+    reviewer: Mapped[str] = mapped_column(String(300))
     note: Mapped[str] = mapped_column(Text, default="")
     at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
@@ -230,7 +230,7 @@ class CheckEvent(TenantScoped, Base):
     check_id: Mapped[str] = mapped_column(String(60), index=True)
     action: Mapped[str] = mapped_column(String(20))
     after_review_id: Mapped[int] = mapped_column(Integer, default=0)
-    reviewer: Mapped[str] = mapped_column(String(120))
+    reviewer: Mapped[str] = mapped_column(String(300))
     note: Mapped[str] = mapped_column(Text, default="")
     at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
@@ -246,7 +246,7 @@ class DocumentReview(TenantScoped, Base):
     doc_type: Mapped[str | None] = mapped_column(String(60), nullable=True)
     supplier_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     machine: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
-    reviewer: Mapped[str] = mapped_column(String(120))
+    reviewer: Mapped[str] = mapped_column(String(300))
     note: Mapped[str] = mapped_column(Text, default="")
     at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
@@ -288,7 +288,7 @@ class Task(TenantScoped, Base):
     engagement_id: Mapped[int] = mapped_column(Integer, index=True)
     requirement_id: Mapped[str] = mapped_column(String(60))
     kind: Mapped[str] = mapped_column(String(20))                       # chase_supplier | follow_up
-    title: Mapped[str] = mapped_column(String(300))
+    title: Mapped[str] = mapped_column(Text)
     detail: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(10), default="open")    # open | done | superseded
     opened_at: Mapped[datetime] = mapped_column(DateTime)
@@ -307,7 +307,7 @@ class Notification(TenantScoped, Base):
     supplier_id: Mapped[int] = mapped_column(Integer)
     engagement_id: Mapped[int] = mapped_column(Integer, index=True)
     requirement_id: Mapped[str] = mapped_column(String(60))
-    subject: Mapped[str] = mapped_column(String(300))
+    subject: Mapped[str] = mapped_column(Text)
     body: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -402,7 +402,7 @@ class ToolGrant(TenantScoped, Base):
     __table_args__ = (UniqueConstraint("tenant_id", "tool"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tool: Mapped[str] = mapped_column(String(60))
-    granted_by: Mapped[str] = mapped_column(String(120))
+    granted_by: Mapped[str] = mapped_column(String(300))
     granted_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -415,11 +415,11 @@ class Proposal(TenantScoped, Base):
     kind: Mapped[str] = mapped_column(String(30))
     args: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     summary: Mapped[str] = mapped_column(Text)
-    proposed_by: Mapped[str] = mapped_column(String(120))
+    proposed_by: Mapped[str] = mapped_column(String(300))
     status: Mapped[str] = mapped_column(String(10), default="proposed")    # proposed | applied | declined | expired
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime)
-    decided_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    decided_by: Mapped[str | None] = mapped_column(String(300), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     outcome: Mapped[str] = mapped_column(Text, default="")
 
@@ -434,7 +434,7 @@ class Setting(Base):
 class AuditRow(TenantScoped, Base):
     __tablename__ = "audit"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    actor: Mapped[str] = mapped_column(String(80))
+    actor: Mapped[str] = mapped_column(String(300))
     action: Mapped[str] = mapped_column(String(80))
     target: Mapped[str] = mapped_column(String(200))
     detail: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)

@@ -6,6 +6,7 @@ that no longer collects cannot either. Raise the floor when tests are added; low
 message."""
 from __future__ import annotations
 
+import os
 import shutil
 
 import pytest
@@ -16,10 +17,14 @@ from testamur.pack import load_pack
 from testamur.store import Store
 from testamur.synth.world import build_world
 
+PG_URL = os.environ.get("TESTAMUR_PG_URL")       # set by the postgres CI job
 ALLOWED_SKIPS: dict[str, str] = {
-    # "tests/test_x.py::test_y": "why skipping is legitimate",
+    **({} if PG_URL else {
+        "tests/test_postgres.py::test_the_engine_gives_the_same_statuses_on_postgres":
+            "needs a Postgres server: runs in the postgres CI job",
+    }),
 }
-MIN_TESTS = 140
+MIN_TESTS = 142
 
 
 def pytest_collection_finish(session):
@@ -78,3 +83,18 @@ def env(built, tmp_path):
     store = Store(f"sqlite:///{tmp_path / 'w.db'}")
     yield world, store, Engine(store, load_pack(), world.as_of, tmp_path / "blobs")
     store.engine.dispose()
+
+
+@pytest.fixture
+def db_url(tmp_path):
+    """A fresh database for one test: SQLite in a temporary folder, or, when TESTAMUR_PG_URL is set, a clean Postgres
+    schema, so the same tests run on both."""
+    if not PG_URL:
+        return f"sqlite:///{tmp_path / 'test.db'}"
+    from sqlalchemy import create_engine
+
+    from testamur.store import Base
+    engine = create_engine(PG_URL)
+    Base.metadata.drop_all(engine)
+    engine.dispose()
+    return PG_URL
