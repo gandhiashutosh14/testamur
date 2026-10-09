@@ -116,6 +116,15 @@ class UploadRow(TenantScoped, Base):
     external_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
 
+class ExtractionClaim(TenantScoped, Base):
+    """A worker reading a file right now. Another worker that needs the same file waits instead of paying for the
+    same OCR twice; a claim older than CLAIM_SECONDS (engine.py) is a dead worker's and may be taken over."""
+    __tablename__ = "extraction_claims"
+    sha256: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    claimed_at: Mapped[datetime] = mapped_column(DateTime)
+
+
 class Document(TenantScoped, Base):
     """One per distinct file (per tenant). Re-uploading the same bytes adds an upload event, not a document."""
     __tablename__ = "documents"
@@ -204,6 +213,19 @@ class FieldCorrection(TenantScoped, Base):
     field: Mapped[str] = mapped_column(String(60))
     raw: Mapped[str] = mapped_column(Text)
     machine_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewer: Mapped[str] = mapped_column(String(120))
+    note: Mapped[str] = mapped_column(Text, default="")
+    at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class CheckEvent(TenantScoped, Base):
+    """A person re-certifying a check after a breach, having found the cause: its accuracy is measured afresh from
+    the reviews after `after_review_id`."""
+    __tablename__ = "check_events"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    check_id: Mapped[str] = mapped_column(String(60), index=True)
+    action: Mapped[str] = mapped_column(String(20))
+    after_review_id: Mapped[int] = mapped_column(Integer, default=0)
     reviewer: Mapped[str] = mapped_column(String(120))
     note: Mapped[str] = mapped_column(Text, default="")
     at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

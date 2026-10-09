@@ -100,10 +100,11 @@ def _usage(store: Store) -> dict[str, float]:
             "model_seconds": float(secs)}
 
 
-def run(world_dir: str | Path, db_path: str | Path, model: ModelClient | None, *, reindex_check: bool = True,
-        command: str = "") -> Report:
+def process_world(world_dir: str | Path, db_path: str | Path, model: ModelClient | None,
+                  pack=None) -> tuple[World, Store, Engine, float]:
+    """A fresh database with the world's registry, every upload ingested and processed, every status computed."""
     world = load_world(world_dir)
-    pack = load_pack()
+    pack = pack or load_pack()
     if world.pack != pack.digest:
         raise SystemExit(f"world was generated with pack {world.pack}, engine has {pack.digest}: regenerate it")
     db_path = Path(db_path)
@@ -118,7 +119,6 @@ def run(world_dir: str | Path, db_path: str | Path, model: ModelClient | None, *
     store.setting("blob_root", str(blob_root))
     load_registry(store, world)
     engine = Engine(store, pack, world.as_of, blob_root, model=model)
-
     t0 = time.perf_counter()
     for u in world.uploads:
         data = (Path(world_dir) / u.file).read_bytes()
@@ -127,7 +127,13 @@ def run(world_dir: str | Path, db_path: str | Path, model: ModelClient | None, *
         engine.process(u.tenant_id, uid)
     for t in world.tenants:
         engine.refresh(t.id)
-    first_pass = time.perf_counter() - t0
+    return world, store, engine, time.perf_counter() - t0
+
+
+def run(world_dir: str | Path, db_path: str | Path, model: ModelClient | None, *, reindex_check: bool = True,
+        command: str = "") -> Report:
+    world, store, engine, first_pass = process_world(world_dir, db_path, model)
+    pack = engine.pack
     usage1 = _usage(store)
 
     reindex = {}
@@ -363,10 +369,13 @@ def render(r: Report) -> str:
             f"Classification accuracy {_pct(cl['accuracy'])} ({cl['correct']} of {cl['documents']}).", "",
             "| Matching outcome | Documents |", "|---|---|"]
     out += [f"| {k.replace('_', ' ')} | {v} |" for k, v in mt.items() if k != "wrong_match_examples"]
+    calls = (f"{int(cost['model_calls'])} model answers replayed from a recording (recorded cost "
+             f"{int(cost['model_tokens'])} tokens; no model ran)" if meta.get("model_mode") == "replay" else
+             f"{int(cost['model_calls'])} model calls ({int(cost['model_tokens'])} tokens, "
+             f"{cost['model_seconds']:.0f} s of model time)")
     out += ["", "## Cost and re-index", "",
-            f"First pass: {cost['first_pass_seconds']} s, {int(cost['ocr_pages'])} OCR pages, "
-            f"{int(cost['model_calls'])} model calls ({int(cost['model_tokens'])} tokens, "
-            f"{cost['model_seconds']:.0f} s of model time) for {cost['documents']} documents."]
+            f"First pass: {cost['first_pass_seconds']} s, {int(cost['ocr_pages'])} OCR pages, {calls} for "
+            f"{cost['documents']} documents."]
     if cost.get("reindex"):
         ri = cost["reindex"]
         out.append(f"Re-index of every document: {ri['seconds']} s, {int(ri['new_ocr_pages'])} new OCR pages, "

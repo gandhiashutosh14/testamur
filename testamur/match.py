@@ -78,10 +78,7 @@ def _resolve(session: Session, suppliers: list[Supplier], name: str | None, ids:
                            candidates=sorted(hits))
     if not name:
         return MatchResult(None, "none", reason="no supplier name or identifier found on the document")
-    engaged = {e.supplier_id for e in session.scalars(
-        select(Engagement).where(Engagement.business_unit_id == upload.business_unit_id))}
-    by_id = {s.id: s for s in suppliers}
-    in_scope = engaged | {by_id[x].parent_id for x in engaged if x in by_id and by_id[x].parent_id}
+    in_scope = scope(session, suppliers, upload.business_unit_id)
     scored = sorted(((name_similarity(name, s.legal_name), s.id) for s in suppliers if s.id in in_scope), reverse=True)
     best, second = (scored + [(0.0, None), (0.0, None)])[:2]
     if best[0] >= ACCEPT and best[0] - second[0] >= MARGIN:
@@ -108,6 +105,14 @@ def _resolve(session: Session, suppliers: list[Supplier], name: str | None, ids:
     near = [sid for score, sid in scored[:2] if score >= NEAR]
     return MatchResult(None, "none", best[0], 0.0, "no supplier of this business unit has this name",
                        candidates=near)
+
+
+def scope(session: Session, suppliers: list[Supplier], business_unit_id: int) -> set[int]:
+    """The suppliers a name is compared with: those engaged in the business unit, and their parent companies."""
+    engaged = {e.supplier_id for e in session.scalars(
+        select(Engagement).where(Engagement.business_unit_id == business_unit_id))}
+    by_id = {s.id: s for s in suppliers}
+    return engaged | {by_id[x].parent_id for x in engaged if x in by_id and by_id[x].parent_id}
 
 
 def covered(session: Session, names: list[str], parent_id: int) -> list[int]:

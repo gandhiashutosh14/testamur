@@ -275,3 +275,11 @@ injection_markers:
   - "you are (an|a) (ai|assistant|language model)"
   - "disregard (the|all|any)"
   - "mark (this|the) (document|certificate|check) as (compliant|valid|passed)"
+
+# How much error each severity may carry (the share of the engine's PASS verdicts a person would overturn), the share
+# of conclusive verdicts people audit to measure it, and the confidence of the bounds. A critical check with any
+# confirmed false PASS is demoted regardless: its PASS stops vouching until a person re-certifies it.
+assurance:
+  false_pass_budget: {critical: 0.01, major: 0.05, minor: 0.10}
+  audit_rate: {critical: 0.10, major: 0.05, minor: 0.02}
+  confidence: 0.95

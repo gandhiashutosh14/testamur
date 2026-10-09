@@ -7,9 +7,9 @@ import pytest
 
 from testamur import jobs
 from testamur.budget import BudgetExceeded
-from testamur.engine import Engine
+from testamur.engine import CLAIM_SECONDS, Engine, ReadingElsewhere
 from testamur.pack import load_pack
-from testamur.store import BusinessUnit, Store, Tenant, TenantBudget, UsageRow
+from testamur.store import BusinessUnit, ExtractionClaim, ExtractionRow, Store, Tenant, TenantBudget, UsageRow
 from testamur.synth.render import DocContent, render_pdf, to_scan_pdf
 
 T0 = datetime(2026, 10, 1, 9, 0)
@@ -98,3 +98,24 @@ def test_a_document_larger_than_a_days_cap_runs_alone_on_a_fresh_day(store):
         budget.reserve(s, 1, "ocr", 5, tomorrow)                     # alone on a fresh day
     with pytest.raises(BudgetExceeded), store.tenant(1) as s:     # and nothing else that day
         budget.reserve(s, 1, "ocr", 1, tomorrow)
+
+
+def test_a_file_one_worker_is_reading_is_not_paid_for_again_by_another(store, tmp_path):
+    import hashlib
+    with store.system() as s:
+        s.add_all([Tenant(id=1, name="T"), BusinessUnit(id=1, tenant_id=1, name="U")])
+    rng = random.Random(2)
+    scan = to_scan_pdf(render_pdf(DocContent([[("title", "CERTIFICATE OF INSURANCE"), ("kv", "Insurer", "X")]]), rng), rng)
+    now = [T0]
+    engine = Engine(store, load_pack(), T0.date(), tmp_path / "blobs", clock=lambda: now[0])
+    first = engine.ingest(1, 1, "a.pdf", scan, "staff_upload", T0)
+    second = engine.ingest(1, 1, "b.pdf", scan, "email_ingest", T0)
+    with store.tenant(1) as s:                                       # worker A has claimed it and is reading it
+        s.add(ExtractionClaim(sha256=hashlib.sha256(scan).hexdigest(), tenant_id=1, claimed_at=T0))
+    with pytest.raises(ReadingElsewhere):
+        engine.prefetch(1, second)                                    # worker B waits instead of paying again
+    now[0] = T0 + timedelta(seconds=CLAIM_SECONDS + 1)                # worker A died; its claim went stale
+    assert engine.prefetch(1, second) > 0                            # taken over and read once
+    assert engine.prefetch(1, first) == 0                            # and never again
+    with store.tenant(1) as s:
+        assert s.query(ExtractionClaim).count() == 0 and s.query(ExtractionRow).count() == 1

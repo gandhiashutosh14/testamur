@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -27,6 +27,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from . import __version__, budget
+from .accuracy import check_health
 from .checks import CheckContext, evaluate
 from .extract import Extractor, sniff_mime
 from .match import NAME_FIELD, covered, match
@@ -38,10 +39,12 @@ from .store import (
     Attestation,
     AuditRow,
     Blob,
+    CheckEvent,
     CheckReview,
     Document,
     DocumentReview,
     Engagement,
+    ExtractionClaim,
     ExtractionRow,
     FieldCorrection,
     ModelCall,
@@ -68,10 +71,21 @@ def _jsonable(value):
     return value
 
 
+CLAIM_SECONDS = 300.0      # a claim on a file older than this is a dead worker's
+
+
+class ReadingElsewhere(Exception):
+    """Another worker is reading the same file: wait a little rather than pay for the same OCR twice."""
+
+    def __init__(self, retry_at: datetime):
+        super().__init__("another worker is reading the same file")
+        self.retry_at = retry_at
+
+
 @dataclass
 class QueueItem:
     """One thing waiting for a person."""
-    kind: str                       # document_owner | document_type | document_security | check
+    kind: str                       # document_owner | document_type | document_security | check | audit
     document_id: int
     engagement_id: int | None = None
     requirement_id: str | None = None
@@ -80,6 +94,7 @@ class QueueItem:
     options: list[int] = field(default_factory=list)      # candidate suppliers, for document_owner
     blocking: bool = True           # holds a requirement in NEEDS_REVIEW
     retrying: bool = False          # a transient failure the engine will retry by itself
+    confirm: bool = False           # the engine said PASS, but the check is under review: a person confirms
 
 
 @dataclass
@@ -154,7 +169,14 @@ class Engine:
             if s.get(ExtractionRow, key) is not None:
                 return 0
             blob = s.get(Blob, {"sha256": up.sha256, "tenant_id": tenant_id})
-            path, mime = blob.path, blob.mime
+            path, mime, sha, now = blob.path, blob.mime, up.sha256, self.clock()
+            claim = s.get(ExtractionClaim, {"sha256": sha, "tenant_id": tenant_id})
+            if claim is not None and (now - claim.claimed_at).total_seconds() < CLAIM_SECONDS:
+                raise ReadingElsewhere(now + timedelta(seconds=5))
+            if claim is None:
+                s.add(ExtractionClaim(sha256=sha, tenant_id=tenant_id, claimed_at=now))
+            else:
+                claim.claimed_at = now                 # a dead worker's claim: take it over
 
         reservation: list[int] = []
 
@@ -166,9 +188,10 @@ class Engine:
         try:
             ex = self.extractor.extract(Path(path).read_bytes(), mime, before_ocr=gate)
         except Exception:
-            if reservation:
-                with self.store.tenant(tenant_id) as s:
+            with self.store.tenant(tenant_id) as s:
+                if reservation:
                     s.execute(delete(UsageRow).where(UsageRow.id == reservation[0]))   # release
+                s.execute(delete(ExtractionClaim).where(ExtractionClaim.sha256 == sha))
             raise
         with self.store.tenant(tenant_id) as s:
             if reservation:
@@ -176,6 +199,7 @@ class Engine:
             if s.get(ExtractionRow, key) is None:          # another worker may have finished it meanwhile
                 s.add(ExtractionRow(**key, payload=ex.model_dump(mode="json"), ocr_pages=ex.ocr_pages,
                                     seconds=ex.seconds))
+            s.execute(delete(ExtractionClaim).where(ExtractionClaim.sha256 == sha))
             return ex.ocr_pages
 
     def process(self, tenant_id: int, upload_id: int) -> Outcome:
@@ -248,6 +272,18 @@ class Engine:
                 items.append(QueueItem("check", v.document_id, v.engagement_id, v.requirement_id, v.check_id,
                                        reason=v.reason, blocking=v.severity == Severity.CRITICAL,
                                        retrying=v.transient and v.reason != NO_MODEL))
+            demoted = self._demoted(s)
+            if demoted:
+                for v in s.scalars(select(VerdictRow).where(VerdictRow.check_id.in_(demoted),
+                                                            VerdictRow.verdict == Verdict.PASS,
+                                                            VerdictRow.engine_version == self.version)).all():
+                    if states.get((v.engagement_id, v.requirement_id)) != v.document_id or v.check_id in \
+                            self._check_decisions(s, v.engagement_id, v.requirement_id, v.document_id):
+                        continue
+                    items.append(QueueItem("check", v.document_id, v.engagement_id, v.requirement_id, v.check_id,
+                                           reason=f"confirm the engine's PASS ({v.reason}): the check is under "
+                                                  "review after a confirmed false PASS",
+                                           blocking=v.severity == Severity.CRITICAL, confirm=True))
         order = {"document_owner": 0, "document_type": 1, "document_security": 2, "check": 3}
         return sorted(items, key=lambda i: (order[i.kind], not i.blocking, i.document_id, i.engagement_id or 0,
                                             i.requirement_id or "", i.check_id or ""))
@@ -265,11 +301,9 @@ class Engine:
                 VerdictRow.engagement_id == engagement_id, VerdictRow.requirement_id == requirement_id,
                 VerdictRow.document_id == st.document_id, VerdictRow.engine_version == self.version))}
             decided = self._check_decisions(s, engagement_id, requirement_id, st.document_id)
-            out = []
-            for cid in self.pack.requirements[requirement_id].checks:
-                if cid in rows:
-                    r = _from_row(rows[cid])
-                    out.append(_decided(r, decided[cid]) if cid in decided else r)
+            demoted = self._demoted(s)
+            out = [_effective(_from_row(rows[cid]), decided.get(cid), cid in demoted)
+                   for cid in self.pack.requirements[requirement_id].checks if cid in rows]
             return st, out
 
     def review_check(self, tenant_id: int, engagement_id: int, requirement_id: str, check_id: str,
@@ -292,6 +326,9 @@ class Engine:
                 VerdictRow.check_id == check_id, VerdictRow.document_id == state.document_id,
                 VerdictRow.engine_version == self.version))
             machine = row.verdict if row is not None else "MISSING"
+            before = self._demoted(s)
+            if kind == "queue" and check_id in before and machine == Verdict.PASS:
+                kind = "confirm"                       # a census of a demoted check's PASSes: counts for accuracy
             s.add(CheckReview(engagement_id=engagement_id, requirement_id=requirement_id, check_id=check_id,
                               document_id=state.document_id, verdict=verdict.value, machine_verdict=machine,
                               rule_digest=self.pack.rule_digest(check_id), kind=kind, reviewer=reviewer, note=note))
@@ -300,8 +337,70 @@ class Engine:
                            detail={"document": state.document_id, "engine": machine, "person": verdict.value,
                                    "kind": kind, "note": note}))
             s.flush()
-            self._recompute(s, tenant_id, (engagement_id, requirement_id))
+            for key2 in sorted({(engagement_id, requirement_id)} | self._health_changed(s, tenant_id, before)):
+                self._recompute(s, tenant_id, key2)
             return Status(s.get(RequirementState, key).status)
+
+    def audit_sample(self, tenant_id: int, seed: str = "audit") -> list[QueueItem]:
+        """A random sample of the engine's conclusive verdicts for people to check, at the pack's rate for each
+        severity. A verdict is drawn by a hash of the seed and its identity, independent of what it says: that is
+        what makes the accuracy estimated from the answers unbiased, and the draw reproducible."""
+        items: list[QueueItem] = []
+        with self.store.tenant(tenant_id) as s:
+            states = {(st.engagement_id, st.requirement_id): st.document_id
+                      for st in s.scalars(select(RequirementState)).all() if st.document_id is not None}
+            reviewed = {(r.engagement_id, r.requirement_id, r.check_id, r.document_id)
+                        for r in s.scalars(select(CheckReview)).all()}
+            for v in s.scalars(select(VerdictRow).where(VerdictRow.verdict.in_((Verdict.PASS, Verdict.FAIL)),
+                                                        VerdictRow.engine_version == self.version)).all():
+                key = (v.engagement_id, v.requirement_id, v.check_id, v.document_id)
+                if states.get(key[:2]) != v.document_id or key in reviewed:
+                    continue
+                if _draw(seed, tenant_id, key) < self.pack.assurance.audit_rate[v.severity]:
+                    items.append(QueueItem("audit", v.document_id, v.engagement_id, v.requirement_id, v.check_id,
+                                           reason=f"the engine said {v.verdict}: {v.reason}", blocking=False))
+        return sorted(items, key=lambda i: (i.engagement_id, i.requirement_id, i.check_id))
+
+    def health(self, tenant_id: int) -> dict:
+        """Per-check accuracy and whether its PASS still vouches, for one tenant (see accuracy.py)."""
+        with self.store.tenant(tenant_id) as s:
+            return check_health(s, self.pack)
+
+    def recertify(self, tenant_id: int, check_id: str, reviewer: str, note: str = "") -> None:
+        """A person found why a check breached its budget and dealt with it: measure it afresh from here."""
+        if check_id not in self.pack.checks:
+            raise KeyError(f"unknown check {check_id}")
+        with self.store.tenant(tenant_id) as s:
+            before = self._demoted(s)
+            last = s.scalar(select(func.max(CheckReview.id))) or 0
+            s.add(CheckEvent(check_id=check_id, action="recertified", after_review_id=last, reviewer=reviewer,
+                             note=note))
+            s.add(AuditRow(actor=reviewer, action="check_recertified", target=f"check:{check_id}",
+                           detail={"after_review": last, "note": note}))
+            s.flush()
+            for key in sorted(self._health_changed(s, tenant_id, before)):
+                self._recompute(s, tenant_id, key)
+
+    def _demoted(self, s: Session) -> frozenset[str]:
+        """Checks whose PASS no longer vouches. Computed once per session, from the tenant's reviews."""
+        if "demoted" not in s.info:
+            s.info["demoted"] = frozenset(cid for cid, h in check_health(s, self.pack).items()
+                                          if h.state == "breached")
+        return s.info["demoted"]
+
+    def _health_changed(self, s: Session, tenant_id: int, before: frozenset[str]) -> set[tuple[int, str]]:
+        """After a review or a re-certification: which requirements must be recomputed because a check was demoted
+        or restored. Each change is audited."""
+        s.info.pop("demoted", None)
+        after = self._demoted(s)
+        changed = before ^ after
+        for cid in sorted(changed):
+            s.add(AuditRow(actor="engine", action="check_demoted" if cid in after else "check_restored",
+                           target=f"check:{cid}", detail={}))
+        if not changed:
+            return set()
+        return {(st.engagement_id, st.requirement_id) for st in s.scalars(select(RequirementState)).all()
+                if changed & set(self.pack.requirements[st.requirement_id].checks)}
 
     def correct_field(self, tenant_id: int, document_id: int, field: str, raw: str, reviewer: str,
                       note: str = "") -> None:
@@ -570,9 +669,10 @@ class Engine:
             VerdictRow.engagement_id == e.id, VerdictRow.requirement_id == rid, VerdictRow.document_id == doc.id,
             VerdictRow.engine_version == self.version))}
         decided = self._check_decisions(s, e.id, rid, doc.id)
+        demoted = self._demoted(s)
 
         def effective(cid: str, r: CheckResult) -> CheckResult:
-            return _decided(r, decided[cid]) if cid in decided else r     # a person's verdict stands over the engine's
+            return _effective(r, decided.get(cid), cid in demoted)
         results = {cid: _from_row(v) for cid, v in rows.items() if not v.transient and not force}
         missing = [cid for cid in req.checks if cid not in results]     # new, transient (retried) or forced
         if missing:
@@ -655,6 +755,22 @@ def _from_row(v: VerdictRow) -> CheckResult:
                        lapsed=v.lapsed)
 
 
+def _effective(r: CheckResult, decision: CheckReview | None, demoted: bool) -> CheckResult:
+    """What a verdict counts as: a person's decision first; otherwise, for a check under review, the engine's PASS
+    only as a question for a person."""
+    if decision is not None:
+        return _decided(r, decision)
+    if demoted and r.verdict == Verdict.PASS:
+        return r.model_copy(update={"verdict": Verdict.ABSTAIN, "reason": f"the engine said PASS ({r.reason}), but "
+                                    "this check is under review after a confirmed false PASS; a person confirms"})
+    return r
+
+
+def _draw(seed: str, tenant_id: int, key: tuple) -> float:
+    """A uniform number in [0, 1) fixed by the seed and the verdict's identity."""
+    return int(hashlib.sha256(f"{seed}|{tenant_id}|{key}".encode()).hexdigest()[:12], 16) / 16 ** 12
+
+
 def _decided(r: CheckResult, d: CheckReview) -> CheckResult:
     """The engine's result with a person's verdict in its place. The engine's evidence stays; the person's note joins
     it, and the reason says what the engine had said."""
@@ -667,4 +783,4 @@ def _decided(r: CheckResult, d: CheckReview) -> CheckResult:
         "evidence": [*r.evidence, Evidence(document_id=d.document_id, quote=d.note or None, source="reviewer")]})
 
 
-__all__ = ["Engine", "Outcome", "QueueItem", "Fields"]
+__all__ = ["Engine", "Outcome", "QueueItem", "ReadingElsewhere", "Fields"]

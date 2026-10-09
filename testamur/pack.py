@@ -60,6 +60,15 @@ class RequirementSpec(BaseModel):
     group_cover: bool = False
 
 
+class Assurance(BaseModel):
+    """How much error each severity may carry, measured as the share of the engine's PASS verdicts a person would
+    overturn, and the share of conclusive verdicts people audit to know it (see accuracy.py)."""
+    false_pass_budget: dict[str, float] = Field(default_factory=lambda: {"critical": 0.01, "major": 0.05,
+                                                                         "minor": 0.10})
+    audit_rate: dict[str, float] = Field(default_factory=lambda: {"critical": 0.10, "major": 0.05, "minor": 0.02})
+    confidence: float = 0.95
+
+
 class Pack(BaseModel):
     name: str
     version: int
@@ -70,6 +79,7 @@ class Pack(BaseModel):
     requirements: dict[str, RequirementSpec]
     service_terms: dict[str, list[str]]
     injection_markers: list[str]
+    assurance: Assurance = Field(default_factory=Assurance)
     digest: str = ""
 
     @model_validator(mode="after")

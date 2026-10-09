@@ -1,47 +1,12 @@
 """People's decisions are inputs: they change statuses, survive re-runs, apply only under the rule they were made
 under, and never open a door the engine keeps shut (the model still never reads a hostile document)."""
-import shutil
-
 import pytest
 from sqlalchemy import select
 
 from testamur.engine import Engine
-from testamur.harness import load_registry
 from testamur.model import Status, Verdict
 from testamur.pack import load_pack
-from testamur.store import CheckReview, Document, FieldCorrection, RequirementState, Store, VerdictRow
-from testamur.synth.world import build_world
-
-
-@pytest.fixture(scope="module")
-def built(tmp_path_factory):
-    out = tmp_path_factory.mktemp("world")
-    world = build_world(seed=3, size="tiny", out=out, digital_only=True)
-    base = tmp_path_factory.mktemp("base")
-    store = Store(f"sqlite:///{base / 'w.db'}")
-    load_registry(store, world)
-    engine = Engine(store, load_pack(), world.as_of, base / "blobs")
-    for u in world.uploads:
-        uid = engine.ingest(u.tenant_id, u.business_unit_id, u.filename, (out / u.file).read_bytes(), u.channel,
-                            u.uploaded_at, u.claimed_supplier_id, external_ref=f"world:{u.id}")
-        engine.process(u.tenant_id, uid)
-    for t in world.tenants:
-        engine.refresh(t.id)
-    store.engine.dispose()
-    return world, base
-
-
-@pytest.fixture
-def env(built, tmp_path):
-    """A private copy of the processed tiny world for each test, since decisions change it."""
-    world, base = built
-    for name in ("w.db", "w.db-wal", "w.db-shm"):
-        if (base / name).exists():
-            shutil.copy(base / name, tmp_path / name)
-    shutil.copytree(base / "blobs", tmp_path / "blobs")
-    store = Store(f"sqlite:///{tmp_path / 'w.db'}")
-    yield world, store, Engine(store, load_pack(), world.as_of, tmp_path / "blobs")
-    store.engine.dispose()
+from testamur.store import CheckReview, Document, FieldCorrection, RequirementState, VerdictRow
 
 
 def _status(store, tenant, eid, rid):

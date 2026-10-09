@@ -41,7 +41,10 @@ def current_document(world: World, e: Engagement, doc_type: str, group_cover: bo
 
 
 def truth_check(pack: Pack, world: World, check_id: str, rid: str, e: Engagement, up: Upload,
-                via_parent: bool) -> CheckResult:
+                via_parent: bool, resolved: bool = False) -> CheckResult:
+    """`resolved`: the verdict once a careful person has looked, where the engine must abstain. A hostile document's
+    clauses are judged on what they say; a field the document contradicts itself about is a FAIL (contradictory
+    evidence is not accepted; a corrected document is requested)."""
     spec = pack.checks[check_id]
     t = up.truth
     f = t.fields
@@ -59,11 +62,11 @@ def truth_check(pack: Pack, world: World, check_id: str, rid: str, e: Engagement
     req = pack.requirements[rid]
     if check_id in req.check_applies and not req.check_applies[check_id].matches(e.tier, e.engagement_type):
         return res(Verdict.SKIPPED)
-    if spec.tier == Tier.MODEL and t.injection:
+    if spec.tier == Tier.MODEL and t.injection and not resolved:
         return res(Verdict.ABSTAIN)          # a hostile document must go to a person, whatever it says
     field = spec.params.get("field")
     if field and field in t.ambiguous:
-        return res(Verdict.ABSTAIN)          # the document contradicts itself; only a person can settle it
+        return res(Verdict.FAIL if resolved else Verdict.ABSTAIN)   # the document contradicts itself
 
     if check_id == "received_before_start":
         return ok(min(c.uploaded_at for c in copies).date() <= e.start_date)
@@ -109,8 +112,9 @@ def truth_check(pack: Pack, world: World, check_id: str, rid: str, e: Engagement
     raise KeyError(f"no truth rule for {check_id}")
 
 
-def truth_statuses(world: World, pack: Pack | None = None) -> dict[tuple[int, str], dict]:
-    """(engagement id, requirement id) -> {status, upload_id, via_parent, checks: {check_id: verdict}}."""
+def truth_statuses(world: World, pack: Pack | None = None, resolved: bool = False) -> dict[tuple[int, str], dict]:
+    """(engagement id, requirement id) -> {status, upload_id, via_parent, checks: {check_id: verdict}}. With
+    `resolved`, the statuses once people have settled everything the engine must hand to them."""
     pack = pack or load_pack()
     out: dict[tuple[int, str], dict] = {}
     for e in world.engagements:
@@ -121,9 +125,10 @@ def truth_statuses(world: World, pack: Pack | None = None) -> dict[tuple[int, st
                            for a in world.attestations)
             results = None
             if up is not None:
-                results = _skip_decided([truth_check(pack, world, cid, rid, e, up, via_parent) for cid in req.checks])
+                results = _skip_decided([truth_check(pack, world, cid, rid, e, up, via_parent, resolved)
+                                         for cid in req.checks])
             status, _ = decide(applicable=applicable, results=results, via_parent=via_parent, attested=attested,
-                               hostile=bool(up and up.truth.injection))
+                               hostile=bool(up and up.truth.injection) and not resolved)
             out[(e.id, rid)] = {"status": status, "upload_id": up.id if up else None, "via_parent": via_parent,
                                 "checks": {r.check_id: r.verdict for r in results} if results else {}}
     return out

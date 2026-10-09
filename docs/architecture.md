@@ -135,6 +135,33 @@ testamur review field 7 gl_limit "2,000,000 EUR" --by reviewer@buyer --note "sch
 testamur review check 8 master_agreement clause_audit_rights PASS --by legal@buyer
 ```
 
+### Holding accuracy
+Abstentions reach people anyway; the dangerous errors are confident ones, which never ask for help. So people also
+look at verdicts the engine did *not* ask about ([ADR 0010](decisions/0010-audits-and-the-breaker.md)):
+
+- **Random audits.** A share of conclusive verdicts (10% critical, 5% major, 2% minor) is drawn by a hash of a seed
+  and the verdict's identity, independent of what it says: an unbiased, reproducible sample.
+- **One number per check:** the share of the engine's PASS verdicts a person overturns, with an exact one-sided 95%
+  Clopper-Pearson bound ([`accuracy.py`](../testamur/accuracy.py)). Reviews of abstentions do not count; they are the
+  hard cases by construction.
+- **Budgets and states.** Critical 1%, major 5%, minor 10%. *Certified* when the upper bound is within budget (299
+  clean audits for 1%), *not yet certified* while evidence is thin, *breached* when the lower bound exceeds it, or
+  when a critical check has any confirmed false PASS.
+- **The breaker.** A breached check's PASS stops vouching ("a person confirms"), and each such PASS joins the queue.
+  It resets when a person re-certifies the check after finding the cause, or when the rule changes; only reviews
+  under the current rule count. Everything is per tenant.
+
+```bash
+testamur audit --db data/harness.db --tenant 1                 # today's sample
+testamur review check 3 insurance ins_limit_meets_tier PASS --kind audit --by auditor@buyer
+testamur health --db data/harness.db --tenant 1                # accuracy and breaker state per check
+testamur review recertify ins_limit_meets_tier --by lead@buyer --note "aggregate limits now read separately"
+```
+
+`testamur reviewsim` closes the loop on a world with ground truth: a simulated reviewer works the whole queue (every
+status must then be right, and a re-index must change none), and a planted fault shows the audit sample tripping the
+breaker and the false assurance stopping.
+
 ### Revisions and retries
 Verdicts are stored per engagement, requirement, check, document and engine version. A transient failure (a timeout,
 a provider error) is recorded as a transient ABSTAIN, retried on the next pass, and never overwrites a conclusive

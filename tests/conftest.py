@@ -4,6 +4,16 @@ Any skip not on the allow-list below (with its reason) fails the run, so a test 
 cannot leave the build green."""
 from __future__ import annotations
 
+import shutil
+
+import pytest
+
+from testamur.engine import Engine
+from testamur.harness import load_registry
+from testamur.pack import load_pack
+from testamur.store import Store
+from testamur.synth.world import build_world
+
 ALLOWED_SKIPS: dict[str, str] = {
     # "tests/test_x.py::test_y": "why skipping is legitimate",
 }
@@ -19,3 +29,36 @@ def pytest_sessionfinish(session, exitstatus):
         for nodeid in unexpected:
             reporter.write_line(f"  {nodeid}", red=True)
         session.exitstatus = 1
+
+
+# ---- a processed tiny world, shared by the tests of people's decisions and of accuracy
+
+@pytest.fixture(scope="session")
+def built(tmp_path_factory):
+    out = tmp_path_factory.mktemp("world")
+    world = build_world(seed=3, size="tiny", out=out, digital_only=True)
+    base = tmp_path_factory.mktemp("base")
+    store = Store(f"sqlite:///{base / 'w.db'}")
+    load_registry(store, world)
+    engine = Engine(store, load_pack(), world.as_of, base / "blobs")
+    for u in world.uploads:
+        uid = engine.ingest(u.tenant_id, u.business_unit_id, u.filename, (out / u.file).read_bytes(), u.channel,
+                            u.uploaded_at, u.claimed_supplier_id, external_ref=f"world:{u.id}")
+        engine.process(u.tenant_id, uid)
+    for t in world.tenants:
+        engine.refresh(t.id)
+    store.engine.dispose()
+    return world, base
+
+
+@pytest.fixture
+def env(built, tmp_path):
+    """A private copy of the processed tiny world for each test, since decisions change it."""
+    world, base = built
+    for name in ("w.db", "w.db-wal", "w.db-shm"):
+        if (base / name).exists():
+            shutil.copy(base / name, tmp_path / name)
+    shutil.copytree(base / "blobs", tmp_path / "blobs")
+    store = Store(f"sqlite:///{tmp_path / 'w.db'}")
+    yield world, store, Engine(store, load_pack(), world.as_of, tmp_path / "blobs")
+    store.engine.dispose()

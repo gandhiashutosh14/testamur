@@ -126,11 +126,20 @@ def _decide(fn, *args):
 
 @review.command("check")
 def review_check(engagement: int, requirement: str, check: str, verdict: str, by: str = BY, note: str = "",
+                 kind: str = typer.Option("queue", help="queue (it was waiting for a person) or audit (drawn by "
+                                                        "`testamur audit`)"),
                  db: str = "data/harness.db", tenant: int = 1):
     """PASS or FAIL for one check of the document behind a requirement (the reading is right, the judgement
     needs a person)."""
-    after = _decide(_engine(db).review_check, tenant, engagement, requirement, check, verdict.upper(), by, note)
+    after = _decide(_engine(db).review_check, tenant, engagement, requirement, check, verdict.upper(), by, note, kind)
     typer.echo(f"{requirement} for engagement {engagement}: {after}")
+
+
+@review.command("recertify")
+def review_recertify(check: str, by: str = BY, note: str = "", db: str = "data/harness.db", tenant: int = 1):
+    """A person found why a check breached its budget and dealt with it: measure it afresh from here."""
+    _decide(_engine(db).recertify, tenant, check, by, note)
+    typer.echo(f"{check}: re-certified; its accuracy is measured afresh")
 
 
 @review.command("field")
@@ -169,6 +178,85 @@ def review_clear(document: int, by: str = BY, note: str = "", db: str = "data/ha
     """A person read a document that carries text aimed at automated readers and accepts it as evidence."""
     _decide(_engine(db).clear, tenant, document, by, note)
     typer.echo(f"document {document}: cleared")
+
+
+@app.command()
+def audit(db: str = "data/harness.db", tenant: int = 1, seed: str = "audit"):
+    """Draw the audit sample: a random share of the engine's conclusive verdicts for people to check."""
+    items = _engine(db).audit_sample(tenant, seed)
+    for i in items:
+        typer.echo(f"engagement {i.engagement_id} {i.requirement_id}/{i.check_id} (document {i.document_id}): {i.reason}")
+    typer.echo(f"{len(items)} verdict(s) to audit; record each with: testamur review check ... --kind audit")
+
+
+@app.command()
+def health(db: str = "data/harness.db", tenant: int = 1):
+    """Per-check accuracy from audits, and whether each check's PASS still vouches."""
+    rows = _engine(db).health(tenant)
+    typer.echo(f"{'check':28} {'severity':9} {'budget':>6} {'audited PASS':>12} {'overturned':>10} {'upper 95%':>9}  state")
+    for h in rows.values():
+        upper = f"{h.upper:.1%}" if h.upper is not None else "-"
+        typer.echo(f"{h.check_id:28} {h.severity:9} {h.budget:>6.0%} {h.audited_pass:>12} {h.false_pass:>10} "
+                   f"{upper:>9}  {h.state}" + (f" ({h.incidents} incident(s))" if h.incidents else ""))
+
+
+@app.command()
+def reviewsim(world_dir: str = typer.Option("data/world", "--world"), db: str = "data/reviewsim.db",
+              report: str = "reports/review-sim.md", fault: str = "limit-scale",
+              audit_rate: float = typer.Option(None, help="one audit rate for every severity (default: the pack's)"),
+              seed: int = 1, model_path: str = typer.Option(None), model_url: str = typer.Option(None),
+              model_name: str = typer.Option(None), cassette: str = typer.Option(None)):
+    """Simulated reviewers who know the truth: work the whole queue, then audit against a planted fault."""
+    from .reviewsim import accuracy_scenario, queue_scenario, write
+    from .synth.world import load_world
+    model = _model(model_path, model_url, model_name, cassette)
+    stem = Path(db)
+    q = queue_scenario(world_dir, stem.with_name(stem.stem + "_queue.db"), model)
+    a = accuracy_scenario(world_dir, stem.with_name(stem.stem + "_fault.db"), model, fault, audit_rate, seed)
+    w = load_world(world_dir)
+    write(q, a, report, "testamur reviewsim " + " ".join(sys.argv[2:]), w.seed, w.size)
+    typer.echo(f"queue: {q['effort']} -> {q['after']}; re-index changed {q['changed_by_reindex']}")
+    typer.echo(f"fault: before {a['before']}, after audits {a['after_audit']}, final {a['final']}")
+    typer.echo(f"report -> {report}")
+
+
+@app.command()
+def calibrate(seeds: str = "21-30", size: str = "full", alpha: str = "0.01,0.02,0.05", delta: float = 0.05,
+              out: str = "data/calibration", report: str = "reports/calibration-matching.md",
+              validate_world: str = typer.Option(None, help="a world with ground truth to check the threshold on"),
+              validate_db: str = typer.Option(None, help="that world's processed database (from testamur harness)")):
+    """Choose the name-matching threshold by Learn then Test on worlds with ground truth; check it on another."""
+    import json
+
+    from .calibrate import evaluate, labelled_names, learn_then_test, render
+    from .harness import git_stamp, process_world
+    from .match import ACCEPT
+    from .store import Store
+    from .synth.world import build_world, load_world
+    first, last = (int(x) for x in seeds.split("-")) if "-" in seeds else (int(seeds), int(seeds))
+    rows = []
+    for seed in range(first, last + 1):
+        wdir = Path(out) / f"world_{seed}"
+        build_world(seed=seed, size=size, out=wdir, digital_only=True)
+        world, store, _, _ = process_world(wdir, Path(out) / f"cal_{seed}.db", None)
+        rows += labelled_names(world, store)
+        store.engine.dispose()
+        typer.echo(f"seed {seed}: {len(rows)} labelled documents so far")
+    cal = [learn_then_test(rows, float(a), delta) for a in alpha.split(",")]
+    validation = None
+    if validate_world and validate_db:
+        vrows = labelled_names(load_world(validate_world), Store(f"sqlite:///{validate_db}"))
+        thresholds = sorted({c["threshold"] for c in cal if c["threshold"] is not None} | {ACCEPT}, reverse=True)
+        validation = {"label": Path(validate_world).name, "rows": len(vrows),
+                      "results": [evaluate(vrows, th) for th in thresholds]}
+    meta = {"commit": git_stamp(Path.cwd()), "command": "testamur calibrate " + " ".join(sys.argv[2:])}
+    Path(report).parent.mkdir(parents=True, exist_ok=True)
+    Path(report).with_suffix(".json").write_text(json.dumps({"meta": meta, "calibration": cal,
+                                                             "validation": validation}, indent=2), encoding="utf-8")
+    Path(report).write_text(render(cal, len(rows), seeds, validation, meta), encoding="utf-8")
+    for c in cal:
+        typer.echo(f"alpha {c['alpha']}: certified threshold {c['threshold']} (n={c['n']})")
+    typer.echo(f"report -> {report}")
 
 
 @app.command()
