@@ -82,3 +82,19 @@ def test_two_workers_cannot_both_spend_the_last_of_a_budget(store):
         budget.reserve(s, 1, "ocr", 2, T0.date())
     with store.tenant(1) as s:
         budget.reserve(s, 1, "ocr", 1, T0.date())   # what is left can still be spent
+
+
+def test_a_document_larger_than_a_days_cap_runs_alone_on_a_fresh_day(store):
+    """Otherwise it would be deferred forever; spend stays bounded by the larger of the cap and one document."""
+    from testamur import budget
+    with store.system() as s:
+        s.add_all([Tenant(id=1, name="T"), TenantBudget(tenant_id=1, ocr_pages_per_day=3)])
+    with store.tenant(1) as s:
+        budget.reserve(s, 1, "ocr", 1, T0.date())
+    with pytest.raises(BudgetExceeded), store.tenant(1) as s:     # not on a day something else was spent
+        budget.reserve(s, 1, "ocr", 5, T0.date())
+    tomorrow = T0.date() + timedelta(days=1)
+    with store.tenant(1) as s:
+        budget.reserve(s, 1, "ocr", 5, tomorrow)                     # alone on a fresh day
+    with pytest.raises(BudgetExceeded), store.tenant(1) as s:     # and nothing else that day
+        budget.reserve(s, 1, "ocr", 1, tomorrow)

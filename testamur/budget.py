@@ -6,7 +6,11 @@ let that happen; the load test caught it). The reservation is settled to the act
 if the work fails. Cache hits are free and always allowed.
 
 A tenant over its cap gets a BudgetExceeded carrying the time the budget resets; the worker defers the job to then.
-Nothing is dropped, and a status is never computed from a half-finished job: the whole job waits."""
+Nothing is dropped, and a status is never computed from a half-finished job: the whole job waits.
+
+One exception keeps that promise: a single document larger than a whole day's cap runs alone, on a day when nothing
+else has been spent; otherwise it would wait forever. Daily spend is therefore bounded by the larger of the cap and
+the largest single document. A cap of 0 is different: it switches the paid step off for the tenant."""
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
@@ -43,7 +47,8 @@ def check(session: Session, tenant_id: int, provider: str, wanted: float, today:
     if cap is None:
         return
     used = _used(session, provider, today)
-    if used + wanted > cap:
+    oversized_alone = 0 < cap < wanted and used == 0            # a cap of 0 switches the paid step off entirely
+    if used + wanted > cap and not oversized_alone:
         raise BudgetExceeded(tenant_id, provider, used, cap, wanted,
                              retry_at=datetime.combine(today + timedelta(days=1), time(0, 0)))
 

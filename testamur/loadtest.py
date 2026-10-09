@@ -138,10 +138,13 @@ def run(world_dir: str | Path, out_dir: str | Path, workers: list[int], lease_se
         with store.system() as s:
             per_day = s.execute(select(UsageRow.day, func.sum(UsageRow.units)).where(
                 UsageRow.provider == "ocr", UsageRow.tenant_id == 1).group_by(UsageRow.day)).all()
+            largest = s.scalar(select(func.max(ExtractionRow.ocr_pages)).where(ExtractionRow.tenant_id == 1)) or 0
         statuses = _statuses(store, world, Engine(store, pack, world.as_of, blobs))
         results["budget"] = {"tenant": 1, "ocr_pages_per_day": budget_pages, "uploads": uploads,
                              "jobs_waiting_after_first_day": deferred_first_day, "extra_days": days,
                              "max_pages_any_day": int(max((u for _, u in per_day), default=0)),
+                             "largest_document_pages": int(largest),
+                             "within_bound": int(max((u for _, u in per_day), default=0)) <= max(budget_pages, largest),
                              "statuses_identical_to_unbudgeted": statuses == reference, **m}
         print("budget:", results["budget"], flush=True)
 
@@ -182,7 +185,8 @@ def render(r: dict, command: str) -> str:
                 f"Tenant {b['tenant']} capped at {b['ocr_pages_per_day']} OCR pages a day. After the first day "
                 f"{b['jobs_waiting_after_first_day']} jobs were waiting (deferred, not failed); the clock was advanced a "
                 f"day at a time and the queue drained after {b['extra_days']} extra days. The most pages paid on any "
-                f"day: {b['max_pages_any_day']}. Jobs done: {b['done']} of {b['jobs']}; dead: {b['dead']}. Final statuses "
+                f"day: {b['max_pages_any_day']} (the bound is the larger of the cap and the largest single document, "
+                f"{b['largest_document_pages']} pages: {'held' if b['within_bound'] else '**exceeded**'}). Jobs done: {b['done']} of {b['jobs']}; dead: {b['dead']}. Final statuses "
                 f"identical to the run without a cap: {'yes' if b['statuses_identical_to_unbudgeted'] else '**no**'}."]
     if r.get("crash"):
         c = r["crash"]

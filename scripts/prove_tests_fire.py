@@ -26,6 +26,8 @@ MUTANTS = [
      "if hostile and results is not None and status in VOUCHING:", "if False:", "tests/test_status_policy.py"),
     ("a budget check does not reserve what it allows", "testamur/budget.py",
      "    session.add(row)\n", "    pass\n", "tests/test_jobs.py"),
+    ("an oversized document runs on a day others already spent", "testamur/budget.py",
+     "oversized_alone = 0 < cap < wanted and used == 0", "oversized_alone = 0 < cap < wanted", "tests/test_jobs.py"),
     ("an expiry check passes everything", "testamur/checks.py",
      "if fv.value >= target:", "if True:", "tests/test_checks.py"),
     ("contradictory values are judged anyway", "testamur/checks.py",
