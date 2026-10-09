@@ -1,8 +1,8 @@
 # Harness report: full world, seed 11
 
-**PASSED**: 9 of 9 gates. Generated 2026-10-09 21:39 UTC at commit `4298b0e` with `testamur harness --world data/world_full11 --db data/harness_full11.db --report reports/harness-full-seed11.md --cassette reports/cassettes/full-seed11.jsonl`.
+**PASSED**: 9 of 9 gates. Generated 2026-10-09 23:47 UTC at commit `557af47` with `testamur harness --world data/world_full11 --db data/harness_full11.db --report reports/harness-full-seed11.md --cassette reports/cassettes/full-seed11.jsonl`.
 
-Engine `0.1.0a1+pack.47b4ee0d222a`, OCR `1+rapidocr-3.10.0`, model `llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf` (answers replayed from a recording), as-of date 2026-10-01, Python 3.11.9. 378 uploads, 351 distinct documents.
+Engine `0.2.0+pack.cd31a6656bee`, OCR `1+rapidocr-3.10.0`, model `llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf` (answers replayed from a recording), as-of date 2026-10-01, Python 3.11.9. 378 uploads, 351 distinct documents.
 
 ## Gates
 
@@ -86,8 +86,8 @@ Classification accuracy 100.0% (351 of 351).
 
 ## Cost and re-index
 
-First pass: 168.0 s, 146 OCR pages, 233 model answers replayed from a recording (recorded cost 101813 tokens; no model ran) for 351 documents.
-Re-index of every document: 5.7 s, 0 new OCR pages, 0 new model calls (everything answered from the caches).
+First pass: 260.1 s, 146 OCR pages, 233 model answers replayed from a recording (recorded cost 101813 tokens; no model ran) for 351 documents.
+Re-index of every document: 12.4 s, 0 new OCR pages, 0 new model calls (everything answered from the caches).
 
 ## Security
 

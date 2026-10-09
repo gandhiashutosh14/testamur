@@ -1,13 +1,13 @@
 {
   "meta": {
-    "generated": "2026-10-09 21:39 UTC",
-    "commit": "4298b0e",
+    "generated": "2026-10-09 23:47 UTC",
+    "commit": "557af47",
     "command": "testamur harness --world data/world_full11 --db data/harness_full11.db --report reports/harness-full-seed11.md --cassette reports/cassettes/full-seed11.jsonl",
     "world_seed": 11,
     "world_size": "full",
     "as_of": "2026-10-01",
-    "pack": "47b4ee0d222a",
-    "engine": "0.1.0a1+pack.47b4ee0d222a",
+    "pack": "cd31a6656bee",
+    "engine": "0.2.0+pack.cd31a6656bee",
     "model": "llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
     "model_mode": "replay",
     "ocr": "1+rapidocr-3.10.0",
@@ -353,9 +353,9 @@
       "model_calls": 233.0,
       "model_tokens": 101813.0,
       "model_seconds": 0.0,
-      "first_pass_seconds": 168.0,
+      "first_pass_seconds": 260.1,
       "reindex": {
-        "seconds": 5.7,
+        "seconds": 12.4,
         "new_ocr_pages": 0.0,
         "new_model_calls": 0.0
       },

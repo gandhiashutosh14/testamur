@@ -1,6 +1,6 @@
 # Review simulation
 
-Commit `4298b0e+dirty`, command `testamur reviewsim --world data/world_full11 --db data/reviewsim.db --report reports/review-sim-full-seed11.md --cassette reports/cassettes/full-seed11.jsonl`. World seed 11 (full). The reviewer and the auditors know the ground truth: this measures the machinery around people, not people.
+Commit `b52caf3`, command `testamur reviewsim --world data/world_full11 --db data/reviewsim.db --report reports/review-sim-full-seed11.md --cassette reports/cassettes/full-seed11.jsonl`. World seed 11 (full). The reviewer and the auditors know the ground truth: this measures the machinery around people, not people.
 
 ## 1. Working the queue
 

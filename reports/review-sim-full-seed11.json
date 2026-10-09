@@ -1,13 +1,13 @@
 {
   "meta": {
-    "commit": "4298b0e+dirty",
+    "commit": "b52caf3",
     "command": "testamur reviewsim --world data/world_full11 --db data/reviewsim.db --report reports/review-sim-full-seed11.md --cassette reports/cassettes/full-seed11.jsonl",
     "seed": 11,
     "size": "full"
   },
   "queue": {
     "pairs": 585,
-    "seconds": 189.8,
+    "seconds": 195.9,
     "before": {
       "vs_truth": {
         "exact": 571,
@@ -46,7 +46,7 @@
       "minor": 0.02
     },
     "seed": 1,
-    "seconds": 188.0,
+    "seconds": 250.6,
     "before": {
       "exact": 567,
       "deferred": 10,

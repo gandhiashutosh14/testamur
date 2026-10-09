@@ -23,7 +23,7 @@ evidence.*
 
 Measured on generated, adversarial supplier worlds with ground truth: fictional companies; scans and phone photos; near-twin names; decoy pages; certificates that contradict themselves; changed bank accounts; text aimed at automated readers. Each number below is written from a committed report by [`scripts/results.py`](scripts/results.py) (a test keeps the two in step), and each report states the commit and the command that produced it. The main world is seed 11: 3 tenants, 117 engagements, 378 uploads.
 
-### Getting it right ([report](reports/harness-full-seed11.md), commit `4298b0e`)
+### Getting it right ([report](reports/harness-full-seed11.md), commit `557af47`)
 
 | Measure | Result |
 |---|---|
@@ -39,19 +39,19 @@ Measured on generated, adversarial supplier worlds with ground truth: fictional 
 | Planted instructions detected; model PASS on such documents | 14 of 14; 0 |
 | Re-index of every document: new OCR pages, new model calls | 0, 0 |
 
-### Volume and cost ([load test](reports/loadtest-full-seed11.md), [shadow OCR trial](reports/shadow-ocr-full-seed11.md), commit `4298b0e+dirty`)
+### Volume and cost ([load test](reports/loadtest-full-seed11.md), [shadow OCR trial](reports/shadow-ocr-full-seed11.md), commit `b52caf3`)
 
 | Worker processes | Wall time | Uploads per minute | OCR pages paid | Statuses identical to one worker |
 |---|---|---|---|---|
-| 1 | 178 s | 127 | 146 | yes |
-| 2 | 123 s | 184 | 146 | yes |
-| 4 | 98 s | 230 | 146 | yes |
+| 1 | 223 s | 102 | 146 | yes |
+| 2 | 163 s | 139 | 146 | yes |
+| 4 | 112 s | 204 | 146 | yes |
 
 With a cap of 40 OCR pages a day for one tenant, 12 jobs waited for the next day and none was dropped; the most paid on any day was 40; final statuses identical: yes. A worker killed mid-job: 378 of 378 jobs done, 1 taken over, 0 lost; final statuses identical: yes.
 
-Candidate OCR configurations run beside the canonical one, observe-only: `fast`: field accuracy 1.00 -> 1.00, 1.04 -> 0.64 s per page, switch allowed; `en-v4`: field accuracy 1.00 -> 0.85, 1.04 -> 1.57 s per page, switch refused.
+Candidate OCR configurations run beside the canonical one, observe-only: `fast`: field accuracy 1.00 -> 1.00, 1.21 -> 0.74 s per page, switch allowed; `en-v4`: field accuracy 1.00 -> 0.85, 1.18 -> 1.82 s per page, switch refused.
 
-### When it is not sure ([review simulation](reports/review-sim-full-seed11.md), commit `4298b0e+dirty`)
+### When it is not sure ([review simulation](reports/review-sim-full-seed11.md), commit `b52caf3`)
 
 A simulated reviewer who knows the truth worked the whole review queue: 102 decisions (5 assign, 64 check, 14 clear, 19 reject). Afterwards 585 of 585 statuses were exactly right, and a full re-index changed 0.
 
@@ -60,6 +60,10 @@ A planted fault (a liability limit compared with a fifth of the tier's minimum) 
 ### Thresholds with a guarantee ([calibration](reports/calibration-matching.md), commit `4298b0e+dirty`)
 
 Learn then Test on 1,551 labelled documents certifies name-matching thresholds down to 77 at a 1% wrong-attachment rate, down to 70 at a 2% wrong-attachment rate, down to 70 at a 5% wrong-attachment rate (each with 95% confidence). On the scanned world the hand-set 92 accepts 132 of 141 documents matched by name, with 0 wrong.
+
+### The assistant ([golden set](reports/assistant-golden-full-seed11.md), commit `557af47`)
+
+229 of 229 questions answered right: field lookups with citations (144 of 144, including 14 the engine had not settled, answered as such), near-twin names, shared first words asked back, another tenant's suppliers, unanswerable questions, hostile documents and expiry lists. Wrong values, wrong versions or wrong suppliers: 0. Citations outside the tenant: 0.
 
 ### Delivery
 

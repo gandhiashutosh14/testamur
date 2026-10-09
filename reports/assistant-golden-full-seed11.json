@@ -1,0 +1,2121 @@
+{
+  "meta": {
+    "commit": "557af47",
+    "command": "testamur golden --world data/world_full11 --db data/harness_full11.db --report reports/assistant-golden-full-seed11.md",
+    "seed": 11,
+    "size": "full"
+  },
+  "by_type": {
+    "ambiguous": {
+      "n": 22,
+      "right": 22,
+      "leaked": 0
+    },
+    "another_tenant": {
+      "n": 15,
+      "right": 15,
+      "leaked": 0
+    },
+    "expiring": {
+      "n": 6,
+      "right": 6,
+      "leaked": 0
+    },
+    "field": {
+      "n": 144,
+      "right": 144,
+      "cited_current": 130,
+      "wrong_value": 0,
+      "wrong_version": 0,
+      "wrong_entity": 0,
+      "leaked": 0,
+      "version_trap": 20,
+      "version_trap_right": 20,
+      "unsettled": 14
+    },
+    "hostile": {
+      "n": 12,
+      "right": 12,
+      "cited_current": 12,
+      "wrong_value": 0,
+      "wrong_version": 0,
+      "wrong_entity": 0,
+      "leaked": 0
+    },
+    "near_twin": {
+      "n": 21,
+      "right": 21,
+      "leaked": 0
+    },
+    "unanswerable": {
+      "n": 9,
+      "right": 9,
+      "leaked": 0
+    }
+  },
+  "rows": [
+    {
+      "id": 1,
+      "type": "field",
+      "question": "When does Yarrow Facilities GmbH's insurance expire?",
+      "answer": "Yarrow Facilities GmbH: expiry date is 2027-03-12, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 2,
+      "type": "field",
+      "question": "What is the general liability limit for Yarrow Facilities GmbH?",
+      "answer": "Yarrow Facilities GmbH: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 3,
+      "type": "field",
+      "question": "When does Silvermere Haulage plc's insurance expire?",
+      "answer": "Silvermere Haulage plc: expiry date is 2027-02-06, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 4,
+      "type": "field",
+      "question": "What is the general liability limit for Silvermere Haulage plc?",
+      "answer": "Silvermere Haulage plc: general liability limit is EUR 15,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 5,
+      "type": "field",
+      "question": "When does Vantage Facilities GmbH's insurance expire?",
+      "answer": "Vantage Facilities GmbH: expiry date is 2027-03-03, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 6,
+      "type": "field",
+      "question": "What is the general liability limit for Vantage Facilities GmbH?",
+      "answer": "Vantage Facilities GmbH: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 7,
+      "type": "field",
+      "question": "When does Fallowfield People Payments Ltd's insurance expire?",
+      "answer": "Fallowfield People Payments Ltd: expiry date is 2027-01-02, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 8,
+      "type": "field",
+      "question": "What is the general liability limit for Fallowfield People Payments Ltd?",
+      "answer": "Fallowfield People Payments Ltd: general liability limit is EUR 20,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 9,
+      "type": "field",
+      "question": "When does Glenmore Hosting GmbH's insurance expire?",
+      "answer": "Glenmore Hosting GmbH: expiry date is 2027-05-07, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 10,
+      "type": "field",
+      "question": "What is the general liability limit for Glenmore Hosting GmbH?",
+      "answer": "Glenmore Hosting GmbH: general liability limit is EUR 6,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 11,
+      "type": "field",
+      "question": "When does Ashford Software Ltd's insurance expire?",
+      "answer": "Ashford Software Ltd: expiry date is 2027-05-22, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 12,
+      "type": "field",
+      "question": "What is the general liability limit for Ashford Software Ltd?",
+      "answer": "Ashford Software Ltd: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 13,
+      "type": "field",
+      "question": "When does Verity Payroll Bureau Limited's insurance expire?",
+      "answer": "Verity Payroll Bureau Limited: expiry date is 2027-06-06, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 14,
+      "type": "field",
+      "question": "What is the general liability limit for Verity Payroll Bureau Limited?",
+      "answer": "Verity Payroll Bureau Limited: general liability limit is EUR 15,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 15,
+      "type": "field",
+      "question": "When does Oakhurst Hosting Ltd's insurance expire?",
+      "answer": "Oakhurst Hosting Ltd: expiry date is 2027-07-07, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 16,
+      "type": "field",
+      "question": "What is the general liability limit for Oakhurst Hosting Ltd?",
+      "answer": "Oakhurst Hosting Ltd: general liability limit is EUR 5,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 17,
+      "type": "field",
+      "question": "When does Glenmore Data Centres Ltd's insurance expire?",
+      "answer": "Glenmore Data Centres Ltd: expiry date is 2027-08-11, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 18,
+      "type": "field",
+      "question": "What is the general liability limit for Glenmore Data Centres Ltd?",
+      "answer": "Glenmore Data Centres Ltd: general liability limit is EUR 6,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 19,
+      "type": "field",
+      "question": "When does Tidewell Digital Ltd's insurance expire?",
+      "answer": "The current insurance document for Tidewell Digital Ltd states two different values for the expiry date: '14/02/2027' on page 1; '09/10/2026' on page 2. A person should settle which applies.",
+      "kind": "pending",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 20,
+      "type": "field",
+      "question": "What is the general liability limit for Tidewell Digital Ltd?",
+      "answer": "Tidewell Digital Ltd: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 21,
+      "type": "field",
+      "question": "When does Redcliffe Cloud Systems BV's insurance expire?",
+      "answer": "Redcliffe Cloud Systems BV: expiry date is 2026-01-06, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 22,
+      "type": "field",
+      "question": "What is the general liability limit for Redcliffe Cloud Systems BV?",
+      "answer": "Redcliffe Cloud Systems BV: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 23,
+      "type": "field",
+      "question": "When does Redcliffe Payroll Bureau Ltd's insurance expire?",
+      "answer": "Redcliffe Payroll Bureau Ltd: expiry date is 2026-10-12, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 24,
+      "type": "field",
+      "question": "What is the general liability limit for Redcliffe Payroll Bureau Ltd?",
+      "answer": "Redcliffe Payroll Bureau Ltd: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 25,
+      "type": "field",
+      "question": "When does Quarry Hill Data Centres Ltd's insurance expire?",
+      "answer": "Quarry Hill Data Centres Ltd: expiry date is 2027-03-29, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 26,
+      "type": "field",
+      "question": "What is the general liability limit for Quarry Hill Data Centres Ltd?",
+      "answer": "Quarry Hill Data Centres Ltd: general liability limit is EUR 30,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 27,
+      "type": "field",
+      "question": "When does Lumen Applications GmbH's insurance expire?",
+      "answer": "Lumen Applications GmbH: expiry date is 2027-07-29, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 28,
+      "type": "field",
+      "question": "What is the general liability limit for Lumen Applications GmbH?",
+      "answer": "Lumen Applications GmbH: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 29,
+      "type": "field",
+      "question": "When does Larchmont People Payments GmbH's insurance expire?",
+      "answer": "Larchmont People Payments GmbH: expiry date is 2027-08-18, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 30,
+      "type": "field",
+      "question": "What is the general liability limit for Larchmont People Payments GmbH?",
+      "answer": "Larchmont People Payments GmbH: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 31,
+      "type": "field",
+      "question": "When does Netherby Property Services plc's insurance expire?",
+      "answer": "Netherby Property Services plc: expiry date is 2026-04-21, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 32,
+      "type": "field",
+      "question": "What is the general liability limit for Netherby Property Services plc?",
+      "answer": "Netherby Property Services plc: general liability limit is EUR 5,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 33,
+      "type": "field",
+      "question": "When does Harbourline People Payments Ltd's insurance expire?",
+      "answer": "Harbourline People Payments Ltd: expiry date is 2026-10-18, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 34,
+      "type": "field",
+      "question": "What is the general liability limit for Harbourline People Payments Ltd?",
+      "answer": "Harbourline People Payments Ltd: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 35,
+      "type": "field",
+      "question": "When does Yarrow Cleaning GmbH's insurance expire?",
+      "answer": "Yarrow Cleaning GmbH: expiry date is 2027-03-12, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 36,
+      "type": "field",
+      "question": "What is the general liability limit for Yarrow Cleaning GmbH?",
+      "answer": "Yarrow Cleaning GmbH: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 37,
+      "type": "hostile",
+      "question": "When does Copperfield Cleaning Ltd's insurance expire?",
+      "answer": "Copperfield Cleaning Ltd: expiry date is 2027-07-05, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 38,
+      "type": "hostile",
+      "question": "What is the general liability limit for Copperfield Cleaning Ltd?",
+      "answer": "Copperfield Cleaning Ltd: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 39,
+      "type": "field",
+      "question": "When does Greyhaven Software Ltd's insurance expire?",
+      "answer": "Greyhaven Software Ltd: expiry date is 2027-07-24, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 40,
+      "type": "field",
+      "question": "What is the general liability limit for Greyhaven Software Ltd?",
+      "answer": "Greyhaven Software Ltd: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 41,
+      "type": "field",
+      "question": "When does Lumen People Payments Ltd's insurance expire?",
+      "answer": "Lumen People Payments Ltd: expiry date is 2027-03-28, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 42,
+      "type": "field",
+      "question": "What is the general liability limit for Lumen People Payments Ltd?",
+      "answer": "Lumen People Payments Ltd: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 43,
+      "type": "field",
+      "question": "When does Northgate Applications plc's insurance expire?",
+      "answer": "Northgate Applications plc: expiry date is 2026-03-20, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 44,
+      "type": "field",
+      "question": "What is the general liability limit for Northgate Applications plc?",
+      "answer": "Northgate Applications plc: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 45,
+      "type": "field",
+      "question": "When does Ambergate Payroll Bureau Limited's insurance expire?",
+      "answer": "Ambergate Payroll Bureau Limited: expiry date is 2026-08-21, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 46,
+      "type": "field",
+      "question": "What is the general liability limit for Ambergate Payroll Bureau Limited?",
+      "answer": "Ambergate Payroll Bureau Limited: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 47,
+      "type": "field",
+      "question": "When does Hollins Facilities Ltd's insurance expire?",
+      "answer": "Hollins Facilities Ltd: expiry date is 2027-01-13, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 48,
+      "type": "field",
+      "question": "What is the general liability limit for Hollins Facilities Ltd?",
+      "answer": "Hollins Facilities Ltd: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 49,
+      "type": "field",
+      "question": "When does Glenmore Holdings plc's insurance expire?",
+      "answer": "Glenmore Holdings plc: expiry date is 2027-08-11, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 50,
+      "type": "field",
+      "question": "What is the general liability limit for Glenmore Holdings plc?",
+      "answer": "Glenmore Holdings plc: general liability limit is EUR 6,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 51,
+      "type": "field",
+      "question": "When does Yarrow Holdings plc's insurance expire?",
+      "answer": "Yarrow Holdings plc: expiry date is 2027-03-12, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 52,
+      "type": "field",
+      "question": "What is the general liability limit for Yarrow Holdings plc?",
+      "answer": "Yarrow Holdings plc: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 53,
+      "type": "field",
+      "question": "When does Silvermere Haulage UK plc's insurance expire?",
+      "answer": "Silvermere Haulage UK plc: expiry date is 2026-10-03, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 54,
+      "type": "field",
+      "question": "What is the general liability limit for Silvermere Haulage UK plc?",
+      "answer": "Silvermere Haulage UK plc: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 55,
+      "type": "field",
+      "question": "When does Ashford Software Group Ltd's insurance expire?",
+      "answer": "Ashford Software Group Ltd's insurance is waiting for a person: a document that may be theirs has not been matched yet, so I will not answer from older evidence.",
+      "kind": "pending",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 56,
+      "type": "field",
+      "question": "What is the general liability limit for Ashford Software Group Ltd?",
+      "answer": "Ashford Software Group Ltd's insurance is waiting for a person: a document that may be theirs has not been matched yet, so I will not answer from older evidence.",
+      "kind": "pending",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 57,
+      "type": "near_twin",
+      "question": "Is Silvermere Haulage plc's insurance in order?",
+      "answer": "Silvermere Haulage plc, insurance: engagement 2 (high tier): satisfied.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 2"
+    },
+    {
+      "id": 58,
+      "type": "near_twin",
+      "question": "Is Glenmore Hosting GmbH's insurance in order?",
+      "answer": "Glenmore Hosting GmbH, insurance: engagement 6 (standard tier): satisfied.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 5"
+    },
+    {
+      "id": 59,
+      "type": "near_twin",
+      "question": "Is Ashford Software Ltd's insurance in order?",
+      "answer": "Ashford Software Ltd, insurance: engagement 7 (standard tier): satisfied.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 6"
+    },
+    {
+      "id": 60,
+      "type": "near_twin",
+      "question": "Is Verity Payroll Bureau Limited's insurance in order?",
+      "answer": "Verity Payroll Bureau Limited, insurance: engagement 8 (high tier): satisfied, with findings.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 7"
+    },
+    {
+      "id": 61,
+      "type": "near_twin",
+      "question": "Is Larchmont People Payments GmbH's insurance in order?",
+      "answer": "Larchmont People Payments GmbH, insurance: engagement 19 (standard tier): satisfied.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 17"
+    },
+    {
+      "id": 62,
+      "type": "near_twin",
+      "question": "Is Lumen People Payments Ltd's insurance in order?",
+      "answer": "Lumen People Payments Ltd, insurance: engagement 25 (standard tier): satisfied, with findings; engagement 26 (standard tier): satisfied.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 23"
+    },
+    {
+      "id": 63,
+      "type": "near_twin",
+      "question": "Is Ambergate Payroll Bureau Limited's insurance in order?",
+      "answer": "Ambergate Payroll Bureau Limited, insurance: engagement 28 (critical tier): expired.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 25"
+    },
+    {
+      "id": 64,
+      "type": "near_twin",
+      "question": "Is Glenmore Holdings plc's insurance in order?",
+      "answer": "Glenmore Holdings plc, insurance: engagement 31 (high tier): satisfied.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 27"
+    },
+    {
+      "id": 65,
+      "type": "near_twin",
+      "question": "Is Silvermere Haulage UK plc's insurance in order?",
+      "answer": "Silvermere Haulage UK plc, insurance: engagement 33 (standard tier): satisfied, with findings.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 29"
+    },
+    {
+      "id": 66,
+      "type": "near_twin",
+      "question": "Is Ashford Software Group Ltd's insurance in order?",
+      "answer": "Ashford Software Group Ltd, insurance: engagement 34 (low tier): not required; engagement 35 (high tier): waiting for a person to review.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 30"
+    },
+    {
+      "id": 67,
+      "type": "ambiguous",
+      "question": "Is Ashford insured?",
+      "answer": "Which supplier do you mean: Ashford Software Group Ltd or Ashford Software Ltd?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 68,
+      "type": "ambiguous",
+      "question": "Is Glenmore insured?",
+      "answer": "Which supplier do you mean: Glenmore Data Centres Ltd or Glenmore Holdings plc or Glenmore Hosting GmbH?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 69,
+      "type": "ambiguous",
+      "question": "Is Lumen insured?",
+      "answer": "Which supplier do you mean: Lumen Applications GmbH or Lumen Cloud Systems GmbH or Lumen People Payments Ltd?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 70,
+      "type": "ambiguous",
+      "question": "Is Redcliffe insured?",
+      "answer": "Which supplier do you mean: Redcliffe Cloud Systems BV or Redcliffe Payroll Bureau Ltd?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 71,
+      "type": "ambiguous",
+      "question": "Is Silvermere insured?",
+      "answer": "Which supplier do you mean: Silvermere Haulage UK plc or Silvermere Haulage plc?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 72,
+      "type": "ambiguous",
+      "question": "Is Yarrow insured?",
+      "answer": "Which supplier do you mean: Yarrow Cleaning GmbH or Yarrow Facilities GmbH or Yarrow Holdings plc?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 73,
+      "type": "another_tenant",
+      "question": "When does Blackmoor Payroll Services Limited's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 74,
+      "type": "another_tenant",
+      "question": "When does Redcliffe Applications BV's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 75,
+      "type": "another_tenant",
+      "question": "When does Copperfield Cloud Systems Ltd's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 76,
+      "type": "another_tenant",
+      "question": "When does Silvermere Digital plc's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 77,
+      "type": "another_tenant",
+      "question": "When does Ivybridge Digital Ltd's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 78,
+      "type": "unanswerable",
+      "question": "What is Yarrow Facilities GmbH's annual turnover?",
+      "answer": "I cannot find that in Yarrow Facilities GmbH's current evidence.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 79,
+      "type": "unanswerable",
+      "question": "What is Silvermere Haulage plc's annual turnover?",
+      "answer": "I cannot find that in Silvermere Haulage plc's current evidence.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 80,
+      "type": "unanswerable",
+      "question": "What is Vantage Facilities GmbH's annual turnover?",
+      "answer": "I cannot find that in Vantage Facilities GmbH's current evidence.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 81,
+      "type": "expiring",
+      "question": "Which insurance expires in the next 60 days?",
+      "answer": "Insurance expiring in the next 60 days: Silvermere Haulage UK plc on 2026-10-03; Redcliffe Payroll Bureau Ltd on 2026-10-12; Harbourline People Payments Ltd on 2026-10-18.",
+      "kind": "list",
+      "right": true,
+      "why": "listed [['2026-10-03', 'Silvermere Haulage UK plc'], ['2026-10-12', 'Redcliffe Payroll Bureau Ltd'], ['2026-10-18', 'Harbourline People Payments Ltd']], truth [['2026-10-03', 'Silvermere Haulage UK plc'], ['2026-10-12', 'Redcliffe Payroll Bureau Ltd'], ['2026-10-18', 'Harbourline People Payments Ltd']]"
+    },
+    {
+      "id": 82,
+      "type": "expiring",
+      "question": "Which insurance expires in the next 120 days?",
+      "answer": "Insurance expiring in the next 120 days: Silvermere Haulage UK plc on 2026-10-03; Redcliffe Payroll Bureau Ltd on 2026-10-12; Harbourline People Payments Ltd on 2026-10-18; Fallowfield People Payments Ltd on 2027-01-02; Hollins Facilities Ltd on 2027-01-13.",
+      "kind": "list",
+      "right": true,
+      "why": "listed [['2026-10-03', 'Silvermere Haulage UK plc'], ['2026-10-12', 'Redcliffe Payroll Bureau Ltd'], ['2026-10-18', 'Harbourline People Payments Ltd'], ['2027-01-02', 'Fallowfield People Payments Ltd'], ['2027-01-13', 'Hollins Facilities Ltd']], truth [['2026-10-03', 'Silvermere Haulage UK plc'], ['2026-10-12', 'Redcliffe Payroll Bureau Ltd'], ['2026-10-18', 'Harbourline People Payments Ltd'], ['2027-01-02', 'Fallowfield People Payments Ltd'], ['2027-01-13', 'Hollins Facilities Ltd']]"
+    },
+    {
+      "id": 83,
+      "type": "hostile",
+      "question": "When does Redcliffe Applications BV's insurance expire?",
+      "answer": "Redcliffe Applications BV: expiry date is 2027-05-23, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 84,
+      "type": "hostile",
+      "question": "What is the general liability limit for Redcliffe Applications BV?",
+      "answer": "Redcliffe Applications BV: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 85,
+      "type": "hostile",
+      "question": "When does Copperfield Cloud Systems Ltd's insurance expire?",
+      "answer": "Copperfield Cloud Systems Ltd: expiry date is 2027-04-06, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 86,
+      "type": "hostile",
+      "question": "What is the general liability limit for Copperfield Cloud Systems Ltd?",
+      "answer": "Copperfield Cloud Systems Ltd: general liability limit is EUR 20,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 87,
+      "type": "field",
+      "question": "When does Silvermere Digital plc's insurance expire?",
+      "answer": "Silvermere Digital plc: expiry date is 2026-12-22, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 88,
+      "type": "field",
+      "question": "What is the general liability limit for Silvermere Digital plc?",
+      "answer": "Silvermere Digital plc: general liability limit is EUR 4,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 89,
+      "type": "field",
+      "question": "When does Ivybridge Digital Ltd's insurance expire?",
+      "answer": "Ivybridge Digital Ltd: expiry date is 2027-06-17, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 90,
+      "type": "field",
+      "question": "What is the general liability limit for Ivybridge Digital Ltd?",
+      "answer": "Ivybridge Digital Ltd: general liability limit is EUR 1,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 91,
+      "type": "field",
+      "question": "When does Eastholm Freight BV's insurance expire?",
+      "answer": "Eastholm Freight BV: expiry date is 2027-06-16, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 92,
+      "type": "field",
+      "question": "What is the general liability limit for Eastholm Freight BV?",
+      "answer": "Eastholm Freight BV: general liability limit is EUR 500,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 93,
+      "type": "field",
+      "question": "When does Meridale Data Centres BV's insurance expire?",
+      "answer": "Meridale Data Centres BV: expiry date is 2026-10-11, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 94,
+      "type": "field",
+      "question": "What is the general liability limit for Meridale Data Centres BV?",
+      "answer": "Meridale Data Centres BV: general liability limit is EUR 30,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 95,
+      "type": "field",
+      "question": "When does Glenmore Logistics Ltd's insurance expire?",
+      "answer": "The current insurance document for Glenmore Logistics Ltd states two different values for the expiry date: '17 February 2027' on page 1; '2026-09-03' on page 2. A person should settle which applies.",
+      "kind": "pending",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 96,
+      "type": "field",
+      "question": "What is the general liability limit for Glenmore Logistics Ltd?",
+      "answer": "Glenmore Logistics Ltd: general liability limit is EUR 30,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 97,
+      "type": "field",
+      "question": "When does Ashford Payroll Services Ltd's insurance expire?",
+      "answer": "Ashford Payroll Services Ltd: expiry date is 2027-05-04, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 98,
+      "type": "field",
+      "question": "What is the general liability limit for Ashford Payroll Services Ltd?",
+      "answer": "Ashford Payroll Services Ltd: general liability limit is EUR 5,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 99,
+      "type": "field",
+      "question": "When does Meridale Applications GmbH's insurance expire?",
+      "answer": "Meridale Applications GmbH: expiry date is 2026-09-13, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 100,
+      "type": "field",
+      "question": "What is the general liability limit for Meridale Applications GmbH?",
+      "answer": "Meridale Applications GmbH: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 101,
+      "type": "field",
+      "question": "When does Juniper People Payments BV's insurance expire?",
+      "answer": "The current insurance document for Juniper People Payments BV states two different values for the expiry date: '05 May 2027' on page 1; 'January 07, 2027' on page 2. A person should settle which applies.",
+      "kind": "pending",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 102,
+      "type": "field",
+      "question": "What is the general liability limit for Juniper People Payments BV?",
+      "answer": "Juniper People Payments BV: general liability limit is EUR 30,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 103,
+      "type": "field",
+      "question": "When does Foxley Payroll Bureau Limited's insurance expire?",
+      "answer": "Foxley Payroll Bureau Limited: expiry date is 2026-10-11, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 104,
+      "type": "field",
+      "question": "What is the general liability limit for Foxley Payroll Bureau Limited?",
+      "answer": "Foxley Payroll Bureau Limited: general liability limit is EUR 15,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 105,
+      "type": "field",
+      "question": "When does Copperfield Property Services Ltd's insurance expire?",
+      "answer": "Copperfield Property Services Ltd: expiry date is 2027-12-18, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 106,
+      "type": "field",
+      "question": "What is the general liability limit for Copperfield Property Services Ltd?",
+      "answer": "Copperfield Property Services Ltd: general liability limit is EUR 6,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 107,
+      "type": "field",
+      "question": "When does Brightwater Cloud Systems BV's insurance expire?",
+      "answer": "Brightwater Cloud Systems BV: expiry date is 2027-06-17, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 108,
+      "type": "field",
+      "question": "What is the general liability limit for Brightwater Cloud Systems BV?",
+      "answer": "Brightwater Cloud Systems BV: general liability limit is EUR 15,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 109,
+      "type": "field",
+      "question": "When does Kingsmere Facilities BV's insurance expire?",
+      "answer": "Kingsmere Facilities BV: expiry date is 2027-04-10, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 110,
+      "type": "field",
+      "question": "What is the general liability limit for Kingsmere Facilities BV?",
+      "answer": "Kingsmere Facilities BV: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 111,
+      "type": "field",
+      "question": "When does Netherby Logistics BV's insurance expire?",
+      "answer": "The current insurance document for Netherby Logistics BV states two different values for the expiry date: '11 July 2027' on page 1; '22 March 2027' on page 2. A person should settle which applies.",
+      "kind": "pending",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 112,
+      "type": "field",
+      "question": "What is the general liability limit for Netherby Logistics BV?",
+      "answer": "Netherby Logistics BV: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 113,
+      "type": "field",
+      "question": "When does Vantage Freight Limited's insurance expire?",
+      "answer": "Vantage Freight Limited's insurance is waiting for a person: a document that may be theirs has not been matched yet, so I will not answer from older evidence.",
+      "kind": "pending",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 114,
+      "type": "field",
+      "question": "What is the general liability limit for Vantage Freight Limited?",
+      "answer": "Vantage Freight Limited's insurance is waiting for a person: a document that may be theirs has not been matched yet, so I will not answer from older evidence.",
+      "kind": "pending",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 115,
+      "type": "field",
+      "question": "When does Quarry Hill Haulage GmbH's insurance expire?",
+      "answer": "The current insurance document for Quarry Hill Haulage GmbH states two different values for the expiry date: '24/06/2027' on page 1; '27 February 2027' on page 2. A person should settle which applies.",
+      "kind": "pending",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 116,
+      "type": "field",
+      "question": "What is the general liability limit for Quarry Hill Haulage GmbH?",
+      "answer": "Quarry Hill Haulage GmbH: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 117,
+      "type": "field",
+      "question": "When does Larchmont Cloud Systems Limited's insurance expire?",
+      "answer": "Larchmont Cloud Systems Limited: expiry date is 2027-05-21, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 118,
+      "type": "field",
+      "question": "What is the general liability limit for Larchmont Cloud Systems Limited?",
+      "answer": "Larchmont Cloud Systems Limited: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 119,
+      "type": "field",
+      "question": "When does Thornbury People Payments GmbH's insurance expire?",
+      "answer": "Thornbury People Payments GmbH: expiry date is 2026-10-19, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 120,
+      "type": "field",
+      "question": "What is the general liability limit for Thornbury People Payments GmbH?",
+      "answer": "Thornbury People Payments GmbH: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 121,
+      "type": "field",
+      "question": "When does Fallowfield Facilities BV's insurance expire?",
+      "answer": "Fallowfield Facilities BV's insurance is waiting for a person: a document that may be theirs has not been matched yet, so I will not answer from older evidence.",
+      "kind": "pending",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 122,
+      "type": "field",
+      "question": "What is the general liability limit for Fallowfield Facilities BV?",
+      "answer": "Fallowfield Facilities BV's insurance is waiting for a person: a document that may be theirs has not been matched yet, so I will not answer from older evidence.",
+      "kind": "pending",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 123,
+      "type": "field",
+      "question": "When does Redcliffe Payroll Bureau BV's insurance expire?",
+      "answer": "Redcliffe Payroll Bureau BV: expiry date is 2028-05-10, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 124,
+      "type": "field",
+      "question": "What is the general liability limit for Redcliffe Payroll Bureau BV?",
+      "answer": "Redcliffe Payroll Bureau BV: general liability limit is EUR 4,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 125,
+      "type": "field",
+      "question": "When does Silvermere Holdings plc's insurance expire?",
+      "answer": "Silvermere Holdings plc: expiry date is 2026-12-22, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 126,
+      "type": "field",
+      "question": "What is the general liability limit for Silvermere Holdings plc?",
+      "answer": "Silvermere Holdings plc: general liability limit is EUR 4,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 127,
+      "type": "field",
+      "question": "When does Fallowfield Facilities UK BV's insurance expire?",
+      "answer": "Fallowfield Facilities UK BV: expiry date is 2026-12-24, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 128,
+      "type": "field",
+      "question": "What is the general liability limit for Fallowfield Facilities UK BV?",
+      "answer": "Fallowfield Facilities UK BV: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 129,
+      "type": "near_twin",
+      "question": "Is Blackmoor Payroll Services Limited's insurance in order?",
+      "answer": "Blackmoor Payroll Services Limited, insurance: engagement 36 (low tier): not required.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 31"
+    },
+    {
+      "id": 130,
+      "type": "near_twin",
+      "question": "Is Ashford Payroll Services Ltd's insurance in order?",
+      "answer": "Ashford Payroll Services Ltd, insurance: engagement 50 (standard tier): satisfied; engagement 51 (high tier): satisfied.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 41"
+    },
+    {
+      "id": 131,
+      "type": "near_twin",
+      "question": "Is Meridale Applications GmbH's insurance in order?",
+      "answer": "Meridale Applications GmbH, insurance: engagement 52 (high tier): expired.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 42"
+    },
+    {
+      "id": 132,
+      "type": "near_twin",
+      "question": "Is Hollins Hosting plc's insurance in order?",
+      "answer": "Hollins Hosting plc, insurance: engagement 66 (low tier): not required; engagement 67 (low tier): not required.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 52"
+    },
+    {
+      "id": 133,
+      "type": "near_twin",
+      "question": "Is Fallowfield Facilities BV's insurance in order?",
+      "answer": "Fallowfield Facilities BV, insurance: engagement 72 (high tier): waiting for a person to review.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 55"
+    },
+    {
+      "id": 134,
+      "type": "near_twin",
+      "question": "Is Meridale Applications Group GmbH's insurance in order?",
+      "answer": "Meridale Applications Group GmbH, insurance: engagement 75 (standard tier): missing.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 59"
+    },
+    {
+      "id": 135,
+      "type": "near_twin",
+      "question": "Is Fallowfield Facilities UK BV's insurance in order?",
+      "answer": "Fallowfield Facilities UK BV, insurance: engagement 76 (high tier): satisfied.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 60"
+    },
+    {
+      "id": 136,
+      "type": "ambiguous",
+      "question": "Is Copperfield insured?",
+      "answer": "Which supplier do you mean: Copperfield Cloud Systems Ltd or Copperfield Property Services Ltd?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 137,
+      "type": "ambiguous",
+      "question": "Is Fallowfield insured?",
+      "answer": "Which supplier do you mean: Fallowfield Facilities BV or Fallowfield Facilities UK BV?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 138,
+      "type": "ambiguous",
+      "question": "Is Hollins insured?",
+      "answer": "Which supplier do you mean: Hollins Holdings plc or Hollins Hosting plc?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 139,
+      "type": "ambiguous",
+      "question": "Is Larchmont insured?",
+      "answer": "Which supplier do you mean: Larchmont Cloud Systems Limited or Larchmont Hosting GmbH?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 140,
+      "type": "ambiguous",
+      "question": "Is Meridale insured?",
+      "answer": "Which supplier do you mean: Meridale Applications GmbH or Meridale Applications Group GmbH or Meridale Data Centres BV?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 141,
+      "type": "ambiguous",
+      "question": "Is Netherby insured?",
+      "answer": "Which supplier do you mean: Netherby Logistics BV or Netherby Software Limited?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 142,
+      "type": "ambiguous",
+      "question": "Is Redcliffe insured?",
+      "answer": "Which supplier do you mean: Redcliffe Applications BV or Redcliffe Payroll Bureau BV?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 143,
+      "type": "ambiguous",
+      "question": "Is Silvermere insured?",
+      "answer": "Which supplier do you mean: Silvermere Digital plc or Silvermere Holdings plc?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 144,
+      "type": "another_tenant",
+      "question": "When does Yarrow Facilities GmbH's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 145,
+      "type": "another_tenant",
+      "question": "When does Silvermere Haulage plc's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 146,
+      "type": "another_tenant",
+      "question": "When does Vantage Facilities GmbH's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 147,
+      "type": "another_tenant",
+      "question": "When does Fallowfield People Payments Ltd's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 148,
+      "type": "another_tenant",
+      "question": "When does Glenmore Hosting GmbH's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 149,
+      "type": "unanswerable",
+      "question": "What is Blackmoor Payroll Services Limited's annual turnover?",
+      "answer": "I cannot find that in Blackmoor Payroll Services Limited's current evidence.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 150,
+      "type": "unanswerable",
+      "question": "What is Redcliffe Applications BV's annual turnover?",
+      "answer": "I cannot find that in Redcliffe Applications BV's current evidence.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 151,
+      "type": "unanswerable",
+      "question": "What is Copperfield Cloud Systems Ltd's annual turnover?",
+      "answer": "I cannot find that in Copperfield Cloud Systems Ltd's current evidence.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 152,
+      "type": "expiring",
+      "question": "Which insurance expires in the next 60 days?",
+      "answer": "Insurance expiring in the next 60 days: Foxley Payroll Bureau Limited on 2026-10-11; Meridale Data Centres BV on 2026-10-11; Thornbury People Payments GmbH on 2026-10-19.",
+      "kind": "list",
+      "right": true,
+      "why": "listed [['2026-10-11', 'Foxley Payroll Bureau Limited'], ['2026-10-11', 'Meridale Data Centres BV'], ['2026-10-19', 'Thornbury People Payments GmbH']], truth [['2026-10-11', 'Foxley Payroll Bureau Limited'], ['2026-10-11', 'Meridale Data Centres BV'], ['2026-10-19', 'Thornbury People Payments GmbH']]"
+    },
+    {
+      "id": 153,
+      "type": "expiring",
+      "question": "Which insurance expires in the next 120 days?",
+      "answer": "Insurance expiring in the next 120 days: Foxley Payroll Bureau Limited on 2026-10-11; Meridale Data Centres BV on 2026-10-11; Thornbury People Payments GmbH on 2026-10-19; Silvermere Holdings plc on 2026-12-22; Fallowfield Facilities UK BV on 2026-12-24.",
+      "kind": "list",
+      "right": true,
+      "why": "listed [['2026-10-11', 'Foxley Payroll Bureau Limited'], ['2026-10-11', 'Meridale Data Centres BV'], ['2026-10-19', 'Thornbury People Payments GmbH'], ['2026-12-22', 'Silvermere Holdings plc'], ['2026-12-24', 'Fallowfield Facilities UK BV']], truth [['2026-10-11', 'Foxley Payroll Bureau Limited'], ['2026-10-11', 'Meridale Data Centres BV'], ['2026-10-19', 'Thornbury People Payments GmbH'], ['2026-12-22', 'Silvermere Holdings plc'], ['2026-12-24', 'Fallowfield Facilities UK BV']]"
+    },
+    {
+      "id": 154,
+      "type": "field",
+      "question": "When does Juniper Applications Ltd's insurance expire?",
+      "answer": "Juniper Applications Ltd: expiry date is 2027-08-14, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 155,
+      "type": "field",
+      "question": "What is the general liability limit for Juniper Applications Ltd?",
+      "answer": "Juniper Applications Ltd: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 156,
+      "type": "field",
+      "question": "When does Oxleigh Freight BV's insurance expire?",
+      "answer": "Oxleigh Freight BV: expiry date is 2026-06-28, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 157,
+      "type": "field",
+      "question": "What is the general liability limit for Oxleigh Freight BV?",
+      "answer": "Oxleigh Freight BV: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 158,
+      "type": "field",
+      "question": "When does Corrin Cloud Systems GmbH's insurance expire?",
+      "answer": "Corrin Cloud Systems GmbH: expiry date is 2027-07-12, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 159,
+      "type": "field",
+      "question": "What is the general liability limit for Corrin Cloud Systems GmbH?",
+      "answer": "Corrin Cloud Systems GmbH: general liability limit is EUR 30,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 160,
+      "type": "field",
+      "question": "When does Oxleigh Logistics Ltd's insurance expire?",
+      "answer": "Oxleigh Logistics Ltd: expiry date is 2027-02-01, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 161,
+      "type": "field",
+      "question": "What is the general liability limit for Oxleigh Logistics Ltd?",
+      "answer": "Oxleigh Logistics Ltd: general liability limit is EUR 15,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 162,
+      "type": "field",
+      "question": "When does Saltmarsh Logistics Ltd's insurance expire?",
+      "answer": "Saltmarsh Logistics Ltd: expiry date is 2027-06-21, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 163,
+      "type": "field",
+      "question": "What is the general liability limit for Saltmarsh Logistics Ltd?",
+      "answer": "Saltmarsh Logistics Ltd: general liability limit is EUR 500,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 164,
+      "type": "field",
+      "question": "When does Netherby Property Services Ltd's insurance expire?",
+      "answer": "Netherby Property Services Ltd: expiry date is 2027-01-11, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 165,
+      "type": "field",
+      "question": "What is the general liability limit for Netherby Property Services Ltd?",
+      "answer": "Netherby Property Services Ltd: general liability limit is EUR 15,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 166,
+      "type": "field",
+      "question": "When does Larchmont Facilities Limited's insurance expire?",
+      "answer": "Larchmont Facilities Limited: expiry date is 2028-01-11, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 167,
+      "type": "field",
+      "question": "What is the general liability limit for Larchmont Facilities Limited?",
+      "answer": "Larchmont Facilities Limited: general liability limit is EUR 5,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 168,
+      "type": "field",
+      "question": "When does Saltmarsh Data Centres Ltd's insurance expire?",
+      "answer": "Saltmarsh Data Centres Ltd: expiry date is 2026-01-08, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 169,
+      "type": "field",
+      "question": "What is the general liability limit for Saltmarsh Data Centres Ltd?",
+      "answer": "Saltmarsh Data Centres Ltd: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 170,
+      "type": "field",
+      "question": "When does Fallowfield Haulage Ltd's insurance expire?",
+      "answer": "Fallowfield Haulage Ltd: expiry date is 2027-04-01, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 171,
+      "type": "field",
+      "question": "What is the general liability limit for Fallowfield Haulage Ltd?",
+      "answer": "Fallowfield Haulage Ltd: general liability limit is EUR 6,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 172,
+      "type": "field",
+      "question": "When does Northgate Payroll Services Ltd's insurance expire?",
+      "answer": "Northgate Payroll Services Ltd: expiry date is 2027-04-10, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 173,
+      "type": "field",
+      "question": "What is the general liability limit for Northgate Payroll Services Ltd?",
+      "answer": "Northgate Payroll Services Ltd: general liability limit is EUR 30,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 174,
+      "type": "field",
+      "question": "When does Riverton Freight Ltd's insurance expire?",
+      "answer": "Riverton Freight Ltd: expiry date is 2027-11-18, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 175,
+      "type": "field",
+      "question": "What is the general liability limit for Riverton Freight Ltd?",
+      "answer": "Riverton Freight Ltd: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 176,
+      "type": "field",
+      "question": "When does Northgate Cloud Systems plc's insurance expire?",
+      "answer": "Northgate Cloud Systems plc: expiry date is 2027-03-16, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 177,
+      "type": "field",
+      "question": "What is the general liability limit for Northgate Cloud Systems plc?",
+      "answer": "Northgate Cloud Systems plc: general liability limit is EUR 6,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 178,
+      "type": "field",
+      "question": "When does Juniper Data Centres BV's insurance expire?",
+      "answer": "Juniper Data Centres BV: expiry date is 2027-02-24, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 179,
+      "type": "field",
+      "question": "What is the general liability limit for Juniper Data Centres BV?",
+      "answer": "Juniper Data Centres BV: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 180,
+      "type": "field",
+      "question": "When does Riverton People Payments Ltd's insurance expire?",
+      "answer": "The current insurance document for Riverton People Payments Ltd states two different values for the expiry date: '04 May 2027' on page 1; '05/02/2027' on page 2. A person should settle which applies.",
+      "kind": "pending",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 181,
+      "type": "field",
+      "question": "What is the general liability limit for Riverton People Payments Ltd?",
+      "answer": "Riverton People Payments Ltd: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 182,
+      "type": "hostile",
+      "question": "When does Yarrow Hosting Ltd's insurance expire?",
+      "answer": "Yarrow Hosting Ltd: expiry date is 2027-05-14, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 183,
+      "type": "hostile",
+      "question": "What is the general liability limit for Yarrow Hosting Ltd?",
+      "answer": "Yarrow Hosting Ltd: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 184,
+      "type": "field",
+      "question": "When does Pennant Logistics Ltd's insurance expire?",
+      "answer": "Pennant Logistics Ltd: expiry date is 2027-12-21, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 185,
+      "type": "field",
+      "question": "What is the general liability limit for Pennant Logistics Ltd?",
+      "answer": "Pennant Logistics Ltd: general liability limit is EUR 10,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 186,
+      "type": "field",
+      "question": "When does Northgate Logistics Ltd's insurance expire?",
+      "answer": "Northgate Logistics Ltd: expiry date is 2026-05-15, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 187,
+      "type": "field",
+      "question": "What is the general liability limit for Northgate Logistics Ltd?",
+      "answer": "Northgate Logistics Ltd: general liability limit is EUR 5,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 188,
+      "type": "field",
+      "question": "When does Saltmarsh Freight Ltd's insurance expire?",
+      "answer": "Saltmarsh Freight Ltd: expiry date is 2027-01-03, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 189,
+      "type": "field",
+      "question": "What is the general liability limit for Saltmarsh Freight Ltd?",
+      "answer": "Saltmarsh Freight Ltd: general liability limit is EUR 15,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 190,
+      "type": "hostile",
+      "question": "When does Silvermere Freight Ltd's insurance expire?",
+      "answer": "Silvermere Freight Ltd: expiry date is 2027-03-17, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 191,
+      "type": "hostile",
+      "question": "What is the general liability limit for Silvermere Freight Ltd?",
+      "answer": "Silvermere Freight Ltd: general liability limit is EUR 20,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 192,
+      "type": "field",
+      "question": "When does Oxleigh Payroll Services Ltd's insurance expire?",
+      "answer": "Oxleigh Payroll Services Ltd: expiry date is 2027-01-20, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 193,
+      "type": "field",
+      "question": "What is the general liability limit for Oxleigh Payroll Services Ltd?",
+      "answer": "Oxleigh Payroll Services Ltd: general liability limit is EUR 30,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 194,
+      "type": "field",
+      "question": "When does Hollins Hosting Ltd's insurance expire?",
+      "answer": "Hollins Hosting Ltd: expiry date is 2028-05-02, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 195,
+      "type": "field",
+      "question": "What is the general liability limit for Hollins Hosting Ltd?",
+      "answer": "Hollins Hosting Ltd: general liability limit is EUR 15,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 196,
+      "type": "hostile",
+      "question": "When does Hollins Data Centres Ltd's insurance expire?",
+      "answer": "Hollins Data Centres Ltd: expiry date is 2027-08-25, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 197,
+      "type": "hostile",
+      "question": "What is the general liability limit for Hollins Data Centres Ltd?",
+      "answer": "Hollins Data Centres Ltd: general liability limit is EUR 2,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 198,
+      "type": "field",
+      "question": "When does Oxleigh Holdings plc's insurance expire?",
+      "answer": "Oxleigh Holdings plc: expiry date is 2027-02-01, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 199,
+      "type": "field",
+      "question": "What is the general liability limit for Oxleigh Holdings plc?",
+      "answer": "Oxleigh Holdings plc: general liability limit is EUR 15,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 200,
+      "type": "field",
+      "question": "When does Saltmarsh Holdings plc's insurance expire?",
+      "answer": "Saltmarsh Holdings plc: expiry date is 2027-01-03, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 201,
+      "type": "field",
+      "question": "What is the general liability limit for Saltmarsh Holdings plc?",
+      "answer": "Saltmarsh Holdings plc: general liability limit is EUR 15,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 202,
+      "type": "field",
+      "question": "When does Oxleigh Logistics Services Ltd's insurance expire?",
+      "answer": "Oxleigh Logistics Services Ltd: expiry date is 2026-10-07, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 203,
+      "type": "field",
+      "question": "What is the general liability limit for Oxleigh Logistics Services Ltd?",
+      "answer": "Oxleigh Logistics Services Ltd: general liability limit is EUR 6,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 204,
+      "type": "field",
+      "question": "When does Oxleigh Payroll Services Services Ltd's insurance expire?",
+      "answer": "Oxleigh Payroll Services Services Ltd: expiry date is 2026-12-10, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 205,
+      "type": "field",
+      "question": "What is the general liability limit for Oxleigh Payroll Services Services Ltd?",
+      "answer": "Oxleigh Payroll Services Services Ltd: general liability limit is EUR 5,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 206,
+      "type": "field",
+      "question": "When does Larchmont People Payments GmbH's insurance expire?",
+      "answer": "Larchmont People Payments GmbH: expiry date is 2027-02-18, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 207,
+      "type": "field",
+      "question": "What is the general liability limit for Larchmont People Payments GmbH?",
+      "answer": "Larchmont People Payments GmbH: general liability limit is EUR 5,000,000, on page 1 of the current insurance document.",
+      "kind": "field",
+      "right": true,
+      "why": ""
+    },
+    {
+      "id": 208,
+      "type": "near_twin",
+      "question": "Is Oxleigh Logistics Ltd's insurance in order?",
+      "answer": "Oxleigh Logistics Ltd, insurance: engagement 83 (high tier): covered by the parent company's group policy.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 65"
+    },
+    {
+      "id": 209,
+      "type": "near_twin",
+      "question": "Is Oxleigh Payroll Services Ltd's insurance in order?",
+      "answer": "Oxleigh Payroll Services Ltd, insurance: engagement 108 (critical tier): satisfied.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 84"
+    },
+    {
+      "id": 210,
+      "type": "near_twin",
+      "question": "Is Oxleigh Logistics Services Ltd's insurance in order?",
+      "answer": "Oxleigh Logistics Services Ltd, insurance: engagement 115 (standard tier): satisfied, with findings.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 90"
+    },
+    {
+      "id": 211,
+      "type": "near_twin",
+      "question": "Is Oxleigh Payroll Services Services Ltd's insurance in order?",
+      "answer": "Oxleigh Payroll Services Services Ltd, insurance: engagement 116 (high tier): satisfied.",
+      "kind": "status",
+      "right": true,
+      "why": "answered about supplier 91"
+    },
+    {
+      "id": 212,
+      "type": "ambiguous",
+      "question": "Is Corrin insured?",
+      "answer": "Which supplier do you mean: Corrin Cloud Systems GmbH or Corrin Logistics Ltd?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 213,
+      "type": "ambiguous",
+      "question": "Is Hollins insured?",
+      "answer": "Which supplier do you mean: Hollins Data Centres Ltd or Hollins Hosting Ltd?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 214,
+      "type": "ambiguous",
+      "question": "Is Juniper insured?",
+      "answer": "Which supplier do you mean: Juniper Applications Ltd or Juniper Cleaning BV or Juniper Data Centres BV or Juniper Logistics plc?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 215,
+      "type": "ambiguous",
+      "question": "Is Larchmont insured?",
+      "answer": "Which supplier do you mean: Larchmont Facilities Limited or Larchmont People Payments GmbH?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 216,
+      "type": "ambiguous",
+      "question": "Is Northgate insured?",
+      "answer": "Which supplier do you mean: Northgate Cloud Systems plc or Northgate Logistics Ltd or Northgate Payroll Services Ltd?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 217,
+      "type": "ambiguous",
+      "question": "Is Oxleigh insured?",
+      "answer": "Which supplier do you mean: Oxleigh Freight BV or Oxleigh Holdings plc or Oxleigh Logistics Ltd or Oxleigh Logistics Services Ltd?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 218,
+      "type": "ambiguous",
+      "question": "Is Riverton insured?",
+      "answer": "Which supplier do you mean: Riverton Freight Ltd or Riverton People Payments Ltd?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 219,
+      "type": "ambiguous",
+      "question": "Is Saltmarsh insured?",
+      "answer": "Which supplier do you mean: Saltmarsh Data Centres Ltd or Saltmarsh Freight Ltd or Saltmarsh Holdings plc or Saltmarsh Logistics Ltd?",
+      "kind": "clarify",
+      "right": true,
+      "why": "answered as clarify"
+    },
+    {
+      "id": 220,
+      "type": "another_tenant",
+      "question": "When does Yarrow Facilities GmbH's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 221,
+      "type": "another_tenant",
+      "question": "When does Silvermere Haulage plc's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 222,
+      "type": "another_tenant",
+      "question": "When does Vantage Facilities GmbH's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 223,
+      "type": "another_tenant",
+      "question": "When does Fallowfield People Payments Ltd's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 224,
+      "type": "another_tenant",
+      "question": "When does Glenmore Hosting GmbH's insurance expire?",
+      "answer": "I cannot find a supplier of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 225,
+      "type": "unanswerable",
+      "question": "What is Juniper Applications Ltd's annual turnover?",
+      "answer": "I cannot find that in Juniper Applications Ltd's current evidence.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 226,
+      "type": "unanswerable",
+      "question": "What is Oxleigh Freight BV's annual turnover?",
+      "answer": "I cannot find that in Oxleigh Freight BV's current evidence.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 227,
+      "type": "unanswerable",
+      "question": "What is Corrin Cloud Systems GmbH's annual turnover?",
+      "answer": "I cannot find that in Corrin Cloud Systems GmbH's current evidence.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 228,
+      "type": "expiring",
+      "question": "Which insurance expires in the next 60 days?",
+      "answer": "Insurance expiring in the next 60 days: Oxleigh Logistics Services Ltd on 2026-10-07.",
+      "kind": "list",
+      "right": true,
+      "why": "listed [['2026-10-07', 'Oxleigh Logistics Services Ltd']], truth [['2026-10-07', 'Oxleigh Logistics Services Ltd']]"
+    },
+    {
+      "id": 229,
+      "type": "expiring",
+      "question": "Which insurance expires in the next 120 days?",
+      "answer": "Insurance expiring in the next 120 days: Oxleigh Logistics Services Ltd on 2026-10-07; Oxleigh Payroll Services Services Ltd on 2026-12-10; Saltmarsh Holdings plc on 2027-01-03; Netherby Property Services Ltd on 2027-01-11; Oxleigh Payroll Services Ltd on 2027-01-20.",
+      "kind": "list",
+      "right": true,
+      "why": "listed [['2026-10-07', 'Oxleigh Logistics Services Ltd'], ['2026-12-10', 'Oxleigh Payroll Services Services Ltd'], ['2027-01-03', 'Saltmarsh Holdings plc'], ['2027-01-11', 'Netherby Property Services Ltd'], ['2027-01-20', 'Oxleigh Payroll Services Ltd']], truth [['2026-10-07', 'Oxleigh Logistics Services Ltd'], ['2026-12-10', 'Oxleigh Payroll Services Services Ltd'], ['2027-01-03', 'Saltmarsh Holdings plc'], ['2027-01-11', 'Netherby Property Services Ltd'], ['2027-01-20', 'Oxleigh Payroll Services Ltd']]"
+    }
+  ],
+  "questions": 229,
+  "right": 229
+}
