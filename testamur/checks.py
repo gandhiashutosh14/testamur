@@ -50,7 +50,7 @@ def _result(cid: str, rid: str, spec: CheckSpec, verdict: Verdict, reason: str, 
 
 
 def _ev(ctx: CheckContext, fv: FieldValue) -> Evidence:
-    return Evidence(document_id=ctx.document_id, page=fv.page, quote=fv.line, source=ctx.source)
+    return Evidence(document_id=ctx.document_id, page=fv.page, quote=fv.line, source=fv.source or ctx.source)
 
 
 def _value(ctx: CheckContext, name: str) -> tuple[FieldValue | None, str | None]:

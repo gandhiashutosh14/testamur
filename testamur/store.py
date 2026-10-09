@@ -134,7 +134,8 @@ class Document(TenantScoped, Base):
     conflicts: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     identifiers: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     hostile: Mapped[bool] = mapped_column(Boolean, default=False)
-    state: Mapped[str] = mapped_column(String(30), default="new")     # matched | needs_review | unknown
+    cleared: Mapped[bool] = mapped_column(Boolean, default=False)       # a person read it despite the finding
+    state: Mapped[str] = mapped_column(String(30), default="new")     # matched | needs_review | unknown | rejected
     engine_version: Mapped[str] = mapped_column(String(80), default="")
     processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -171,6 +172,57 @@ class VerdictRow(TenantScoped, Base):
     lapsed: Mapped[bool] = mapped_column(Boolean, default=False)
     engine_version: Mapped[str] = mapped_column(String(80))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class CheckReview(TenantScoped, Base):
+    """A person's verdict on one check, for one engagement and document. It replaces the engine's verdict for as
+    long as the check still means what it meant when the person decided (its rule digest), across re-runs and engine
+    versions. The engine's verdict at the time is kept: comparing the two is per-check accuracy. `kind` says how
+    the verdict reached the person: from the review queue (the engine could not decide) or from an audit sample
+    (a random draw of the engine's conclusive verdicts, the unbiased basis for accuracy estimates)."""
+    __tablename__ = "check_reviews"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    engagement_id: Mapped[int] = mapped_column(Integer, index=True)
+    requirement_id: Mapped[str] = mapped_column(String(60))
+    check_id: Mapped[str] = mapped_column(String(60), index=True)
+    document_id: Mapped[int] = mapped_column(Integer, index=True)
+    verdict: Mapped[str] = mapped_column(String(10))            # PASS | FAIL: a person decides, or leaves it queued
+    machine_verdict: Mapped[str] = mapped_column(String(10))
+    rule_digest: Mapped[str] = mapped_column(String(16))
+    kind: Mapped[str] = mapped_column(String(10), default="queue")
+    reviewer: Mapped[str] = mapped_column(String(120))
+    note: Mapped[str] = mapped_column(Text, default="")
+    at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class FieldCorrection(TenantScoped, Base):
+    """A person's reading of one field, used instead of what extraction read. The rules then judge it like any
+    value, so a correction made today is judged by tomorrow's rules too. The machine's reading is kept."""
+    __tablename__ = "field_corrections"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    document_id: Mapped[int] = mapped_column(Integer, index=True)
+    field: Mapped[str] = mapped_column(String(60))
+    raw: Mapped[str] = mapped_column(Text)
+    machine_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewer: Mapped[str] = mapped_column(String(120))
+    note: Mapped[str] = mapped_column(Text, default="")
+    at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class DocumentReview(TenantScoped, Base):
+    """A person's decision about a whole document: its type (classify), whose evidence it is (assign), that it is
+    nobody's evidence (reject), or that it carries text aimed at automated readers and a person read it anyway
+    (clear). The latest decision of each kind stands; assign and reject replace each other."""
+    __tablename__ = "document_reviews"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    document_id: Mapped[int] = mapped_column(Integer, index=True)
+    action: Mapped[str] = mapped_column(String(10))
+    doc_type: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    supplier_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    machine: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    reviewer: Mapped[str] = mapped_column(String(120))
+    note: Mapped[str] = mapped_column(Text, default="")
+    at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class RequirementState(TenantScoped, Base):
@@ -215,6 +267,13 @@ class TenantBudget(TenantScoped, Base):
     tenant_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ocr_pages_per_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
     model_tokens_per_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class Setting(Base):
+    """Facts about a database that later commands need: the as-of date it was evaluated at, where its files are."""
+    __tablename__ = "settings"
+    key: Mapped[str] = mapped_column(String(60), primary_key=True)
+    value: Mapped[str] = mapped_column(Text)
 
 
 class AuditRow(TenantScoped, Base):
@@ -297,6 +356,18 @@ class Store:
             s.info["system"] = True
             yield s
             s.commit()
+
+    def setting(self, key: str, value: str | None = None) -> str | None:
+        """Read a setting, or write it when a value is given."""
+        with self.system() as s:
+            row = s.get(Setting, key)
+            if value is not None:
+                if row is None:
+                    s.add(Setting(key=key, value=value))
+                else:
+                    row.value = value
+                return value
+            return row.value if row else None
 
     @contextmanager
     def unscoped(self):

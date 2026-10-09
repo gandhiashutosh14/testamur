@@ -110,6 +110,11 @@ def _resolve(session: Session, suppliers: list[Supplier], name: str | None, ids:
                        candidates=near)
 
 
+def covered(session: Session, names: list[str], parent_id: int) -> list[int]:
+    """Subsidiaries a group document covers, once a person has said whose document it is."""
+    return _covered(list(session.scalars(select(Supplier))), names, parent_id)
+
+
 def _covered(suppliers: list[Supplier], names: list[str], parent_id: int) -> list[int]:
     """Subsidiaries a group document names, resolved among the parent's own subsidiaries only."""
     subs = [s for s in suppliers if s.parent_id == parent_id]

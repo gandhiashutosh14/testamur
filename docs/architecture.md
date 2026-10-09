@@ -105,10 +105,35 @@ with a weak model and becomes decisive with a better one ([ADR 0005](decisions/0
 | a non-critical check failed or abstained | SATISFIED_WITH_FINDINGS |
 | everything passed | SATISFIED |
 | and: a negative status while an unresolved document might change it | NEEDS_REVIEW |
+| and: a vouching status on a document carrying text aimed at automated readers, until a person clears it | NEEDS_REVIEW |
 
 Five statuses *vouch* for the supplier (SATISFIED, SATISFIED_WITH_FINDINGS, COVERED_BY_PARENT,
 VERIFIED_OUT_OF_BAND, NOT_REQUIRED). Reporting one of them when the truth is otherwise is the error the gates hold at
 zero.
+
+### People in the loop
+The engine's abstentions become a **review queue**, derived from the data each time it is read, most consequential
+first:
+
+| Item | Why it is there | What a person can do |
+|---|---|---|
+| document owner | the match abstained (near twins, misfiled, someone else's evidence); its candidates' bad news is held | assign it to a supplier, or reject it |
+| document type | no type could be recognised | classify it, or reject it |
+| document security | it carries text aimed at automated readers; it cannot vouch | clear it after reading it, or reject it |
+| check | the engine could not decide a check of a current document | decide PASS or FAIL, or correct the field it read |
+
+Decisions are **inputs, not edits** ([ADR 0009](decisions/0009-decisions-are-inputs.md)): the engine derives each
+document and status from the file plus the decisions about it, so a re-index or a new engine version applies them
+again. The engine's own verdict is kept beside each decision, which is what accuracy is measured from. A check
+decision is bound to the rule it was made under (the check's definition and the pack tables it reads); change the rule
+and the engine judges again. A cleared hostile document may vouch, but its text is still never shown to the model.
+
+```bash
+testamur queue --db data/harness.db --tenant 1
+testamur review assign 20 14 --by reviewer@buyer --note "misfiled under Head Office"
+testamur review field 7 gl_limit "2,000,000 EUR" --by reviewer@buyer --note "schedule on page 2"
+testamur review check 8 master_agreement clause_audit_rights PASS --by legal@buyer
+```
 
 ### Revisions and retries
 Verdicts are stored per engagement, requirement, check, document and engine version. A transient failure (a timeout,
@@ -174,5 +199,6 @@ cost (a re-index pays for nothing) and about how much it hands to people (deferr
 
 ## What is deliberately not here yet
 
-The roadmap in the README lists what follows: calibrated accuracy from reviewer feedback, real-contract evaluation,
-findings that create work, an assistant over the same index, and a tenant-scoped tool server for agents.
+The roadmap in the README lists what follows: accuracy estimated from audit samples of the engine's confident
+verdicts, calibrated thresholds, real-contract evaluation, findings that create work, an assistant over the same
+index, and a tenant-scoped tool server for agents.

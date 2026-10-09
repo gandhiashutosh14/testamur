@@ -53,6 +53,8 @@ flowchart LR
     E --> F["Match: identifiers, then names in the business unit"]
     F --> G["Checks, cheapest tier first"]
     G --> H["Status per engagement and requirement"]
+    H -->|"could not decide"| Q["Review queue: a person decides"]
+    Q -->|"decisions are inputs"| G
 ```
 
 1. **Store once.** Files are hashed per tenant; the same bytes uploaded again add an upload event, not a document.
@@ -70,6 +72,10 @@ flowchart LR
    requirement is checked; model checks are skipped once a rule has decided the outcome.
 7. **Decide the status by policy.** Uncertainty on a critical check is never rounded up; a lapse is reported as a
    lapse; a requirement nobody could check is not met.
+8. **Hand the rest to a person, and remember.** Everything the engine could not decide becomes a review queue. A
+   person corrects a reading, decides a check, says whose a document is, or clears a security finding. Decisions are
+   inputs: they survive re-indexing and engine upgrades, the engine's own answer is kept beside them, and a decision
+   stops applying when the rule it was made under changes.
 
 ## Design principles
 
@@ -83,6 +89,8 @@ flowchart LR
   cross-tenant writes; a session without a tenant cannot read at all.
 - **Documents are untrusted input.** Text aimed at automated readers marks a document as hostile: its clauses are
   never shown to the model for a judgement, and a security finding is recorded.
+- **People's decisions are inputs, not edits.** They are applied again on every run, bound to the rule they were
+  made under, and never let the model read a document the engine refuses to show it.
 - **A skipped test is not a passed test.** The suite fails on any unexplained skip, and a script breaks each safety
   rule on purpose to prove the tests catch it.
 
@@ -96,6 +104,8 @@ python scripts/prove_tests_fire.py                     # break each safety rule;
 testamur world --seed 7 --size small --out data/world  # an adversarial supplier world with ground truth
 testamur harness --world data/world --report reports/harness.md            # without a model: clauses abstain
 testamur explain 3 insurance --tenant 1                # every check behind one status, with evidence
+testamur queue --tenant 1                              # what is waiting for a person, most consequential first
+testamur review check 8 master_agreement clause_audit_rights PASS --by legal@buyer   # a person decides
 ```
 
 With a local model for the clause tier (CPU, llama.cpp; the model is an open-weight GGUF file):
@@ -133,12 +143,15 @@ Each milestone ships with its own measured report.
 
 1. **v0.1 (this release): the engine and its measurement.** Pipeline, tiers, status policy, isolation, the
    adversarial world, gates, mutation proof, CI.
-2. **Throughput and cost.** A durable SQL job queue with leases, retries and a dead-letter queue; per-tenant daily
-   spend gates for OCR and model calls (work waits, never drops); a burst load test reporting throughput per worker
-   and cost per thousand pages; a cheaper OCR engine run in the shadow of the canonical one behind a parity gate,
-   cut over by configuration.
-3. **Accuracy you can hold.** Reviewer feedback per check, calibration, a false-pass bound with a statistical
-   guarantee, an adversarial false-pass panel, and clause judgements measured on expert-labelled public contracts.
+2. **Throughput and cost (done).** A job queue in the database with leases, retries and a dead-letter state;
+   per-tenant daily spend caps for OCR and model calls, reserved before spending (work waits, never drops); worker
+   processes with OCR outside the lock; a burst load test (scaling, a spend cap stretched over days, a worker killed
+   mid-job); candidate OCR engines run in the shadow of the canonical one behind a parity gate.
+3. **Accuracy you can hold (in progress).** Done: a review queue and people's decisions as sticky, rule-bound inputs
+   with the engine's answer kept beside them. Next: random audit samples of the engine's confident verdicts for
+   unbiased per-check accuracy, a check that breaches its error budget demoted to "a person confirms", calibrated
+   match thresholds with a risk bound, an adversarial false-pass panel, and clause judgements measured on
+   expert-labelled public contracts.
 4. **From finding to action.** Failures create remediation tasks, supplier notifications and webhook syncs through a
    transactional outbox, idempotently; a critical failure places a purchasing hold. First workflow: expiring or
    failed insurance, because it is frequent, decided by a rule, and reversible.

@@ -7,7 +7,7 @@ from pathlib import Path
 import typer
 from sqlalchemy import select
 
-from .model import TIER_ORDER, Tier, Verdict
+from .model import TIER_ORDER, Verdict
 from .pack import load_pack
 
 app = typer.Typer(add_completion=False, no_args_is_help=True,
@@ -87,6 +87,90 @@ def shadow(world_dir: str = typer.Option("data/world", "--world"), candidates: s
                    f"cutover {'allowed' if r['cutover_allowed'] else 'refused'}")
 
 
+def _engine(db: str, model=None):
+    """An engine over an existing database, judging at the as-of date the database was evaluated at."""
+    from datetime import date
+
+    from .engine import Engine
+    from .store import Store
+    store = Store(f"sqlite:///{db}")
+    as_of = store.setting("as_of")
+    blob_root = store.setting("blob_root") or str(Path(db).with_suffix("")) + "_blobs"
+    return Engine(store, load_pack(), date.fromisoformat(as_of) if as_of else date.today(), blob_root, model=model)
+
+
+@app.command()
+def queue(db: str = "data/harness.db", tenant: int = 1):
+    """What is waiting for a person, most consequential first."""
+    items = _engine(db).queue(tenant)
+    for i in items:
+        where = (f"engagement {i.engagement_id} {i.requirement_id}/{i.check_id}" if i.kind == "check"
+                 else f"document {i.document_id}")
+        tail = (f"; candidates {i.options}" if i.options else "") + ("; the engine will retry" if i.retrying else "")
+        typer.echo(f"{i.kind:18} {'blocking' if i.blocking else 'finding ':8} {where}: {i.reason}{tail}")
+    typer.echo(f"{len(items)} item(s) for tenant {tenant}")
+
+
+review = typer.Typer(help="Record a person's decision. Each is kept with what the engine had said, audited, and "
+                          "applied again on every later run.", no_args_is_help=True)
+app.add_typer(review, name="review")
+BY = typer.Option(..., "--by", help="who decided")
+
+
+def _decide(fn, *args):
+    try:
+        return fn(*args)
+    except (KeyError, ValueError) as exc:
+        raise typer.BadParameter(str(exc).strip("'\"")) from exc
+
+
+@review.command("check")
+def review_check(engagement: int, requirement: str, check: str, verdict: str, by: str = BY, note: str = "",
+                 db: str = "data/harness.db", tenant: int = 1):
+    """PASS or FAIL for one check of the document behind a requirement (the reading is right, the judgement
+    needs a person)."""
+    after = _decide(_engine(db).review_check, tenant, engagement, requirement, check, verdict.upper(), by, note)
+    typer.echo(f"{requirement} for engagement {engagement}: {after}")
+
+
+@review.command("field")
+def review_field(document: int, field: str, value: str, by: str = BY, note: str = "", db: str = "data/harness.db",
+                 tenant: int = 1):
+    """Replace what extraction read for one field; the rules then judge the person's reading."""
+    _decide(_engine(db).correct_field, tenant, document, field, value, by, note)
+    typer.echo(f"document {document}: {field} = {value!r}")
+
+
+@review.command("classify")
+def review_classify(document: int, doc_type: str, by: str = BY, note: str = "", db: str = "data/harness.db",
+                    tenant: int = 1):
+    """Say what a document is."""
+    _decide(_engine(db).classify_document, tenant, document, doc_type, by, note)
+    typer.echo(f"document {document}: {doc_type}")
+
+
+@review.command("assign")
+def review_assign(document: int, supplier: int, by: str = BY, note: str = "", db: str = "data/harness.db",
+                  tenant: int = 1):
+    """Say whose evidence a document is."""
+    _decide(_engine(db).assign, tenant, document, supplier, by, note)
+    typer.echo(f"document {document}: supplier {supplier}")
+
+
+@review.command("reject")
+def review_reject(document: int, by: str = BY, note: str = "", db: str = "data/harness.db", tenant: int = 1):
+    """Say a document is nobody's evidence."""
+    _decide(_engine(db).reject, tenant, document, by, note)
+    typer.echo(f"document {document}: rejected")
+
+
+@review.command("clear")
+def review_clear(document: int, by: str = BY, note: str = "", db: str = "data/harness.db", tenant: int = 1):
+    """A person read a document that carries text aimed at automated readers and accepts it as evidence."""
+    _decide(_engine(db).clear, tenant, document, by, note)
+    typer.echo(f"document {document}: cleared")
+
+
 @app.command()
 def status(db: str = "data/harness.db", tenant: int = 1):
     """Requirement statuses for one tenant."""
@@ -102,25 +186,20 @@ def status(db: str = "data/harness.db", tenant: int = 1):
 
 @app.command()
 def explain(engagement: int, requirement: str, db: str = "data/harness.db", tenant: int = 1):
-    """Every check behind one status, with its evidence and the fix hint."""
-    from .store import RequirementState, Store, VerdictRow
-    store = Store(f"sqlite:///{db}")
-    with store.tenant(tenant) as s:
-        st = s.get(RequirementState, {"engagement_id": engagement, "requirement_id": requirement, "tenant_id": tenant})
-        if st is None:
-            raise typer.BadParameter("no such engagement and requirement for this tenant")
-        typer.echo(f"{requirement} for engagement {engagement}: {st.status} (document {st.document_id})")
-        rows = s.scalars(select(VerdictRow).where(VerdictRow.engagement_id == engagement,
-                                                  VerdictRow.requirement_id == requirement,
-                                                  VerdictRow.document_id == st.document_id)).all()
-        order = {cid: i for i, cid in enumerate(load_pack().requirements[requirement].checks)}
-        for v in sorted(rows, key=lambda v: (TIER_ORDER[Tier(v.tier)], order.get(v.check_id, len(order)))):
-            typer.echo(f"  [{v.tier:8}] {v.check_id:28} {v.verdict:7} {v.reason}")
-            for ev in v.evidence or []:
-                where = f"p.{ev['page']}" if ev.get("page") is not None else "record"
-                typer.echo(f"             evidence {where}: {ev.get('quote')}")
-            if v.verdict == Verdict.FAIL and v.fix_hint:
-                typer.echo(f"             fix: {v.fix_hint}")
+    """Every check behind one status, with its evidence, the fix hint, and any decision a person made."""
+    st, results = _engine(db).verdicts(tenant, engagement, requirement)
+    if st is None:
+        raise typer.BadParameter("no such engagement and requirement for this tenant")
+    typer.echo(f"{requirement} for engagement {engagement}: {st.status} (document {st.document_id})")
+    for r in sorted(results, key=lambda r: TIER_ORDER[r.tier]):          # stable: pack order within a tier
+        typer.echo(f"  [{r.tier:8}] {r.check_id:28} {r.verdict:7} {r.reason}")
+        for ev in r.evidence:
+            if ev.source == "reviewer" and not ev.quote:
+                continue
+            where = "person" if ev.source == "reviewer" else (f"p.{ev.page}" if ev.page is not None else "record")
+            typer.echo(f"             evidence {where}: {ev.quote}")
+        if r.verdict == Verdict.FAIL and r.fix_hint:
+            typer.echo(f"             fix: {r.fix_hint}")
 
 
 if __name__ == "__main__":

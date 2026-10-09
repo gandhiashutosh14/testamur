@@ -72,7 +72,7 @@ class Fields:
         return fv.value if fv else None
 
 
-def _parse(kind: str, raw: str):
+def parse_value(kind: str, raw: str):
     if kind == "money":
         return parse_money(raw)
     if kind == "date":
@@ -95,7 +95,7 @@ def read_fields(spec: DocTypeSpec, ex: Extraction) -> Fields:
                     continue
                 if not rest and i + 1 < len(lines):          # the value sits on the line below its label
                     rest = lines[i + 1].text
-                value = _parse(fs.type, rest) if rest else None
+                value = parse_value(fs.type, rest) if rest else None
                 if value is None:
                     if rest:
                         out.unparsed.setdefault(name, []).append(rest)

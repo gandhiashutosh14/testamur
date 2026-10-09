@@ -44,6 +44,21 @@ MUTANTS = [
      "        if doc.hostile:\n", "        if False:\n", "tests/test_engine.py"),
     ("a transient failure overwrites a conclusive verdict", "testamur/engine.py",
      "and r.transient:", "and False:", "tests/test_engine.py"),
+    ("a person's verdict is ignored when the engine runs again", "testamur/engine.py",
+     "return _decided(r, decided[cid]) if cid in decided else r", "return r", "tests/test_reviews.py"),
+    ("a decision outlives a change to the rule it was made under", "testamur/engine.py",
+     "if d.rule_digest == self.pack.rule_digest(d.check_id):", "if True:", "tests/test_reviews.py"),
+    ("a person's reading of a field is ignored", "testamur/engine.py",
+     "            fields.values[c.field] = FieldValue(", "            fields.values[c.field + '~'] = FieldValue(",
+     "tests/test_reviews.py"),
+    ("a person's decision about whose document it is is lost on re-index", "testamur/engine.py",
+     "        if disposition is not None:                       # a person said whose document it is",
+     "        if False:", "tests/test_reviews.py"),
+    ("a skip outlives the failure that decided it", "testamur/engine.py",
+     "already decides the outcome\",\n                       transient=True)", "already decides the outcome\")",
+     "tests/test_reviews.py"),
+    ("a cleared hostile document is shown to the model", "testamur/engine.py",
+     "        if doc.hostile:\n", "        if doc.hostile and not doc.cleared:\n", "tests/test_reviews.py"),
     ("tenant filtering is removed from reads", "testamur/store.py",
      "    state.statement = state.statement.options(", "    return\n    state.statement = state.statement.options(",
      "tests/test_tenancy.py"),
@@ -59,11 +74,11 @@ def main() -> int:
             print(f"BROKEN MUTANT {name!r}: the target text occurs {original.count(before)} times in {rel}")
             return 2
         try:
-            path.write_text(original.replace(before, after), encoding="utf-8")
+            path.write_text(original.replace(before, after), encoding="utf-8", newline="\n")
             r = subprocess.run([sys.executable, "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", tests],
                                cwd=ROOT, capture_output=True, text=True)
         finally:
-            path.write_text(original, encoding="utf-8")
+            path.write_text(original, encoding="utf-8", newline="\n")
         caught = r.returncode != 0
         print(f"{'caught  ' if caught else 'SURVIVED'} {name}  ({tests})")
         if not caught:

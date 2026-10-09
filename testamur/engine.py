@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -29,8 +29,8 @@ from sqlalchemy.orm import Session
 from . import __version__, budget
 from .checks import CheckContext, evaluate
 from .extract import Extractor, sniff_mime
-from .match import NAME_FIELD, match
-from .model import CheckResult, Evidence, Extraction, Severity, Tier, Verdict
+from .match import NAME_FIELD, covered, match
+from .model import CheckResult, Evidence, Extraction, FieldValue, Severity, Status, Tier, Verdict
 from .modeltier import CassetteMiss, ModelClient, Reply, call_key, judge, locate
 from .pack import Pack, RequirementSpec
 from .status import decide
@@ -38,9 +38,12 @@ from .store import (
     Attestation,
     AuditRow,
     Blob,
+    CheckReview,
     Document,
+    DocumentReview,
     Engagement,
     ExtractionRow,
+    FieldCorrection,
     ModelCall,
     RequirementState,
     Store,
@@ -50,8 +53,9 @@ from .store import (
     VerdictRow,
     utcnow,
 )
-from .understand import Fields, classify, hostile_spans, identifiers, read_fields
+from .understand import Classification, Fields, classify, hostile_spans, identifiers, parse_value, read_fields
 
+NO_MODEL = "no model is configured for this check"      # retried every pass, so a model added later answers it
 KEY_DATE = {"insurance_certificate": "effective_date", "security_certificate": "issue_date",
             "bank_letter": "letter_date"}
 
@@ -62,6 +66,20 @@ def _jsonable(value):
     if isinstance(value, tuple):
         return [str(value[0]) if isinstance(value[0], Decimal) else value[0], value[1]]
     return value
+
+
+@dataclass
+class QueueItem:
+    """One thing waiting for a person."""
+    kind: str                       # document_owner | document_type | document_security | check
+    document_id: int
+    engagement_id: int | None = None
+    requirement_id: str | None = None
+    check_id: str | None = None
+    reason: str = ""
+    options: list[int] = field(default_factory=list)      # candidate suppliers, for document_owner
+    blocking: bool = True           # holds a requirement in NEEDS_REVIEW
+    retrying: bool = False          # a transient failure the engine will retry by itself
 
 
 @dataclass
@@ -202,6 +220,196 @@ class Engine:
                 self._recompute(s, tenant_id, key, force=True)
             return len(docs)
 
+    # ------------------------------------------------------------------ people's decisions
+    def queue(self, tenant_id: int) -> list[QueueItem]:
+        """Everything waiting for a person, most consequential first: documents nobody can place, then checks that
+        hold a requirement in NEEDS_REVIEW, then checks that only add a finding."""
+        items: list[QueueItem] = []
+        with self.store.tenant(tenant_id) as s:
+            for d in s.scalars(select(Document).order_by(Document.id)).all():
+                detail = d.match_detail or {}
+                if d.state == "needs_review":
+                    items.append(QueueItem("document_owner", d.id, reason=detail.get("reason", ""),
+                                           options=list(detail.get("candidates", []))))
+                elif d.state == "unknown":
+                    items.append(QueueItem("document_type", d.id, reason=detail.get("reason", "")))
+                elif d.state == "matched" and d.hostile and not d.cleared:
+                    items.append(QueueItem("document_security", d.id,
+                                           reason="the document carries text aimed at automated readers"))
+            states = {(st.engagement_id, st.requirement_id): st.document_id
+                      for st in s.scalars(select(RequirementState)).all() if st.document_id is not None}
+            abstained = s.scalars(select(VerdictRow).where(VerdictRow.verdict == Verdict.ABSTAIN,
+                                                           VerdictRow.engine_version == self.version)).all()
+            for v in abstained:
+                if states.get((v.engagement_id, v.requirement_id)) != v.document_id:
+                    continue                                  # not the current document: nobody relies on it
+                if v.check_id in self._check_decisions(s, v.engagement_id, v.requirement_id, v.document_id):
+                    continue
+                items.append(QueueItem("check", v.document_id, v.engagement_id, v.requirement_id, v.check_id,
+                                       reason=v.reason, blocking=v.severity == Severity.CRITICAL,
+                                       retrying=v.transient and v.reason != NO_MODEL))
+        order = {"document_owner": 0, "document_type": 1, "document_security": 2, "check": 3}
+        return sorted(items, key=lambda i: (order[i.kind], not i.blocking, i.document_id, i.engagement_id or 0,
+                                            i.requirement_id or "", i.check_id or ""))
+
+    def verdicts(self, tenant_id: int, engagement_id: int,
+                 requirement_id: str) -> tuple[RequirementState | None, list[CheckResult]]:
+        """A requirement's status and the verdicts behind it as they stand: the engine's, with people's decisions
+        in their place, in the pack's order. Reads only; nothing is judged again."""
+        with self.store.tenant(tenant_id) as s:
+            st = s.get(RequirementState, {"engagement_id": engagement_id, "requirement_id": requirement_id,
+                                          "tenant_id": tenant_id})
+            if st is None or st.document_id is None:
+                return st, []
+            rows = {v.check_id: v for v in s.scalars(select(VerdictRow).where(
+                VerdictRow.engagement_id == engagement_id, VerdictRow.requirement_id == requirement_id,
+                VerdictRow.document_id == st.document_id, VerdictRow.engine_version == self.version))}
+            decided = self._check_decisions(s, engagement_id, requirement_id, st.document_id)
+            out = []
+            for cid in self.pack.requirements[requirement_id].checks:
+                if cid in rows:
+                    r = _from_row(rows[cid])
+                    out.append(_decided(r, decided[cid]) if cid in decided else r)
+            return st, out
+
+    def review_check(self, tenant_id: int, engagement_id: int, requirement_id: str, check_id: str,
+                     verdict: Verdict | str, reviewer: str, note: str = "", kind: str = "queue") -> Status:
+        """A person's verdict on a check of the document behind a requirement. Use it when the reading is right
+        but the judgement needs a person; when the reading is wrong, correct the field instead and let the rules
+        judge it. Returns the requirement's status afterwards."""
+        verdict = Verdict(verdict)
+        if verdict not in (Verdict.PASS, Verdict.FAIL):
+            raise ValueError("a person decides PASS or FAIL; a check nobody can decide stays in the queue")
+        if check_id not in self.pack.requirements[requirement_id].checks:
+            raise KeyError(f"requirement {requirement_id} has no check {check_id}")
+        with self.store.tenant(tenant_id) as s:
+            key = {"engagement_id": engagement_id, "requirement_id": requirement_id, "tenant_id": tenant_id}
+            state = s.get(RequirementState, key)
+            if state is None or state.document_id is None:
+                raise KeyError("no document is being judged for this requirement")
+            row = s.scalar(select(VerdictRow).where(
+                VerdictRow.engagement_id == engagement_id, VerdictRow.requirement_id == requirement_id,
+                VerdictRow.check_id == check_id, VerdictRow.document_id == state.document_id,
+                VerdictRow.engine_version == self.version))
+            machine = row.verdict if row is not None else "MISSING"
+            s.add(CheckReview(engagement_id=engagement_id, requirement_id=requirement_id, check_id=check_id,
+                              document_id=state.document_id, verdict=verdict.value, machine_verdict=machine,
+                              rule_digest=self.pack.rule_digest(check_id), kind=kind, reviewer=reviewer, note=note))
+            s.add(AuditRow(actor=reviewer, action="check_reviewed",
+                           target=f"engagement:{engagement_id}/{requirement_id}/{check_id}",
+                           detail={"document": state.document_id, "engine": machine, "person": verdict.value,
+                                   "kind": kind, "note": note}))
+            s.flush()
+            self._recompute(s, tenant_id, (engagement_id, requirement_id))
+            return Status(s.get(RequirementState, key).status)
+
+    def correct_field(self, tenant_id: int, document_id: int, field: str, raw: str, reviewer: str,
+                      note: str = "") -> None:
+        """A person's reading of a field, typed as it appears on the page. It must parse as that field's type, like
+        any reading; then every check that uses it is judged again."""
+        with self.store.tenant(tenant_id) as s:
+            doc = s.get(Document, document_id)
+            if doc is None or doc.doc_type is None:
+                raise KeyError(f"no classified document {document_id} for tenant {tenant_id}")
+            spec = self.pack.doc_types[doc.doc_type].fields.get(field)
+            if spec is None:
+                raise KeyError(f"a {doc.doc_type} has no field {field}")
+            if parse_value(spec.type, raw) is None:
+                raise ValueError(f"'{raw}' does not read as a {spec.type}")
+            read = (doc.fields or {}).get(field, {}).get("raw")
+            clash = [c["raw"] for c in (doc.conflicts or {}).get(field, [])]
+            machine = read if read is not None else (" | ".join(clash) if clash else None)
+            s.add(FieldCorrection(document_id=doc.id, field=field, raw=raw, machine_raw=machine, reviewer=reviewer,
+                                  note=note))
+            s.add(AuditRow(actor=reviewer, action="field_corrected", target=f"document:{doc.id}/{field}",
+                           detail={"engine": machine, "person": raw, "note": note}))
+            s.flush()
+            self._redo(s, tenant_id, doc)
+
+    def classify_document(self, tenant_id: int, document_id: int, doc_type: str, reviewer: str,
+                          note: str = "") -> None:
+        if doc_type not in self.pack.doc_types:
+            raise KeyError(f"unknown document type {doc_type}")
+        self._document_decision(tenant_id, document_id, "classify", reviewer, note, doc_type=doc_type)
+
+    def assign(self, tenant_id: int, document_id: int, supplier_id: int, reviewer: str, note: str = "") -> None:
+        self._document_decision(tenant_id, document_id, "assign", reviewer, note, supplier_id=supplier_id)
+
+    def reject(self, tenant_id: int, document_id: int, reviewer: str, note: str = "") -> None:
+        self._document_decision(tenant_id, document_id, "reject", reviewer, note)
+
+    def clear(self, tenant_id: int, document_id: int, reviewer: str, note: str = "") -> None:
+        """A person has read a document that carries text aimed at automated readers and accepts it as evidence.
+        Its statuses may vouch again; the model still never reads it, so its model checks need a person too."""
+        self._document_decision(tenant_id, document_id, "clear", reviewer, note)
+
+    def _document_decision(self, tenant_id: int, document_id: int, action: str, reviewer: str, note: str,
+                           doc_type: str | None = None, supplier_id: int | None = None) -> None:
+        with self.store.tenant(tenant_id) as s:
+            doc = s.get(Document, document_id)
+            if doc is None:
+                raise KeyError(f"document {document_id} not found for tenant {tenant_id}")
+            if action == "assign":
+                if doc.doc_type is None:
+                    raise ValueError("say what the document is before saying whose it is")
+                if s.get(Supplier, supplier_id) is None:
+                    raise KeyError(f"supplier {supplier_id} not found for tenant {tenant_id}")
+            if action == "clear" and not doc.hostile:
+                raise ValueError("nothing to clear: the document has no security finding")
+            machine = {"doc_type": doc.doc_type, "supplier_id": doc.supplier_id, "state": doc.state}
+            s.add(DocumentReview(document_id=doc.id, action=action, doc_type=doc_type, supplier_id=supplier_id,
+                                 machine=machine, reviewer=reviewer, note=note))
+            s.add(AuditRow(actor=reviewer, action=f"document_{action}", target=f"document:{doc.id}",
+                           detail={"engine": machine, "doc_type": doc_type, "supplier": supplier_id, "note": note}))
+            s.flush()
+            self._redo(s, tenant_id, doc)
+
+    def _redo(self, s: Session, tenant_id: int, doc: Document) -> None:
+        """Derive a document again from its cached reading and every decision people made about it, then
+        recompute each requirement it bore on before or bears on now. Its verdicts are judged afresh (the inputs
+        changed); extraction and model answers come from their caches, so this costs nothing."""
+        before = self._affected(s, doc)
+        up = s.scalar(select(UploadRow).where(UploadRow.sha256 == doc.sha256).order_by(UploadRow.uploaded_at))
+        self._understand(s, tenant_id, doc, up)
+        s.execute(delete(VerdictRow).where(VerdictRow.document_id == doc.id, VerdictRow.engine_version == self.version))
+        for key in sorted(before | self._affected(s, doc)):
+            self._recompute(s, tenant_id, key)
+
+    def _document_decisions(self, s: Session, doc_id: int) -> dict[str, DocumentReview]:
+        out: dict[str, DocumentReview] = {}
+        for d in s.scalars(select(DocumentReview).where(DocumentReview.document_id == doc_id)
+                           .order_by(DocumentReview.id)):
+            out[d.action] = d
+            if d.action in ("assign", "reject"):
+                out["disposition"] = d
+        return out
+
+    def _check_decisions(self, s: Session, eid: int, rid: str, doc_id: int) -> dict[str, CheckReview]:
+        """The latest decision per check that still applies: one made under the check's current definition."""
+        out: dict[str, CheckReview] = {}
+        for d in s.scalars(select(CheckReview).where(CheckReview.engagement_id == eid, CheckReview.requirement_id == rid,
+                                                     CheckReview.document_id == doc_id).order_by(CheckReview.id)):
+            if d.rule_digest == self.pack.rule_digest(d.check_id):
+                out[d.check_id] = d
+        return out
+
+    def _fields(self, s: Session, doc_id: int, doc_type: str, ex: Extraction) -> Fields:
+        """What extraction read, with every reading a person corrected in its place."""
+        spec = self.pack.doc_types[doc_type]
+        fields = read_fields(spec, ex)
+        for c in s.scalars(select(FieldCorrection).where(FieldCorrection.document_id == doc_id)
+                           .order_by(FieldCorrection.id)):
+            fs = spec.fields.get(c.field)
+            value = parse_value(fs.type, c.raw) if fs else None
+            if value is None:
+                continue                          # a field this type does not have: the type was changed since
+            prior = fields.values.get(c.field)
+            fields.values[c.field] = FieldValue(name=c.field, value=value, raw=c.raw, page=prior.page if prior else None,
+                                                line=f"{c.raw} (read by {c.reviewer})", source="reviewer")
+            fields.conflicts.pop(c.field, None)
+            fields.unparsed.pop(c.field, None)
+        return fields
+
     # ------------------------------------------------------------------ understanding
     def _extraction_key(self, tenant_id: int, sha: str) -> dict:
         return {"sha256": sha, "tenant_id": tenant_id, "extractor": self.extractor.name,
@@ -243,31 +451,49 @@ class Engine:
         return fallback
 
     def _understand(self, s: Session, tenant_id: int, doc: Document, up: UploadRow) -> None:
+        """Derive everything about a document from its reading, then apply what people decided about it: a decision
+        is an input like the file itself, so re-deriving (a re-index, a new engine) never loses it."""
         ex = self._extraction(s, tenant_id, doc.sha256)
-        fallback = self._classify_with_model(s, tenant_id)
-        cls = classify(self.pack, up.filename, ex, model_fallback=fallback)
-        if cls.method == "model" and cls.scores.get(cls.doc_type, 0) < 0.2:
-            cls.doc_type, cls.method = None, "none"        # a model's label needs some support on the page
+        decided = self._document_decisions(s, doc.id)
+        if "classify" in decided:
+            cls = Classification(decided["classify"].doc_type, 1.0, "reviewer")
+        else:
+            cls = classify(self.pack, up.filename, ex, model_fallback=self._classify_with_model(s, tenant_id))
+            if cls.method == "model" and cls.scores.get(cls.doc_type, 0) < 0.2:
+                cls.doc_type, cls.method = None, "none"    # a model's label needs some support on the page
         doc.doc_type, doc.class_method, doc.class_score = cls.doc_type, cls.method, cls.score
         doc.identifiers = identifiers(ex)
         hostile = hostile_spans(self.pack, ex)
-        doc.hostile = bool(hostile)
+        doc.hostile, doc.cleared = bool(hostile), "clear" in decided
         if hostile and not s.scalar(select(func.count()).select_from(AuditRow).where(
                 AuditRow.action == "security_finding", AuditRow.target == f"document:{doc.id}")):
             s.add(AuditRow(actor="engine", action="security_finding", target=f"document:{doc.id}",
                            detail={"finding": "text aimed at automated readers", "spans": hostile[:3]}))
         doc.engine_version, doc.processed_at = self.version, utcnow()
+        disposition = decided.get("disposition")
+        if disposition is not None and disposition.action == "reject":
+            doc.state, doc.supplier_id, doc.covers, doc.fields, doc.conflicts = "rejected", None, [], {}, {}
+            doc.match_detail = {"reason": f"rejected by {disposition.reviewer}" +
+                                (f": {disposition.note}" if disposition.note else "")}
+            return
         if cls.doc_type is None:
             doc.state, doc.supplier_id, doc.covers, doc.fields, doc.conflicts = "unknown", None, [], {}, {}
             doc.match_detail = {"reason": "document type not recognised"}
             return
-        fields = read_fields(self.pack.doc_types[cls.doc_type], ex)
+        fields = self._fields(s, doc.id, cls.doc_type, ex)
         doc.fields = {k: {"value": _jsonable(v.value), "raw": v.raw, "page": v.page, "line": v.line}
                       for k, v in fields.values.items()}
         doc.conflicts = {k: [{"raw": v.raw, "page": v.page} for v in vs] for k, vs in fields.conflicts.items()}
         name = fields.get(NAME_FIELD[cls.doc_type])
-        covered = fields.get("covered_entities") or []
-        m = match(s, cls.doc_type, name if isinstance(name, str) else None, doc.identifiers, up, covered)
+        covered_names = fields.get("covered_entities") or []
+        if disposition is not None:                       # a person said whose document it is
+            doc.supplier_id = disposition.supplier_id
+            doc.covers = covered(s, covered_names, disposition.supplier_id) if covered_names else []
+            doc.match_method, doc.match_score, doc.state = "reviewer", 100.0, "matched"
+            doc.match_detail = {"reason": f"assigned by {disposition.reviewer}" +
+                                (f": {disposition.note}" if disposition.note else ""), "candidates": [], "margin": 0.0}
+            return
+        m = match(s, cls.doc_type, name if isinstance(name, str) else None, doc.identifiers, up, covered_names)
         doc.supplier_id, doc.covers = m.supplier_id, m.covers
         doc.match_method, doc.match_score = m.method, m.score
         doc.match_detail = {"reason": m.reason, "candidates": m.candidates, "margin": m.margin}
@@ -323,7 +549,7 @@ class Engine:
         pending = applicable and self._pending(s, e, req)
         results = self._results(s, tenant_id, e, rid, req, doc, via_parent, force) if doc is not None else None
         status, reasons = decide(applicable=applicable, results=results, via_parent=via_parent, attested=attested,
-                                 pending_review=pending, hostile=bool(doc and doc.hostile))
+                                 pending_review=pending, hostile=bool(doc and doc.hostile and not doc.cleared))
         state = s.get(RequirementState, {"engagement_id": eid, "requirement_id": rid, "tenant_id": tenant_id})
         if state is None:
             s.add(RequirementState(engagement_id=eid, requirement_id=rid, tenant_id=tenant_id, status=status,
@@ -343,13 +569,17 @@ class Engine:
         rows = {v.check_id: v for v in s.scalars(select(VerdictRow).where(
             VerdictRow.engagement_id == e.id, VerdictRow.requirement_id == rid, VerdictRow.document_id == doc.id,
             VerdictRow.engine_version == self.version))}
+        decided = self._check_decisions(s, e.id, rid, doc.id)
+
+        def effective(cid: str, r: CheckResult) -> CheckResult:
+            return _decided(r, decided[cid]) if cid in decided else r     # a person's verdict stands over the engine's
         results = {cid: _from_row(v) for cid, v in rows.items() if not v.transient and not force}
         missing = [cid for cid in req.checks if cid not in results]     # new, transient (retried) or forced
         if missing:
             supplier = s.get(Supplier, e.supplier_id)
             insured = s.get(Supplier, doc.supplier_id) if via_parent else supplier
             ex = self._extraction(s, tenant_id, doc.sha256)
-            fields = read_fields(self.pack.doc_types[req.doc_type], ex)
+            fields = self._fields(s, doc.id, req.doc_type, ex)
             uploads = s.scalars(select(UploadRow).where(UploadRow.sha256 == doc.sha256)).all()
             ctx = CheckContext(pack=self.pack, as_of=self.as_of, engagement=e, supplier=supplier, insured_party=insured,
                                via_parent=via_parent, document_id=doc.id, fields=fields, uploads=list(uploads),
@@ -363,11 +593,12 @@ class Engine:
                     r = CheckResult(check_id=cid, requirement_id=rid, verdict=Verdict.SKIPPED, severity=spec.severity,
                                     tier=spec.tier, reason="does not apply to this engagement")
                 elif spec.tier == Tier.MODEL:
-                    r = self._model_check(s, tenant_id, cid, rid, doc, ex, {**known, **results})
+                    so_far = {c: effective(c, r) for c, r in {**known, **results}.items()}
+                    r = self._model_check(s, tenant_id, cid, rid, doc, ex, so_far)
                 else:
                     r = evaluate(cid, rid, ctx)
                 results[cid] = self._store(s, e.id, doc.id, r, rows.get(cid))
-        return [results[cid] for cid in req.checks]
+        return [effective(cid, results[cid]) for cid in req.checks]
 
     def _model_check(self, s: Session, tenant_id: int, cid: str, rid: str, doc: Document, ex: Extraction,
                      so_far: dict[str, CheckResult]) -> CheckResult:
@@ -381,9 +612,12 @@ class Engine:
         decided = next((r for r in so_far.values() if r.severity == Severity.CRITICAL and r.verdict == Verdict.FAIL
                         and r.tier != Tier.MODEL), None)
         if decided is not None:
-            return res(Verdict.SKIPPED, f"not evaluated: {decided.check_id} already decides the outcome")
+            # a skip holds only while the deciding failure holds (a person may overturn it), so it is derived
+            # again on every pass; that costs nothing, no model is asked
+            return res(Verdict.SKIPPED, f"not evaluated: {decided.check_id} already decides the outcome",
+                       transient=True)
         if self.model is None:
-            return res(Verdict.ABSTAIN, "no model is configured for this check", transient=True)
+            return res(Verdict.ABSTAIN, NO_MODEL, transient=True)
         lines = [line.text for p in ex.pages for line in p.lines]
         excerpt = "\n...\n".join(locate(lines, spec.params["search"]))
         client = _TenantCachedModel(self.model, s, tenant_id, self.clock().date())
@@ -421,4 +655,16 @@ def _from_row(v: VerdictRow) -> CheckResult:
                        lapsed=v.lapsed)
 
 
-__all__ = ["Engine", "Outcome", "Fields"]
+def _decided(r: CheckResult, d: CheckReview) -> CheckResult:
+    """The engine's result with a person's verdict in its place. The engine's evidence stays; the person's note joins
+    it, and the reason says what the engine had said."""
+    human = Verdict(d.verdict)
+    hint = (r.fix_hint or d.note or "A reviewer found this check failed; see the review record.") \
+        if human == Verdict.FAIL else None
+    return r.model_copy(update={
+        "verdict": human, "fix_hint": hint, "transient": False, "lapsed": r.lapsed and human == Verdict.FAIL,
+        "reason": f"decided by {d.reviewer}" + (f": {d.note}" if d.note else "") + f" (the engine said {r.verdict})",
+        "evidence": [*r.evidence, Evidence(document_id=d.document_id, quote=d.note or None, source="reviewer")]})
+
+
+__all__ = ["Engine", "Outcome", "QueueItem", "Fields"]

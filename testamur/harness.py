@@ -114,6 +114,8 @@ def run(world_dir: str | Path, db_path: str | Path, model: ModelClient | None, *
     blob_root = db_path.parent / (db_path.stem + "_blobs")
     shutil.rmtree(blob_root, ignore_errors=True)
     store = Store(f"sqlite:///{db_path}")
+    store.setting("as_of", world.as_of.isoformat())          # so later commands judge at the same date
+    store.setting("blob_root", str(blob_root))
     load_registry(store, world)
     engine = Engine(store, pack, world.as_of, blob_root, model=model)
 
@@ -145,9 +147,17 @@ def run(world_dir: str | Path, db_path: str | Path, model: ModelClient | None, *
     meta = {"generated": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"), "commit": git_stamp(Path.cwd()),
             "command": command or " ".join(sys.argv), "world_seed": world.seed, "world_size": world.size,
             "as_of": world.as_of.isoformat(), "pack": pack.digest, "engine": engine.version,
-            "model": getattr(model, "model_id", None) or "none", "ocr": engine.extractor.version,
+            "model": getattr(model, "model_id", None) or "none", "model_mode": _model_mode(model),
+            "ocr": engine.extractor.version,
             "uploads": len(world.uploads), "python": sys.version.split()[0]}
     return Report(meta, metrics)
+
+
+def _model_mode(model) -> str:
+    """live: answers computed now; replay: answers recorded earlier with this model, replayed exactly."""
+    if model is None:
+        return "none"
+    return "replay" if getattr(model, "inner", "live") is None else "live"
 
 
 def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]:
@@ -317,7 +327,8 @@ def render(r: Report) -> str:
     out = [f"# Harness report: {meta['world_size']} world, seed {meta['world_seed']}", "",
            f"**{'PASSED' if r.passed else 'FAILED'}**: {sum(g['ok'] for g in r.gates)} of {len(r.gates)} gates. "
            f"Generated {meta['generated']} at commit `{meta['commit']}` with `{meta['command']}`.", "",
-           f"Engine `{meta['engine']}`, OCR `{meta['ocr']}`, model `{meta['model']}`, as-of date {meta['as_of']}, "
+           f"Engine `{meta['engine']}`, OCR `{meta['ocr']}`, model `{meta['model']}`"
+           f"{' (answers replayed from a recording)' if meta.get('model_mode') == 'replay' else ''}, as-of date {meta['as_of']}, "
            f"Python {meta['python']}. {meta['uploads']} uploads, {cl['documents']} distinct documents.", "",
            "## Gates", "", "| Gate | Value | Limit | Result |", "|---|---|---|---|"]
     for g in r.gates:
@@ -362,7 +373,6 @@ def render(r: Report) -> str:
             "## What this does not show", "",
             "- The world is synthetic: fictional suppliers and documents rendered from templates, then degraded. It is "
             "adversarial by design, but real evidence is messier in ways a generator does not anticipate.",
-            "- Model-tier numbers come from synthetic contract clauses; expert-labelled real contracts are measured "
-            "separately.",
+            "- Model-tier numbers come from synthetic contract clauses, not from real contracts.",
             "- Timings are what this machine measured, not a benchmark.", ""]
     return "\n".join(out)

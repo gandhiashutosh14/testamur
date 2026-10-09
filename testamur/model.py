@@ -82,9 +82,10 @@ class FieldValue(BaseModel):
     name: str
     value: Any
     raw: str
-    page: int
+    page: int | None = None
     line: str
     conf: float = 1.0
+    source: str | None = None       # "reviewer" when a person supplied the reading
 
 
 class Evidence(BaseModel):

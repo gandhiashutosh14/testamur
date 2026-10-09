@@ -3,6 +3,7 @@ type or tightening a check is a reviewed change to YAML, not to code."""
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -14,6 +15,12 @@ from pydantic import BaseModel, Field, model_validator
 from .model import Severity, Tier
 
 PACKS = Path(__file__).parent / "packs"
+
+# The pack tables each rule reads. A person's decision about a check is bound to the check's definition and to these
+# tables (see Pack.rule_digest): change either and the decision stops applying, because the check no longer means
+# what the person decided about.
+RULE_TABLES = {"money_at_least": ("tier_minimum_liability",), "in_allowlist": ("accredited_bodies",),
+               "scope_mentions": ("service_terms",)}
 
 
 class FieldSpec(BaseModel):
@@ -85,6 +92,13 @@ class Pack(BaseModel):
 
     def injection_patterns(self) -> list[re.Pattern[str]]:
         return [re.compile(m, re.I) for m in self.injection_markers]
+
+    def rule_digest(self, check_id: str) -> str:
+        """What a check means: its definition (not its wording for people) and the pack tables its rule reads."""
+        spec = self.checks[check_id]
+        tables = {t: getattr(self, t) for t in RULE_TABLES.get(spec.rule, ())}
+        raw = json.dumps({"check": spec.model_dump(mode="json", exclude={"hint"}), "tables": tables}, sort_keys=True)
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
 
 
 @lru_cache(maxsize=8)
