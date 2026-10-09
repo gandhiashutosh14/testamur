@@ -1,6 +1,6 @@
 {
   "meta": {
-    "commit": "3e51f93",
+    "commit": "4298b0e+dirty",
     "command": "testamur shadow --world data/world_full11 --report reports/shadow-ocr-full-seed11.md"
   },
   "results": [
@@ -13,8 +13,8 @@
       "candidate_accuracy": 1.0,
       "fields_lost": 0,
       "fields_gained": 0,
-      "canonical_seconds_per_page": 1.05,
-      "candidate_seconds_per_page": 0.647,
+      "canonical_seconds_per_page": 1.04,
+      "candidate_seconds_per_page": 0.64,
       "gate": {
         "accuracy drop (points)": {
           "value": 0.0,
@@ -29,7 +29,7 @@
           "ok": true
         },
         "speed-up": {
-          "value": 1.62,
+          "value": 1.63,
           "op": ">=",
           "limit": 1.2,
           "ok": true
@@ -48,8 +48,8 @@
       "candidate_accuracy": 0.8486,
       "fields_lost": 28,
       "fields_gained": 0,
-      "canonical_seconds_per_page": 1.104,
-      "candidate_seconds_per_page": 1.679,
+      "canonical_seconds_per_page": 1.038,
+      "candidate_seconds_per_page": 1.569,
       "gate": {
         "accuracy drop (points)": {
           "value": 15.14,

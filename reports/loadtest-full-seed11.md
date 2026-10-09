@@ -1,18 +1,18 @@
 # Load test: full world, seed 11
 
-Commit `3e51f93`, command `testamur loadtest --world data/world_full11 --out data/load_full11 --report reports/loadtest-full-seed11.md --workers 1,2,4 --budget-pages 40`, 16 logical CPUs on the author's laptop. Every upload is enqueued at once; worker processes drain the queue; the clause model is off (OCR is the cost being measured).
+Commit `4298b0e+dirty`, command `testamur loadtest --world data/world_full11 --out data/load_full11 --report reports/loadtest-full-seed11.md --workers 1,2,4 --budget-pages 40`, 16 logical CPUs on the author's laptop. Every upload is enqueued at once; worker processes drain the queue; the clause model is off (OCR is the cost being measured).
 
 ## Scaling
 
 | Workers | Uploads | Wall time | Uploads/min | OCR pages | OCR pages/min | Job latency p50 / p95 | Dead | Statuses identical to 1 worker |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 378 | 221.9 s | 102.2 | 146 | 39.5 | 114.9 s / 211.2 s | 0 | yes |
-| 2 | 378 | 136.9 s | 165.7 | 148 | 64.9 | 72.5 s / 129.0 s | 0 | yes |
-| 4 | 378 | 110.4 s | 205.5 | 151 | 82.1 | 57.8 s / 104.0 s | 0 | yes |
+| 1 | 378 | 178.1 s | 127.4 | 146 | 49.2 | 91.6 s / 169.0 s | 0 | yes |
+| 2 | 378 | 123.2 s | 184.1 | 146 | 71.1 | 63.1 s / 117.1 s | 0 | yes |
+| 4 | 378 | 98.5 s | 230.2 | 146 | 88.9 | 52.6 s / 94.8 s | 0 | yes |
 
 ## Spend gate
 
-Tenant 1 capped at 40 OCR pages a day. After the first day 13 jobs were waiting (deferred, not failed); the clock was advanced a day at a time and the queue drained after 1 extra days. The most pages paid on any day: 40 (the bound is the larger of the cap and the largest single document, 2 pages: held). Jobs done: 378 of 378; dead: 0. Final statuses identical to the run without a cap: yes.
+Tenant 1 capped at 40 OCR pages a day. After the first day 12 jobs were waiting (deferred, not failed); the clock was advanced a day at a time and the queue drained after 1 extra days. The most pages paid on any day: 40 (the bound is the larger of the cap and the largest single document, 2 pages: held). Jobs done: 378 of 378; dead: 0. Final statuses identical to the run without a cap: yes.
 
 ## Crash recovery
 
