@@ -2,17 +2,24 @@
 rounded up, a lapse is reported as a lapse, and only clean evidence earns a vouching status."""
 from __future__ import annotations
 
-from .model import CheckResult, Severity, Status, Verdict
+from .model import VOUCHING, CheckResult, Severity, Status, Verdict
 
 
 def decide(*, applicable: bool, results: list[CheckResult] | None, via_parent: bool = False,
-           attested: bool = False, pending_review: bool = False) -> tuple[Status, list[str]]:
+           attested: bool = False, pending_review: bool = False, hostile: bool = False) -> tuple[Status, list[str]]:
     """`results` is None when no current document matched the requirement.
 
     `pending_review` means an unresolved document (an abstained match) could belong to this supplier. Then a
     negative status (missing, expired, not satisfied) is not reported: the pending document may be the renewal,
-    so a person resolves it first."""
+    so a person resolves it first.
+
+    `hostile` means the deciding document carries text aimed at automated readers. Its rule checks may all pass
+    (rules do not follow instructions), but a document that tries to manipulate its reviewer is itself a red flag:
+    it never earns a vouching status until a person has cleared the security finding."""
     status, reasons = _decide(applicable, results, via_parent, attested)
+    if hostile and results is not None and status in VOUCHING:
+        return Status.NEEDS_REVIEW, reasons + [f"the document carries text aimed at automated readers; a person must "
+                                               f"clear it (would be {status.value})"]
     if pending_review and status in (Status.MISSING, Status.EXPIRED, Status.NOT_SATISFIED):
         return Status.NEEDS_REVIEW, reasons + [f"an unresolved document may change this (would be {status.value})"]
     return status, reasons

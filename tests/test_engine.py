@@ -1,6 +1,7 @@
 """The engine end to end on a tiny born-digital world (no OCR, no model): fast enough for every push.
 
 The OCR path and the model tier are exercised by the harness job in CI."""
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,15 @@ def tiny(tmp_path_factory):
     out = tmp_path_factory.mktemp("world")
     world = build_world(seed=3, size="tiny", out=out, digital_only=True)
     return out, world
+
+
+def test_the_same_seed_gives_the_same_bytes(tmp_path):
+    """Scans and photos included: recorded model calls and committed reports depend on it."""
+    def digest(out):
+        build_world(seed=5, size="tiny", out=out)
+        return sorted(sha256(p.read_bytes()).hexdigest() for p in (out / "files").iterdir())
+    first, second = digest(tmp_path / "a"), digest(tmp_path / "b")
+    assert len(first) > 10 and first == second
 
 
 def test_the_tiny_world_passes_the_dangerous_direction_gates(tiny, tmp_path):

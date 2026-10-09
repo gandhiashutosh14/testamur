@@ -447,7 +447,7 @@ class _Builder:
         if variant == "changed_iban":                  # valid, but not the account on file
             iban = nm.iban(rng, rng.choice([b for b in nm.BANKS if b != s.bank]))
         if variant == "bad_iban":
-            i = rng.randint(6, len(iban) - 1)
+            i = max(rng.randint(6, len(iban) - 1), 8)      # a digit of the account number, not the bank code
             iban = iban[:i] + str((int(iban[i]) + rng.randint(1, 8)) % 10) + iban[i + 1:]
         holder = s.legal_name if variant != "holder_mismatch" else \
             s.legal_name.split(" ")[0] + rng.choice([" Trading Ltd", " Payments Ltd", " Services UK Ltd"])

@@ -42,3 +42,9 @@ def test_a_pending_document_turns_bad_news_into_review_but_never_good_news():
     assert decide(applicable=True, results=expired, pending_review=True)[0] == Status.NEEDS_REVIEW
     assert decide(applicable=True, results=None, pending_review=True)[0] == Status.NEEDS_REVIEW
     assert decide(applicable=True, results=[r("a", Verdict.PASS)], pending_review=True)[0] == Status.SATISFIED
+
+
+def test_hostile_evidence_never_vouches_even_when_every_rule_passes():
+    clean = [r("a", Verdict.PASS)]
+    assert decide(applicable=True, results=clean, hostile=True)[0] == Status.NEEDS_REVIEW
+    assert decide(applicable=True, results=[r("x", Verdict.FAIL)], hostile=True)[0] == Status.NOT_SATISFIED

@@ -22,6 +22,8 @@ MUTANTS = [
      "tests/test_status_policy.py"),
     ("a pending document no longer blocks bad news", "testamur/status.py",
      "if pending_review and status in", "if False and status in", "tests/test_status_policy.py"),
+    ("hostile evidence earns a vouching status", "testamur/status.py",
+     "if hostile and results is not None and status in VOUCHING:", "if False:", "tests/test_status_policy.py"),
     ("an expiry check passes everything", "testamur/checks.py",
      "if fv.value >= target:", "if True:", "tests/test_checks.py"),
     ("contradictory values are judged anyway", "testamur/checks.py",

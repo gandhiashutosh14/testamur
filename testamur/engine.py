@@ -210,7 +210,8 @@ class Engine:
         doc.identifiers = identifiers(ex)
         hostile = hostile_spans(self.pack, ex)
         doc.hostile = bool(hostile)
-        if hostile:
+        if hostile and not s.scalar(select(func.count()).select_from(AuditRow).where(
+                AuditRow.action == "security_finding", AuditRow.target == f"document:{doc.id}")):
             s.add(AuditRow(actor="engine", action="security_finding", target=f"document:{doc.id}",
                            detail={"finding": "text aimed at automated readers", "spans": hostile[:3]}))
         doc.engine_version, doc.processed_at = self.version, utcnow()
@@ -280,7 +281,7 @@ class Engine:
         pending = applicable and self._pending(s, e, req)
         results = self._results(s, tenant_id, e, rid, req, doc, via_parent, force) if doc is not None else None
         status, reasons = decide(applicable=applicable, results=results, via_parent=via_parent, attested=attested,
-                                 pending_review=pending)
+                                 pending_review=pending, hostile=bool(doc and doc.hostile))
         state = s.get(RequirementState, {"engagement_id": eid, "requirement_id": rid, "tenant_id": tenant_id})
         if state is None:
             s.add(RequirementState(engagement_id=eid, requirement_id=rid, tenant_id=tenant_id, status=status,

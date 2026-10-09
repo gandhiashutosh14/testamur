@@ -122,7 +122,8 @@ def truth_statuses(world: World, pack: Pack | None = None) -> dict[tuple[int, st
             results = None
             if up is not None:
                 results = [truth_check(pack, world, cid, rid, e, up, via_parent) for cid in req.checks]
-            status, _ = decide(applicable=applicable, results=results, via_parent=via_parent, attested=attested)
+            status, _ = decide(applicable=applicable, results=results, via_parent=via_parent, attested=attested,
+                               hostile=bool(up and up.truth.injection))
             out[(e.id, rid)] = {"status": status, "upload_id": up.id if up else None, "via_parent": via_parent,
                                 "checks": {r.check_id: r.verdict for r in results} if results else {}}
     return out

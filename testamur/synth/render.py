@@ -10,7 +10,7 @@ import numpy as np
 import pypdfium2 as pdfium
 from PIL import Image, ImageFilter
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.utils import simpleSplit
+from reportlab.lib.utils import ImageReader, simpleSplit
 from reportlab.pdfgen import canvas
 
 
@@ -79,15 +79,24 @@ def _jpeg(img: Image.Image, quality: int) -> Image.Image:
 
 
 def to_scan_pdf(pdf_bytes: bytes, rng: random.Random) -> bytes:
-    """An image-only PDF, as a flatbed scanner or a multifunction printer produces."""
-    frames = []
+    """An image-only PDF, as a flatbed scanner or a multifunction printer produces. The JPEG of each page is
+    embedded as it is, in a PDF written in invariant mode, so the same seed always yields the same bytes."""
+    pages = []
     for page in _render_pages(pdf_bytes, dpi=rng.choice([150, 170, 200])):
         img = page.convert("L").rotate(rng.uniform(-2.2, 2.2), expand=True, fillcolor=255, resample=Image.BICUBIC)
         img = img.filter(ImageFilter.GaussianBlur(rng.uniform(0.3, 0.9)))
-        img = _jpeg(_noise(img, rng, rng.uniform(4, 12)), rng.randint(45, 80))
-        frames.append(img.convert("RGB"))
+        noisy = _noise(img, rng, rng.uniform(4, 12))
+        jpeg = io.BytesIO()
+        noisy.save(jpeg, format="JPEG", quality=rng.randint(45, 80))
+        pages.append((jpeg.getvalue(), noisy.size))
     out = io.BytesIO()
-    frames[0].save(out, format="PDF", save_all=True, append_images=frames[1:], resolution=150)
+    c = canvas.Canvas(out, invariant=1)
+    for data, (w, h) in pages:
+        size = (w * 72 / 150, h * 72 / 150)
+        c.setPageSize(size)
+        c.drawImage(ImageReader(io.BytesIO(data)), 0, 0, width=size[0], height=size[1])
+        c.showPage()
+    c.save()
     return out.getvalue()
 
 
