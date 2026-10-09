@@ -27,6 +27,7 @@ dependencies = [
 [project.optional-dependencies]
 ocr = ["rapidocr>=3.4", "onnxruntime>=1.17", "opencv-python-headless>=4.9"]
 local-llm = ["llama-cpp-python>=0.3"]
+agents = ["mcp>=2.3,<3"]
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [project.scripts]

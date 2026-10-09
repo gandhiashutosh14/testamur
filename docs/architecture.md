@@ -205,6 +205,24 @@ testamur ask "When does Ashford Applications Ltd's insurance expire?" --db data/
 testamur golden --world data/world --db data/harness.db       # the golden set, traps included
 ```
 
+### A tool surface for agents
+A customer's own agents connect over the Model Context Protocol ([`mcp_server.py`](../testamur/mcp_server.py),
+[`agents.py`](../testamur/agents.py), [ADR 0014](decisions/0014-agents-propose-people-dispose.md)). A key belongs
+to one named agent of one tenant and is stored as a hash; every tool runs in that tenant's session. The tenant's
+catalogue decides which tools exist for its agents: only granted tools are listed, and the grant is checked on every
+call. Reads (engagements, a requirement with its checks, the review queue, open tasks, the assistant) paginate with
+a fixed number of queries per page. There are no write tools: an agent proposes a check verdict, a field reading or
+a document decision, and a person confirms or declines it; a confirmed proposal is applied under the person's name
+with the agent's beside it, once.
+
+```bash
+testamur keys create assistant-bot --tenant 1                  # shown once; stored as a hash
+testamur tools grant ask --by admin@buyer --tenant 1           # the tenant's catalogue
+TESTAMUR_API_KEY=tsk_... testamur mcp --db data/harness.db     # stdio MCP server for that agent
+testamur proposals list --tenant 1                             # what agents asked for
+testamur proposals confirm 3 --by reviewer@buyer --tenant 1    # a person applies it
+```
+
 ### Revisions and retries
 Verdicts are stored per engagement, requirement, check, document and engine version. A transient failure (a timeout,
 a provider error) is recorded as a transient ABSTAIN, retried on the next pass, and never overwrites a conclusive
@@ -269,5 +287,4 @@ cost (a re-index pays for nothing) and about how much it hands to people (deferr
 
 ## What is deliberately not here yet
 
-The roadmap in the README lists what follows: real-contract evaluation of the clause tier, an assistant over the
-same index, a tenant-scoped tool server for agents, and delivery gates.
+The roadmap in the README lists what follows: real-contract evaluation of the clause tier and delivery gates.

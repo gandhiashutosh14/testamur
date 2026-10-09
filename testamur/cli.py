@@ -327,6 +327,74 @@ def golden(world_dir: str = typer.Option("data/world", "--world"), db: str = "da
     typer.echo(f"{r['right']} of {r['questions']} answered right; report -> {report}")
 
 
+keys = typer.Typer(help="Keys for agents: each acts for one tenant.", no_args_is_help=True)
+tools_app = typer.Typer(help="The tenant's tool catalogue: what its agents may call.", no_args_is_help=True)
+proposals = typer.Typer(help="Changes agents proposed: a person confirms or declines each.", no_args_is_help=True)
+app.add_typer(keys, name="keys")
+app.add_typer(tools_app, name="tools")
+app.add_typer(proposals, name="proposals")
+
+
+@keys.command("create")
+def keys_create(name: str, db: str = "data/harness.db", tenant: int = 1):
+    """Create a key for an agent; it is shown once."""
+    from .agents import create_key
+    typer.echo(create_key(_engine(db).store, tenant, name))
+
+
+@tools_app.command("grant")
+def tools_grant(tool: str, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
+    from .agents import grant
+    _decide(grant, _engine(db).store, tenant, tool, by)
+    typer.echo(f"{tool}: granted")
+
+
+@tools_app.command("revoke")
+def tools_revoke(tool: str, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
+    from .agents import revoke
+    revoke(_engine(db).store, tenant, tool, by)
+    typer.echo(f"{tool}: revoked")
+
+
+@tools_app.command("list")
+def tools_list(db: str = "data/harness.db", tenant: int = 1):
+    from .agents import TOOLS, granted
+    have = granted(_engine(db).store, tenant)
+    for tool in TOOLS:
+        typer.echo(f"{'granted' if tool in have else '-':8} {tool}")
+
+
+@proposals.command("list")
+def proposals_list(db: str = "data/harness.db", tenant: int = 1):
+    from .agents import pending_proposals
+    for p in pending_proposals(_engine(db).store, tenant):
+        typer.echo(f"{p['proposal']:5} by {p['by']}: {p['summary']} (expires {p['expires']})")
+
+
+@proposals.command("confirm")
+def proposals_confirm(proposal: int, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
+    """Apply an agent's proposal, under your name with the agent's beside it."""
+    from .agents import decide
+    typer.echo(_decide(decide, _engine(db), tenant, proposal, by, True))
+
+
+@proposals.command("decline")
+def proposals_decline(proposal: int, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
+    from .agents import decide
+    typer.echo(_decide(decide, _engine(db), tenant, proposal, by, False))
+
+
+@app.command()
+def mcp(db: str = "data/harness.db"):
+    """Serve the tenant-scoped tools over MCP (stdio). The agent's key comes from TESTAMUR_API_KEY."""
+    import asyncio
+    import os
+
+    from .mcp_server import build_server
+    server = build_server(_engine(db), os.environ.get("TESTAMUR_API_KEY", ""))
+    asyncio.run(server.run_stdio_async())
+
+
 @app.command()
 def status(db: str = "data/harness.db", tenant: int = 1):
     """Requirement statuses for one tenant."""

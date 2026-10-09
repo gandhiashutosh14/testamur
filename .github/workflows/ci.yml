@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: python -m pip install -e ".[dev,ocr]"
+      - run: python -m pip install -e ".[dev,ocr,agents]"
       - run: ruff check testamur tests scripts
       - name: Tests (a skipped test fails the run unless allow-listed)
         run: pytest -q

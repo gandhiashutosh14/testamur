@@ -386,6 +386,44 @@ class TenantBudget(TenantScoped, Base):
     model_tokens_per_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
+class ApiKey(TenantScoped, Base):
+    """An agent's key: the tenant it acts for and the name it acts under. Only a hash of the key is stored."""
+    __tablename__ = "api_keys"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(80))
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class ToolGrant(TenantScoped, Base):
+    """The tenant's tool catalogue: an agent may call a tool only while the tenant has granted it."""
+    __tablename__ = "tool_grants"
+    __table_args__ = (UniqueConstraint("tenant_id", "tool"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tool: Mapped[str] = mapped_column(String(60))
+    granted_by: Mapped[str] = mapped_column(String(120))
+    granted_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class Proposal(TenantScoped, Base):
+    """A change an agent asked for. Nothing happens until a person confirms it; it is then applied through the same
+    engine call a person would make, and audited with both names. Unconfirmed proposals expire."""
+    __tablename__ = "proposals"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(30))
+    args: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    summary: Mapped[str] = mapped_column(Text)
+    proposed_by: Mapped[str] = mapped_column(String(120))
+    status: Mapped[str] = mapped_column(String(10), default="proposed")    # proposed | applied | declined | expired
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    decided_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    outcome: Mapped[str] = mapped_column(Text, default="")
+
+
 class Setting(Base):
     """Facts about a database that later commands need: the as-of date it was evaluated at, where its files are."""
     __tablename__ = "settings"
