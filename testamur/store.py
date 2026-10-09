@@ -208,6 +208,15 @@ class UsageRow(TenantScoped, Base):
     cached: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+class TenantBudget(TenantScoped, Base):
+    """Per-tenant daily spend caps for the paid steps. None means uncapped. A tenant over its cap waits for the
+    next day; its work is deferred, never dropped."""
+    __tablename__ = "budgets"
+    tenant_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ocr_pages_per_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    model_tokens_per_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
 class AuditRow(TenantScoped, Base):
     __tablename__ = "audit"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -245,15 +254,26 @@ def _scope_writes(session, flush_context, instances):
 
 
 class Store:
-    def __init__(self, url: str = "sqlite:///data/testamur.db"):
+    """On SQLite every transaction begins IMMEDIATE (it takes the write lock at the start), so concurrent workers
+    serialise instead of computing a status from a snapshot another worker is about to change. Long work (OCR) is
+    done outside transactions; see Engine.prefetch. On Postgres a tenant session takes a transaction-scoped advisory
+    lock on its tenant, which serialises status work per tenant while different tenants run in parallel."""
+
+    def __init__(self, url: str = "sqlite:///data/testamur.db", busy_timeout_ms: int = 120_000):
         self.engine = create_engine(url, future=True)
-        if url.startswith("sqlite"):
+        self.dialect = self.engine.dialect.name
+        if self.dialect == "sqlite":
             @event.listens_for(self.engine, "connect")
             def _pragmas(conn, _):
+                conn.isolation_level = None          # let SQLAlchemy's begin event issue BEGIN IMMEDIATE
                 cur = conn.cursor()
                 cur.execute("PRAGMA journal_mode=WAL")
-                cur.execute("PRAGMA busy_timeout=5000")
+                cur.execute(f"PRAGMA busy_timeout={busy_timeout_ms}")
                 cur.close()
+
+            @event.listens_for(self.engine, "begin")
+            def _begin(conn):
+                conn.exec_driver_sql("BEGIN IMMEDIATE")
         Base.metadata.create_all(self.engine)
         self._factory = sessionmaker(self.engine, expire_on_commit=False)
 
@@ -264,6 +284,9 @@ class Store:
             raise TenantScopeError("a tenant session needs a tenant")
         with self._factory() as s:
             s.info["tenant_id"] = tenant_id
+            if self.dialect == "postgresql":
+                from sqlalchemy import text
+                s.execute(text("SELECT pg_advisory_xact_lock(:t)"), {"t": tenant_id})
             yield s
             s.commit()
 

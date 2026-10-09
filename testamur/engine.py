@@ -26,7 +26,7 @@ from pathlib import Path
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from . import __version__
+from . import __version__, budget
 from .checks import CheckContext, evaluate
 from .extract import Extractor, sniff_mime
 from .match import NAME_FIELD, match
@@ -78,21 +78,23 @@ class _TenantCachedModel:
     """The idempotency gate at the provider boundary: one row per (tenant, model, exact prompt). A question asked
     before is answered from the ledger and costs nothing."""
 
-    def __init__(self, inner: ModelClient, session: Session, tenant_id: int):
-        self.inner, self.session, self.tenant_id = inner, session, tenant_id
+    def __init__(self, inner: ModelClient, session: Session, tenant_id: int, today: date):
+        self.inner, self.session, self.tenant_id, self.today = inner, session, tenant_id, today
         self.model_id = inner.model_id
 
     def chat(self, messages: list[dict], max_tokens: int = 200) -> Reply:
         key = call_key(self.model_id, messages, max_tokens)
         row = self.session.get(ModelCall, {"key": key, "tenant_id": self.tenant_id})
         if row is not None:
-            self.session.add(UsageRow(day=date.today(), provider="model",
+            self.session.add(UsageRow(day=self.today, provider="model",
                                       units=row.prompt_tokens + row.completion_tokens, cached=True))
             return Reply(row.response, row.prompt_tokens, row.completion_tokens, 0.0, cached=True)
+        estimate = len(json.dumps(messages)) / 4 + max_tokens          # checked before money is spent
+        budget.check(self.session, self.tenant_id, "model", estimate, self.today)
         reply = self.inner.chat(messages, max_tokens)
         self.session.add(ModelCall(key=key, model=self.model_id, response=reply.text, prompt_tokens=reply.prompt_tokens,
                                    completion_tokens=reply.completion_tokens, seconds=reply.seconds))
-        self.session.add(UsageRow(day=date.today(), provider="model",
+        self.session.add(UsageRow(day=self.today, provider="model",
                                   units=reply.prompt_tokens + reply.completion_tokens, cached=reply.cached))
         self.session.flush()
         return reply
@@ -100,11 +102,12 @@ class _TenantCachedModel:
 
 class Engine:
     def __init__(self, store: Store, pack: Pack, as_of: date, blob_root: str | Path,
-                 extractor: Extractor | None = None, model: ModelClient | None = None):
+                 extractor: Extractor | None = None, model: ModelClient | None = None, clock=utcnow):
         self.store, self.pack, self.as_of = store, pack, as_of
         self.blob_root = Path(blob_root)
         self.extractor = extractor or Extractor()
         self.model = model
+        self.clock = clock                    # wall clock for budgets and usage; injectable for simulation
         self.version = f"{__version__}+pack.{pack.digest}"
 
     # ------------------------------------------------------------------ intake
@@ -124,6 +127,39 @@ class Engine:
             return up.id
 
     # ------------------------------------------------------------------ processing
+    def prefetch(self, tenant_id: int, upload_id: int) -> int:
+        """Run the slow, paid step (OCR) outside any long transaction, so concurrent workers overlap on it and only
+        the short bookkeeping that follows is serialised. Returns the OCR pages paid for (0 on a cache hit)."""
+        with self.store.tenant(tenant_id) as s:
+            up = s.get(UploadRow, upload_id)
+            key = self._extraction_key(tenant_id, up.sha256)
+            if s.get(ExtractionRow, key) is not None:
+                return 0
+            blob = s.get(Blob, {"sha256": up.sha256, "tenant_id": tenant_id})
+            path, mime = blob.path, blob.mime
+
+        reservation: list[int] = []
+
+        def gate(pages: int) -> None:
+            # check and reserve atomically, so two workers cannot both spend the last pages of a budget
+            if pages:
+                with self.store.tenant(tenant_id) as s2:
+                    reservation.append(budget.reserve(s2, tenant_id, "ocr", pages, self.clock().date()).id)
+        try:
+            ex = self.extractor.extract(Path(path).read_bytes(), mime, before_ocr=gate)
+        except Exception:
+            if reservation:
+                with self.store.tenant(tenant_id) as s:
+                    s.execute(delete(UsageRow).where(UsageRow.id == reservation[0]))   # release
+            raise
+        with self.store.tenant(tenant_id) as s:
+            if reservation:
+                s.get(UsageRow, reservation[0]).units = ex.ocr_pages             # settle to what was spent
+            if s.get(ExtractionRow, key) is None:          # another worker may have finished it meanwhile
+                s.add(ExtractionRow(**key, payload=ex.model_dump(mode="json"), ocr_pages=ex.ocr_pages,
+                                    seconds=ex.seconds))
+            return ex.ocr_pages
+
     def process(self, tenant_id: int, upload_id: int) -> Outcome:
         with self.store.tenant(tenant_id) as s:
             up = s.get(UploadRow, upload_id)
@@ -167,22 +203,28 @@ class Engine:
             return len(docs)
 
     # ------------------------------------------------------------------ understanding
+    def _extraction_key(self, tenant_id: int, sha: str) -> dict:
+        return {"sha256": sha, "tenant_id": tenant_id, "extractor": self.extractor.name,
+                "version": self.extractor.version}
+
     def _extraction(self, s: Session, tenant_id: int, sha: str) -> Extraction:
-        key = {"sha256": sha, "tenant_id": tenant_id, "extractor": self.extractor.name, "version": self.extractor.version}
+        key = self._extraction_key(tenant_id, sha)
         row = s.get(ExtractionRow, key)
         if row is not None:
             return Extraction.model_validate(row.payload)
         blob = s.get(Blob, {"sha256": sha, "tenant_id": tenant_id})
-        ex = self.extractor.extract(Path(blob.path).read_bytes(), blob.mime)
+        today = self.clock().date()
+        ex = self.extractor.extract(Path(blob.path).read_bytes(), blob.mime,
+                                    before_ocr=lambda pages: budget.check(s, tenant_id, "ocr", pages, today))
         s.add(ExtractionRow(**key, payload=ex.model_dump(mode="json"), ocr_pages=ex.ocr_pages, seconds=ex.seconds))
         if ex.ocr_pages:
-            s.add(UsageRow(day=date.today(), provider="ocr", units=ex.ocr_pages))
+            s.add(UsageRow(day=today, provider="ocr", units=ex.ocr_pages))
         return ex
 
     def _classify_with_model(self, s: Session, tenant_id: int):
         if self.model is None:
             return None
-        client = _TenantCachedModel(self.model, s, tenant_id)
+        client = _TenantCachedModel(self.model, s, tenant_id, self.clock().date())
 
         def fallback(types: list[str], ex: Extraction):
             text = ex.text(page=1)[:1500]
@@ -194,7 +236,7 @@ class Engine:
             try:
                 data = json.loads(client.chat(msg, max_tokens=60).text)
                 return str(data.get("type", "none")), float(data.get("confidence", 0.0))
-            except CassetteMiss:
+            except (CassetteMiss, budget.BudgetExceeded):
                 raise
             except Exception:  # noqa: BLE001 - a failed fallback leaves the document unclassified, for a person
                 return None
@@ -344,11 +386,11 @@ class Engine:
             return res(Verdict.ABSTAIN, "no model is configured for this check", transient=True)
         lines = [line.text for p in ex.pages for line in p.lines]
         excerpt = "\n...\n".join(locate(lines, spec.params["search"]))
-        client = _TenantCachedModel(self.model, s, tenant_id)
+        client = _TenantCachedModel(self.model, s, tenant_id, self.clock().date())
         try:
             j = judge(client, spec.params["claim"], spec.params["counterclaim"], excerpt)
-        except CassetteMiss:
-            raise
+        except (CassetteMiss, budget.BudgetExceeded):
+            raise                     # a missing recording fails loudly; an exhausted budget defers the whole job
         except Exception as exc:  # noqa: BLE001 - a provider failure is transient, never a verdict
             return res(Verdict.ABSTAIN, f"model call failed: {type(exc).__name__}", transient=True)
         cost = {"model_calls": len(j.calls), "tokens": sum(c.prompt_tokens + c.completion_tokens for c in j.calls),

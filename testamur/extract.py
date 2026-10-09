@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import io
 import logging
+import os
 import time
 from typing import Protocol
 
@@ -28,16 +29,29 @@ class OcrEngine(Protocol):
 
 
 class RapidOcr:
-    """RapidOCR (ONNX Runtime, CPU) with its bundled PP-OCR models: pip-installable, no system binaries."""
-    name = "rapidocr"
+    """RapidOCR (ONNX Runtime, CPU) with its bundled PP-OCR models: pip-installable, no system binaries.
 
-    def __init__(self):
-        from rapidocr import RapidOCR
-        self._engine = RapidOCR(params={"Global.log_level": "warning"})
+    Variants are candidate configurations for a shadow trial (see shadow.py): `fast` skips the text-angle classifier
+    and works on smaller images; `en-v4` swaps in an older English-only recogniser. The canonical engine is
+    `default`; a variant only replaces it after passing the parity gate."""
+
+    def __init__(self, variant: str = "default", threads: int | None = None):
+        from rapidocr import LangRec, ModelType, OCRVersion, RapidOCR
+        variants = {
+            "default": {},
+            "fast": {"Global.use_cls": False, "Global.max_side_len": 1280},
+            "en-v4": {"Rec.lang_type": LangRec.EN, "Rec.model_type": ModelType.MOBILE,
+                      "Rec.ocr_version": OCRVersion.PPOCRV4},
+        }
+        params = {"Global.log_level": "warning", **variants[variant]}
+        if threads:
+            params["EngineConfig.onnxruntime.intra_op_num_threads"] = threads
+        self._engine = RapidOCR(params=params)
         for name in list(logging.root.manager.loggerDict):
             if "rapidocr" in name.lower():
                 logging.getLogger(name).setLevel(logging.WARNING)
         from importlib.metadata import version
+        self.name = "rapidocr" if variant == "default" else f"rapidocr-{variant}"
         self.version = version("rapidocr")
 
     def lines(self, image: Image.Image, page: int) -> list[Line]:
@@ -104,20 +118,28 @@ class Extractor:
     @property
     def ocr(self) -> OcrEngine:
         if self._ocr is None:
-            self._ocr = RapidOcr()
+            # the canonical engine, or a candidate that passed its shadow trial: a configuration switch
+            self._ocr = RapidOcr(os.environ.get("TESTAMUR_OCR_VARIANT", "default"))
         return self._ocr
 
     @property
     def version(self) -> str:
         return f"1+{self.ocr.name}-{self.ocr.version}"
 
-    def extract(self, data: bytes, mime: str) -> Extraction:
+    def extract(self, data: bytes, mime: str, before_ocr=None) -> Extraction:
+        """`before_ocr(pages)` is called with the number of pages about to go through OCR, before any does: the
+        hook a spend gate uses to refuse the cost up front."""
         t0 = time.perf_counter()
         is_pdf = mime == "application/pdf"
         pages = _text_layer(data) if is_pdf else None
         ocr_pages = 0
         if pages is None or any(len(" ".join(line.text for line in p.lines)) < MIN_TEXT_CHARS for p in pages):
             images = _render(data, is_pdf)
+            if before_ocr is not None:
+                needed = sum(1 for i in range(1, len(images) + 1)
+                             if not (pages and i <= len(pages)
+                                     and len(" ".join(x.text for x in pages[i - 1].lines)) >= MIN_TEXT_CHARS))
+                before_ocr(needed)
             merged = []
             for i, img in enumerate(images, start=1):
                 existing = pages[i - 1] if pages and i <= len(pages) else None

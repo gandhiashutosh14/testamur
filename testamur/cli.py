@@ -7,7 +7,8 @@ from pathlib import Path
 import typer
 from sqlalchemy import select
 
-from .model import Verdict
+from .model import TIER_ORDER, Tier, Verdict
+from .pack import load_pack
 
 app = typer.Typer(add_completion=False, no_args_is_help=True,
                   help="TESTAMUR: evidence assurance for supplier compliance.")
@@ -56,6 +57,37 @@ def harness(world_dir: str = typer.Option("data/world", "--world"), db: str = "d
 
 
 @app.command()
+def loadtest(world_dir: str = typer.Option("data/world", "--world"), out: str = "data/load",
+             report: str = "reports/loadtest.md", workers: str = "1,2,4", budget_pages: int = typer.Option(None),
+             crash: bool = True, lease_seconds: float = 20.0):
+    """Burst load test: scaling across worker processes, a spend-gate scenario and a crash-recovery scenario."""
+    from .loadtest import run, write
+    r = run(world_dir, out, [int(x) for x in workers.split(",")], lease_seconds=lease_seconds,
+            budget_pages=budget_pages, crash=crash)
+    write(r, report, "testamur loadtest " + " ".join(sys.argv[2:]))
+    typer.echo(f"report -> {report}")
+
+
+@app.command()
+def shadow(world_dir: str = typer.Option("data/world", "--world"), candidates: str = "fast,en-v4",
+           sample: float = 0.4, report: str = "reports/shadow-ocr.md"):
+    """Run candidate OCR engines beside the canonical one, observe-only, and apply the parity gate."""
+    import json
+
+    from .harness import git_stamp
+    from .shadow import render, run
+    results = [run(world_dir, c, sample=sample) for c in candidates.split(",")]
+    meta = {"commit": git_stamp(Path.cwd()), "command": "testamur shadow " + " ".join(sys.argv[2:])}
+    Path(report).parent.mkdir(parents=True, exist_ok=True)
+    Path(report).with_suffix(".json").write_text(json.dumps({"meta": meta, "results": results}, indent=2), encoding="utf-8")
+    Path(report).write_text(render(results, meta), encoding="utf-8")
+    for r in results:
+        typer.echo(f"{r['candidate']}: accuracy {r['canonical_accuracy']:.3f} -> {r['candidate_accuracy']:.3f}, "
+                   f"{r['canonical_seconds_per_page']} -> {r['candidate_seconds_per_page']} s/page, "
+                   f"cutover {'allowed' if r['cutover_allowed'] else 'refused'}")
+
+
+@app.command()
 def status(db: str = "data/harness.db", tenant: int = 1):
     """Requirement statuses for one tenant."""
     from .store import Engagement, RequirementState, Store, Supplier
@@ -81,10 +113,12 @@ def explain(engagement: int, requirement: str, db: str = "data/harness.db", tena
         rows = s.scalars(select(VerdictRow).where(VerdictRow.engagement_id == engagement,
                                                   VerdictRow.requirement_id == requirement,
                                                   VerdictRow.document_id == st.document_id)).all()
-        for v in rows:
+        order = {cid: i for i, cid in enumerate(load_pack().requirements[requirement].checks)}
+        for v in sorted(rows, key=lambda v: (TIER_ORDER[Tier(v.tier)], order.get(v.check_id, len(order)))):
             typer.echo(f"  [{v.tier:8}] {v.check_id:28} {v.verdict:7} {v.reason}")
             for ev in v.evidence or []:
-                typer.echo(f"             evidence p.{ev.get('page')}: {ev.get('quote')}")
+                where = f"p.{ev['page']}" if ev.get("page") is not None else "record"
+                typer.echo(f"             evidence {where}: {ev.get('quote')}")
             if v.verdict == Verdict.FAIL and v.fix_hint:
                 typer.echo(f"             fix: {v.fix_hint}")
 

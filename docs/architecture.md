@@ -128,6 +128,36 @@ is no ambient tenant to forget.
 - A cassette records model calls for exact, free replay in CI; a replay-only cassette fails loudly on any call it
   has not seen.
 
+## Throughput and cost
+
+```mermaid
+flowchart LR
+    I["Ingest: blob + upload row"] --> Q[("jobs table")]
+    Q -->|lease with expiry| W1["worker 1"]
+    Q -->|lease with expiry| W2["worker 2"]
+    W1 --> P1["prefetch: OCR outside any transaction"]
+    W2 --> P2["prefetch: OCR outside any transaction"]
+    P1 --> B["process: short, serialised bookkeeping"]
+    P2 --> B
+    B -->|done| Q
+    P1 -.->|over budget| D["defer to the reset time; reservation released"]
+    D -.-> Q
+```
+
+- **Queue** ([`jobs.py`](../testamur/jobs.py), [ADR 0007](decisions/0007-queue-in-the-database.md)): a table in the
+  same database; claim by an atomic `UPDATE ... RETURNING` with a lease (visibility timeout); retries with backoff;
+  a dead-letter state after the last attempt; deferral that does not count as an attempt; idempotent enqueue.
+- **Spend gates** ([`budget.py`](../testamur/budget.py)): per-tenant daily caps for OCR pages and model tokens,
+  checked before money is spent, with the allowed amount reserved in the same transaction and settled afterwards.
+  Cache hits are always free.
+- **Workers** ([`worker.py`](../testamur/worker.py)): separate processes; each job carries its tenant; OCR runs before
+  and outside the serialised bookkeeping.
+- **Load test** ([`loadtest.py`](../testamur/loadtest.py)): a whole world enqueued at once; scaling across worker
+  processes, a spend-cap scenario stretched over simulated days, and a worker killed mid-job. Each scenario checks
+  that the final statuses are identical to the plain single-worker run.
+- **Shadow trials** ([`shadow.py`](../testamur/shadow.py), [ADR 0008](decisions/0008-shadow-trials.md)): candidate OCR
+  engines beside the canonical one, observe-only, decided by a parity gate; the switch is configuration.
+
 ## Measurement
 
 The harness generates an adversarial supplier world from a seed (fictional names, rendered and degraded documents,
@@ -144,7 +174,5 @@ cost (a re-index pays for nothing) and about how much it hands to people (deferr
 
 ## What is deliberately not here yet
 
-The first milestone covers the engine and its measurement. The roadmap in the README lists what follows: a durable
-queue with spend gates and a load test, a shadow OCR engine behind a parity gate, calibrated accuracy from reviewer
-feedback, real-contract evaluation, findings that create work, an assistant over the same index, and a tenant-scoped
-tool server for agents.
+The roadmap in the README lists what follows: calibrated accuracy from reviewer feedback, real-contract evaluation,
+findings that create work, an assistant over the same index, and a tenant-scoped tool server for agents.
