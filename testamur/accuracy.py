@@ -96,7 +96,7 @@ def check_health(session: Session, pack: Pack) -> dict[str, CheckHealth]:
     latest: dict[tuple, CheckReview] = {}            # one review per verdict: the latest
     for r in session.scalars(select(CheckReview).order_by(CheckReview.id)):
         if r.check_id in digests and r.rule_digest == digests[r.check_id] and r.id > since.get(r.check_id, 0):
-            latest[(r.engagement_id, r.requirement_id, r.check_id, r.document_id)] = r
+            latest[(r.claim_id, r.requirement_id, r.check_id, r.document_id)] = r
     counts: dict[str, Counter] = {}
     for (_, _, cid, _), r in latest.items():
         c = counts.setdefault(cid, Counter())
@@ -109,12 +109,12 @@ def check_health(session: Session, pack: Pack) -> dict[str, CheckHealth]:
         elif r.machine_verdict == Verdict.FAIL:
             c["fail"] += 1
             c["false_fail"] += r.verdict == Verdict.PASS
-    alpha = 1 - pack.assurance.confidence
+    alpha = 1 - pack.audit.confidence
     out = {}
     for cid, spec in pack.checks.items():
         c = counts.get(cid, Counter())
         n, k = c["pass"], c["false_pass"]
-        budget = pack.assurance.false_pass_budget[spec.severity.value]
+        budget = pack.audit.false_pass_budget[spec.severity.value]
         upper = cp_upper(k, n, alpha) if n else None
         lower = cp_lower(k, n, alpha) if n else None
         if (spec.severity == Severity.CRITICAL and c["incidents"]) or (lower is not None and lower > budget):

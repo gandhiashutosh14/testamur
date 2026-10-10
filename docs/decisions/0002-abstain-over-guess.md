@@ -9,7 +9,7 @@ treat them as if they were.
 Every stage can say "I cannot decide" and passes that on instead of resolving it optimistically:
 - **parsing** rejects ambiguous values (malformed digit grouping, impossible dates) instead of coercing them;
 - **reading** reports a field stated twice with different values as a conflict;
-- **matching** abstains on ties and near-misses, and names the suppliers the document might belong to;
+- **matching** abstains on ties and near-misses, and names the creditors the document might belong to;
 - **checks** return ABSTAIN when a value is missing, unreadable, contradictory or only close to the expected one;
 - **the model tier** abstains when its answer depends on statement order or its quoted evidence is not on the page;
 - **status** turns any critical ABSTAIN, any requirement with no evaluable check, and any negative status that an

@@ -1,15 +1,22 @@
-"""Identifiers with check digits. Validating them is free, deterministic and decisive, which is why matching tries
-them before any fuzzy comparison.
+"""Identifiers, and the ones with check characters. Validating them is free, deterministic and decisive, which is why
+matching tries them before any fuzzy comparison.
 
 - LEI (ISO 17442): 20 alphanumeric characters; the last two are ISO 7064 MOD 97-10 check digits.
-- IBAN (ISO 13616): country code, two check digits, then the national account number; the same MOD 97-10 scheme
-  applied to the rearranged string.
+- GSTIN: 15 characters. Two digits of state code, the holder's 10-character PAN, an entity number, a default 'Z',
+  then a check character computed over the first 14 with the Luhn mod 36 algorithm.
+- PAN: 10 characters, five letters, four digits, a letter. The fourth letter says what kind of holder it is ('C' for
+  a company); the last one is a check character whose algorithm is not published, so only the structure is checked.
+- CIN: 21 characters. Listed or unlisted, the industry code, the state, the year of incorporation, the kind of
+  company (public, private, ...) and a registration number. Structure only; it carries no check character.
+- IFSC: 11 characters. The bank's four-letter code, a zero, then six characters naming the branch. No check
+  character either, but the bank code must be the code of the bank the letter names.
 """
 from __future__ import annotations
 
 import re
 
 _ALNUM = re.compile(r"[^0-9A-Za-z]")
+_BASE36 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 def compact(value: str) -> str:
@@ -35,30 +42,43 @@ def lei_with_check(prefix18: str) -> str:
     return p + f"{98 - mod97(p + '00'):02d}"
 
 
-def iban_valid(value: str) -> bool:
+_PAN = re.compile(r"^[A-Z]{3}[ABCFGHJLPT][A-Z]\d{4}[A-Z]$")
+_GSTIN = re.compile(r"^\d{2}[A-Z]{3}[ABCFGHJLPT][A-Z]\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$")
+_CIN = re.compile(r"^[LU]\d{5}[A-Z]{2}\d{4}(?:PLC|PTC|FLC|FTC|GOI|GAP|GAT|NPL|ULL|ULT|SGC)\d{6}$")
+_IFSC = re.compile(r"^[A-Z]{4}0[A-Z0-9]{6}$")
+
+
+def gstin_check_char(first14: str) -> str:
+    """Luhn mod 36 over the first 14 characters, the factor alternating 1, 2 from the left."""
+    total = 0
+    for i, ch in enumerate(compact(first14)):
+        product = _BASE36.index(ch) * (1 if i % 2 == 0 else 2)
+        total += product // 36 + product % 36
+    return _BASE36[(36 - total % 36) % 36]
+
+
+def gstin_valid(value: str) -> bool:
     s = compact(value)
-    if not (15 <= len(s) <= 34) or not s[:2].isalpha() or not s[2:4].isdigit():
-        return False
-    return mod97(s[4:] + s[:4]) == 1
+    return bool(_GSTIN.match(s)) and gstin_check_char(s[:14]) == s[14]
 
 
-def iban_with_check(country: str, bban: str) -> str:
-    c, b = country.upper(), compact(bban)
-    return f"{c}{98 - mod97(b + c + '00'):02d}{b}"
+def gstin_with_check(state_code: int, pan: str, entity: str = "1") -> str:
+    first14 = f"{state_code:02d}{compact(pan)}{entity}Z"
+    return first14 + gstin_check_char(first14)
 
 
-def format_iban(value: str) -> str:
+def pan_of_gstin(value: str) -> str | None:
     s = compact(value)
-    return " ".join(s[i:i + 4] for i in range(0, len(s), 4))
+    return s[2:12] if len(s) == 15 else None
 
 
-_COMPANY_NO = re.compile(r"^(?:[A-Z]{2}\d{6}|\d{8})$")
-_VAT = re.compile(r"^[A-Z]{2}\d{8,12}$")
+def pan_valid(value: str) -> bool:
+    return bool(_PAN.match(compact(value)))
 
 
-def company_number_valid(value: str) -> bool:
-    return bool(_COMPANY_NO.match(compact(value)))
+def cin_valid(value: str) -> bool:
+    return bool(_CIN.match(compact(value)))
 
 
-def vat_valid(value: str) -> bool:
-    return bool(_VAT.match(compact(value)))
+def ifsc_valid(value: str) -> bool:
+    return bool(_IFSC.match(compact(value)))

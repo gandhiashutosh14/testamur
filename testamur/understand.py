@@ -11,10 +11,10 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from .ids import compact, company_number_valid, iban_valid, lei_valid, vat_valid
+from .ids import cin_valid, compact, gstin_valid, ifsc_valid, lei_valid
 from .model import Extraction, FieldValue
 from .pack import DocTypeSpec, Pack
-from .textnorm import after_label, parse_date, parse_money, squash
+from .textnorm import after_label, parse_date, parse_money, parse_rupee_words, squash
 
 CLASS_ACCEPT = 0.55
 CLASS_MARGIN = 0.2
@@ -75,6 +75,8 @@ class Fields:
 def parse_value(kind: str, raw: str):
     if kind == "money":
         return parse_money(raw)
+    if kind == "words":
+        return parse_rupee_words(raw)
     if kind == "date":
         return parse_date(raw)
     if kind == "list":
@@ -119,28 +121,33 @@ def _key(value) -> str:
 
 
 _LEI = re.compile(r"\b[0-9A-Z]{18}\d{2}\b")
-_IBAN = re.compile(r"\b[A-Z]{2}\d{2}(?: ?[0-9A-Z]{4}){2,7}(?: ?[0-9A-Z]{1,4})?\b")
-_COMPANY = re.compile(r"company (?:number|no\.?|registration number)[:\s]*([A-Z]{2}\d{6}|\d{8})", re.I)
-_VAT = re.compile(r"\bvat(?: registration)? number[:\s]*([A-Z]{2}\s?\d[\d ]{7,13})", re.I)
+_GSTIN = re.compile(r"\b\d{2}[A-Z]{5}\d{4}[A-Z][0-9A-Z]Z[0-9A-Z]\b")
+_CIN = re.compile(r"\b[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}\b")
+_IFSC = re.compile(r"\b[A-Z]{4}0[A-Z0-9]{6}\b")
+_ACCOUNT = re.compile(r"account (?:number|no\.?)[:\s]*(\d[\d ]{7,20}\d)", re.I)
 
 
 def identifiers(ex: Extraction) -> dict[str, list[str]]:
-    """Identifiers that pass their own validation. An identifier with bad check digits is not evidence of anything."""
+    """Identifiers that pass their own validation. An identifier with a bad check character is not evidence of
+    anything. A bank account counts only as the pair of a well-formed IFSC and an account number on the same page."""
     text = ex.text()
     upper = text.upper()
-    found: dict[str, set[str]] = {"lei": set(), "iban": set(), "company_number": set(), "vat_number": set()}
+    found: dict[str, set[str]] = {"lei": set(), "gstin": set(), "cin": set(), "account": set()}
     for m in _LEI.finditer(upper):
         if lei_valid(m.group()):
             found["lei"].add(m.group())
-    for m in _IBAN.finditer(upper):
-        if iban_valid(m.group()):
-            found["iban"].add(compact(m.group()))
-    for m in _COMPANY.finditer(text):
-        if company_number_valid(m.group(1)):
-            found["company_number"].add(compact(m.group(1)))
-    for m in _VAT.finditer(text):
-        if vat_valid(m.group(1)):
-            found["vat_number"].add(compact(m.group(1)))
+    for m in _GSTIN.finditer(upper):
+        if gstin_valid(m.group()):
+            found["gstin"].add(m.group())
+    for m in _CIN.finditer(upper):
+        if cin_valid(m.group()):
+            found["cin"].add(m.group())
+    for page in ex.pages:
+        page_text = " ".join(line.text for line in page.lines)
+        codes = {m.group() for m in _IFSC.finditer(page_text.upper()) if ifsc_valid(m.group())}
+        numbers = {compact(m.group(1)) for m in _ACCOUNT.finditer(page_text)}
+        if len(codes) == 1 and len(numbers) == 1:
+            found["account"].add(f"{codes.pop()}/{numbers.pop()}")
     return {k: sorted(v) for k, v in found.items() if v}
 
 

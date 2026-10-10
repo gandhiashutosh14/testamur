@@ -9,27 +9,30 @@ import yaml
 from testamur.checks import CheckContext, evaluate
 from testamur.model import Extraction, Line, Page, Verdict
 from testamur.pack import load_pack
-from testamur.store import Engagement, Supplier, UploadRow
+from testamur.store import Claim, Creditor, Matter, UploadRow
 from testamur.understand import read_fields
 
 CASES = yaml.safe_load((Path(__file__).parent / "panel.yaml").read_text(encoding="utf-8"))
-REQUIREMENT = {"insurance_certificate": "insurance", "security_certificate": "security_certification",
-               "bank_letter": "bank_details", "master_agreement": "master_agreement"}
+REQUIREMENT = {"claim_form": "proof_of_claim", "authority_letter": "authority", "charge_certificate": "security_interest",
+               "bank_mandate": "bank_details", "facility_agreement": "evidence_of_debt"}
 
 
 def judge(case: dict):
     pack = load_pack()
-    doc_type = case.get("doc_type", "insurance_certificate")
+    doc_type = case.get("doc_type", "authority_letter")
     ex = Extraction(pages=[Page(number=1, lines=[Line(text=t, page=1) for t in case["lines"]])], method="text_layer",
                     engine_version="panel")
-    supplier = Supplier(id=1, tenant_id=1, legal_name="Brightwater Logistics Ltd", iban="GB33BUKB20201555555555")
-    engagement = Engagement(id=1, tenant_id=1, business_unit_id=1, supplier_id=1, tier=case.get("tier", "high"),
-                            engagement_type="data_processing", service_category=case.get("category", "logistics"),
-                            start_date=date(2026, 2, 1), end_date=date(2027, 2, 1))
-    upload = UploadRow(id=1, tenant_id=1, business_unit_id=1, sha256="x", filename="f", channel="staff_verified",
-                       uploaded_at=datetime(2026, 1, 5))
-    ctx = CheckContext(pack=pack, as_of=date(2026, 10, 1), engagement=engagement, supplier=supplier,
-                       insured_party=supplier, via_parent=False, document_id=1,
+    creditor = Creditor(id=1, tenant_id=1, legal_name="Anvaya Fincorp Ltd", account_number="004512345678",
+                        ifsc="NRMX0004521")
+    claim = Claim(id=1, tenant_id=1, matter_id=1, creditor_id=1, tier=case.get("tier", "high"), claim_type="secured",
+                  facility_type=case.get("facility", "working_capital"), book_balance=123_456_000,
+                  sanctioned=250_000_000)
+    matter = Matter(id=1, tenant_id=1, name="Pench Valley Polymers Pvt Ltd", debtor_cin="U25209MH2011PTC123456",
+                    commencement=date(2026, 5, 1), announced=date(2026, 5, 3), claims_due=date(2026, 5, 15))
+    upload = UploadRow(id=1, tenant_id=1, matter_id=1, sha256="x", filename="f", channel="staff_verified",
+                       uploaded_at=datetime(2026, 5, 10))
+    ctx = CheckContext(pack=pack, as_of=date(2026, 10, 1), claim=claim, creditor=creditor, filing_party=creditor,
+                       via_trustee=False, matter=matter, document_id=1,
                        fields=read_fields(pack.doc_types[doc_type], ex), uploads=[upload], source="text")
     return evaluate(case["check"], case.get("requirement", REQUIREMENT[doc_type]), ctx)
 
@@ -42,6 +45,8 @@ def test_no_adversarial_page_earns_a_pass(case):
 
 
 def test_the_panel_covers_every_kind_of_trap():
-    assert len(CASES) >= 20 and len({c["id"] for c in CASES}) == len(CASES)
-    assert {c["check"] for c in CASES} >= {"ins_limit_meets_tier", "ins_cover_current", "ins_name_matches", "msa_signed",
-                                          "sec_scope_covers_service", "bank_iban_valid", "bank_iban_on_file"}
+    assert len(CASES) >= 25 and len({c["id"] for c in CASES}) == len(CASES)
+    assert {c["check"] for c in CASES} >= {"claim_within_books", "claim_words_match", "claim_not_time_barred",
+                                          "claim_pan_in_gstin", "auth_current", "auth_creditor_matches",
+                                          "auth_covers_voting", "facility_signed", "charge_amount_covers",
+                                          "charge_on_debtor", "bank_ifsc_valid", "bank_account_on_file"}

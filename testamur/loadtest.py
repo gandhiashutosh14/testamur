@@ -43,8 +43,8 @@ def _enqueue_world(store: Store, world, world_dir: Path, blobs: Path) -> int:
     load_registry(store, world)
     engine = Engine(store, load_pack(), world.as_of, blobs)
     for u in world.uploads:
-        uid = engine.ingest(u.tenant_id, u.business_unit_id, u.filename, (world_dir / u.file).read_bytes(), u.channel,
-                            u.uploaded_at, u.claimed_supplier_id, external_ref=f"world:{u.id}")
+        uid = engine.ingest(u.tenant_id, u.matter_id, u.filename, (world_dir / u.file).read_bytes(), u.channel,
+                            u.uploaded_at, u.declared_creditor_id, external_ref=f"world:{u.id}")
         jobs.enqueue(store, u.tenant_id, "process_upload", key=f"upload:{uid}", payload={"upload_id": uid})
     return len(world.uploads)
 
@@ -70,7 +70,7 @@ def _statuses(store: Store, world, engine: Engine) -> dict:
     for t in world.tenants:
         engine.refresh(t.id)
     with store.system() as s:
-        return {(r.engagement_id, r.requirement_id): r.status for r in s.scalars(select(RequirementState))}
+        return {(r.claim_id, r.requirement_id): r.status for r in s.scalars(select(RequirementState))}
 
 
 def _metrics(store: Store) -> dict:
@@ -163,14 +163,16 @@ def run(world_dir: str | Path, out_dir: str | Path, workers: list[int], lease_se
                             "statuses_identical_to_uninterrupted": statuses == reference, **m}
         print("crash:", results["crash"], flush=True)
     results["meta"] = {"commit": git_stamp(Path.cwd()), "world_seed": world.seed, "world_size": world.size,
-                       "cpu_count": os.cpu_count(), "lease_seconds": lease_seconds}
+                       "cpu_count": os.cpu_count(), "lease_seconds": lease_seconds,
+                       "machine": os.environ.get("TESTAMUR_MACHINE", "a developer laptop")}
     return results
 
 
 def render(r: dict, command: str) -> str:
     meta = r["meta"]
     out = [f"# Load test: {meta['world_size']} world, seed {meta['world_seed']}", "",
-           f"Commit `{meta['commit']}`, command `{command}`, {meta['cpu_count']} logical CPUs on the author's laptop. "
+           f"Commit `{meta['commit']}`, command `{command}`, {meta['cpu_count']} logical CPUs on "
+           f"{meta.get('machine', 'a developer laptop')}. "
            "Every upload is enqueued at once; worker processes drain the queue; the clause model is off (OCR is the "
            "cost being measured).", "", "## Scaling", "",
            "| Workers | Uploads | Wall time | Uploads/min | OCR pages | OCR pages/min | Job latency p50 / p95 | Dead | Statuses identical to 1 worker |",
@@ -196,7 +198,7 @@ def render(r: dict, command: str) -> str:
                 f"{c['retried']} job(s) taken over after the crash, {c['dead']} dead. Final statuses identical to the "
                 f"uninterrupted run: {'yes' if c['statuses_identical_to_uninterrupted'] else '**no**'}."]
     out += ["", "## What this does not show", "",
-            "- One laptop, SQLite: the database serialises the short bookkeeping transactions; OCR, the expensive part, "
+            "- One machine, SQLite: the database serialises the short bookkeeping transactions; OCR, the expensive part, "
             "runs outside them. A Postgres deployment would lock per tenant instead.",
             "- Timings are this machine's, not a benchmark.", ""]
     return "\n".join(out)

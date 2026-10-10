@@ -8,17 +8,17 @@ import pytest
 from sqlalchemy import func, select
 
 from testamur.actions import Receiver, deliver, dispatch, new_secret, sign, verify
-from testamur.actionsim import renewed_certificate
+from testamur.actionsim import renewed_authority
 from testamur.model import Status
 from testamur.pack import load_pack
 from testamur.store import (
+    Claim,
+    Creditor,
     Delivery,
-    Engagement,
     Hold,
     Notification,
     OutboxEvent,
     RequirementState,
-    Supplier,
     Task,
     WebhookEndpoint,
 )
@@ -49,45 +49,53 @@ def test_a_crash_mid_dispatch_leaves_no_partial_work_and_nothing_twice(env):
     again = dispatch(store, pack, 1, now)
     assert first["events"] > 0 and again["events"] == 0
     with store.tenant(1) as s:
-        open_tasks = [(t.engagement_id, t.requirement_id) for t in s.scalars(select(Task).where(Task.status == "open"))]
+        open_tasks = [(t.claim_id, t.requirement_id) for t in s.scalars(select(Task).where(Task.status == "open"))]
         assert open_tasks and len(open_tasks) == len(set(open_tasks))
         assert s.scalar(select(func.count()).select_from(OutboxEvent).where(OutboxEvent.dispatched_at.is_(None))) == 0
-        chased = {t.engagement_id for t in s.scalars(select(Task).where(Task.kind == "chase_supplier"))}
-        reminded = {n.engagement_id for n in s.scalars(select(Notification))}
+        chased = {t.claim_id for t in s.scalars(select(Task).where(Task.kind == "chase_creditor"))}
+        reminded = {n.claim_id for n in s.scalars(select(Notification))}
         assert chased and chased == reminded
+
+
+def _lapsed_authority_alone(store, world):
+    """A claim whose expired authority is its only reason to be on hold, in whichever tenant has one."""
+    holding = load_pack().actions
+    for t in world.tenants:
+        with store.tenant(t.id) as s:
+            def only_authority_holds(eid):             # so putting the authority right must release the hold outright
+                return all(x.requirement_id == "authority" or x.requirement_id not in holding.hold_requirements
+                           or x.status not in holding.hold_statuses
+                           for x in s.scalars(select(RequirementState).where(RequirementState.claim_id == eid)))
+            st = next((x for x in s.scalars(select(RequirementState).where(
+                RequirementState.requirement_id == "authority", RequirementState.status == Status.EXPIRED))
+                if only_authority_holds(x.claim_id)), None)
+            if st is not None:
+                e = s.get(Claim, st.claim_id)
+                return t.id, e.id, e.matter_id, e.creditor_id, s.get(Creditor, e.creditor_id).legal_name
+    raise AssertionError("the tiny world has an expired authority that is its claim's only hold")
 
 
 def test_putting_the_evidence_right_closes_the_chase_and_releases_the_hold(env):
     world, store, engine = env
     pack, now = load_pack(), _now(world)
-    holding = load_pack().actions
-    with store.tenant(1) as s:
-        def only_insurance_holds(eid):                 # so putting insurance right must release the hold outright
-            return all(x.requirement_id == "insurance" or x.requirement_id not in holding.hold_requirements
-                       or x.status not in holding.hold_statuses
-                       for x in s.scalars(select(RequirementState).where(RequirementState.engagement_id == eid)))
-        st = next((x for x in s.scalars(select(RequirementState).where(RequirementState.requirement_id == "insurance",
-                                                                       RequirementState.status == Status.EXPIRED))
-                   if only_insurance_holds(x.engagement_id)), None)
-        assert st is not None, "the tiny world has an expired certificate that is its engagement's only hold"
-        e = s.get(Engagement, st.engagement_id)
-        eid, bu, supplier_id, name = e.id, e.business_unit_id, e.supplier_id, s.get(Supplier, e.supplier_id).legal_name
-    dispatch(store, pack, 1, now)
-    with store.tenant(1) as s:
-        hold = s.scalar(select(Hold).where(Hold.engagement_id == eid, Hold.released_at.is_(None)))
-        assert hold is not None and "insurance" in hold.requirements
-        assert s.scalar(select(Task).where(Task.engagement_id == eid, Task.requirement_id == "insurance",
-                                           Task.status == "open")).kind == "chase_supplier"
-    data = renewed_certificate(name, 10_000_000, world.as_of, seed=1)
-    engine.process(1, engine.ingest(1, bu, "renewal.pdf", data, "supplier_portal", now, claimed_supplier_id=supplier_id))
-    dispatch(store, pack, 1, now + timedelta(hours=1))
-    with store.tenant(1) as s:
-        st = s.get(RequirementState, {"engagement_id": eid, "requirement_id": "insurance", "tenant_id": 1})
+    tenant, eid, matter, creditor_id, name = _lapsed_authority_alone(store, world)
+    dispatch(store, pack, tenant, now)
+    with store.tenant(tenant) as s:
+        hold = s.scalar(select(Hold).where(Hold.claim_id == eid, Hold.released_at.is_(None)))
+        assert hold is not None and "authority" in hold.requirements
+        assert s.scalar(select(Task).where(Task.claim_id == eid, Task.requirement_id == "authority",
+                                           Task.status == "open")).kind == "chase_creditor"
+    data = renewed_authority(name, world.as_of, seed=1)
+    engine.process(tenant, engine.ingest(tenant, matter, "renewal.pdf", data, "creditor_portal", now,
+                                         declared_creditor_id=creditor_id))
+    dispatch(store, pack, tenant, now + timedelta(hours=1))
+    with store.tenant(tenant) as s:
+        st = s.get(RequirementState, {"claim_id": eid, "requirement_id": "authority", "tenant_id": tenant})
         assert st.status in (Status.SATISFIED, Status.SATISFIED_WITH_FINDINGS)
-        assert all(t.status != "open" for t in s.scalars(select(Task).where(Task.engagement_id == eid,
-                                                                           Task.requirement_id == "insurance")))
-        assert s.scalar(select(Hold).where(Hold.engagement_id == eid, Hold.released_at.is_(None))) is None
-        assert s.scalar(select(Hold).where(Hold.engagement_id == eid)).released_at is not None
+        assert all(t.status != "open" for t in s.scalars(select(Task).where(Task.claim_id == eid,
+                                                                           Task.requirement_id == "authority")))
+        assert s.scalar(select(Hold).where(Hold.claim_id == eid, Hold.released_at.is_(None))) is None
+        assert s.scalar(select(Hold).where(Hold.claim_id == eid)).released_at is not None
 
 
 def test_a_reminder_waits_out_its_cooldown(env):
@@ -96,16 +104,16 @@ def test_a_reminder_waits_out_its_cooldown(env):
     dispatch(store, pack, 1, now)
     with store.tenant(1) as s:
         first = s.scalars(select(Notification)).first()
-        eid, rid = first.engagement_id, first.requirement_id
+        eid, rid = first.claim_id, first.requirement_id
 
     def chase_again(key: str, at: datetime) -> Counter:
         with store.tenant(1) as s:
             s.add(OutboxEvent(key=key, kind="requirement.status_changed",
-                              payload={"engagement": eid, "requirement": rid, "from": "EXPIRED", "to": "EXPIRED",
+                              payload={"claim": eid, "requirement": rid, "from": "EXPIRED", "to": "EXPIRED",
                                        "failing": [], "hints": [], "document": None}))
         return dispatch(store, pack, 1, at)
     assert chase_again("again:2d", now + timedelta(days=2))["reminder_suppressed"] == 1
-    assert chase_again("again:8d", now + timedelta(days=8))["supplier_reminded"] == 1
+    assert chase_again("again:8d", now + timedelta(days=8))["creditor_reminded"] == 1
 
 
 def test_webhooks_are_signed_retried_and_processed_once(env):
@@ -113,7 +121,7 @@ def test_webhooks_are_signed_retried_and_processed_once(env):
     pack, now = load_pack(), _now(world)
     secret = new_secret(b"test")
     with store.tenant(1) as s:
-        s.add(WebhookEndpoint(url="https://buyer.example/hooks", secret=secret))
+        s.add(WebhookEndpoint(url="https://firm.example/hooks", secret=secret))
     clock = [now]
     rx = Receiver(secret, lambda: clock[0], outage=0.3, ack_loss=0.3, seed=7)
     dispatch(store, pack, 1, now)
@@ -135,6 +143,6 @@ def test_webhooks_are_signed_retried_and_processed_once(env):
 
 def test_a_bulk_load_acts_on_each_requirements_final_state_only(env):
     world, store, engine = env
-    counts = dispatch(store, load_pack(), 1, _now(world))
-    assert counts["superseded"] > 0                     # intermediate statuses from the load were not acted on
-    assert counts["task_closed"] == 0                   # so no task was opened only to be closed again
+    counts = [dispatch(store, load_pack(), t.id, _now(world)) for t in world.tenants]
+    assert sum(c["superseded"] for c in counts) > 0      # intermediate statuses from the load were not acted on
+    assert all(c["task_closed"] == 0 for c in counts)   # so no task was opened only to be closed again

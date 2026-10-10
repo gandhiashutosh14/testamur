@@ -1,7 +1,7 @@
 # Walkthrough: three documents through the engine
 
 Everything below is real output from `testamur explain` on the seed-7 small world. None of these three documents
-needs the model, so the output is the same with or without one. Document and engagement numbers are stable for a
+needs the model, so the output is the same with or without one. Document and claim numbers are stable for a
 given seed. To reproduce:
 
 ```bash
@@ -14,7 +14,7 @@ testamur explain 30 insurance --db data/harness_small.db --tenant 2
 
 ## 1. A phone photo of an insurance certificate
 
-**What arrived.** `Document (2).jpg`, by email, into one business unit. A phone photo: skewed, unevenly lit, slightly
+**What arrived.** `Document (2).jpg`, by email, into one matter. A phone photo: skewed, unevenly lit, slightly
 blurred. Nothing in the filename says what it is or whose.
 
 **Extraction.** There is no text layer (it is an image), so the page goes to OCR: one page, the only paid step for
@@ -32,20 +32,20 @@ above the acceptance threshold (0.55) and the required margin (0.2): decided by 
 consistently, groups of three), `Expiry date: 20/04/2027` (day first), `Date of issue: 20 April 2026`.
 
 **Matching.** No identifier with check digits on an insurance certificate, so the name decides. "Ashford Applications
-Ltd" is compared with the suppliers engaged in the business unit it was uploaded to: one scores 100, the next is 59
+Ltd" is compared with the creditors engaged in the matter it was uploaded to: one scores 100, the next is 59
 points behind. Matched by name.
 
-**Checks and status.** The supplier's engagement is standard tier, which requires EUR 2,000,000 of cover.
+**Checks and status.** The creditor's claim is standard tier, which requires EUR 2,000,000 of cover.
 
 ```
-insurance for engagement 3: NOT_SATISFIED (document 7)
-  [metadata] received_before_start        PASS    received before the engagement started
+insurance for claim 3: NOT_SATISFIED (document 7)
+  [metadata] received_before_start        PASS    received before the claim started
              evidence record: first received 2025-08-03
   [field   ] ins_name_matches             PASS    'Ashford Applications Ltd' matches 'Ashford Applications Ltd' (100)
              evidence p.1: Policyholder: Ashford Applications Ltd
   [field   ] ins_limit_meets_tier         FAIL    limit EUR 1,000,000 is below EUR 2,000,000
              evidence p.1: General liability limit: 1.000.000 EUR any one occurrence
-             fix: Cover is EUR 1,000,000; a standard supplier needs at least EUR 2,000,000. Ask Ashford Applications Ltd to raise the limit.
+             fix: Cover is EUR 1,000,000; a standard creditor needs at least EUR 2,000,000. Ask Ashford Applications Ltd to raise the limit.
   [field   ] ins_cover_current            PASS    2027-04-20 is on or after 2026-10-01
              evidence p.1: Expiry date: 20/04/2027
   [field   ] ins_renewal_due              PASS    2027-04-20 is on or after 2026-10-31
@@ -55,9 +55,9 @@ insurance for engagement 3: NOT_SATISFIED (document 7)
 ```
 
 A critical check failed, so the status is NOT_SATISFIED, with the line of the page that shows it and the action to
-take. "record" evidence comes from the engagement and upload records rather than the page. Had the same certificate
-been judged for a high-tier engagement of the same supplier, the limit check would compare against that tier's
-minimum: one document, one verdict per engagement.
+take. "record" evidence comes from the claim and upload records rather than the page. Had the same certificate
+been judged for a high-tier claim of the same creditor, the limit check would compare against that tier's
+minimum: one document, one verdict per claim.
 
 ## 2. A bank letter whose account changed
 
@@ -65,10 +65,10 @@ minimum: one document, one verdict per engagement.
 is read from the PDF and no OCR is paid for.
 
 **Matching.** The letter's IBAN fails its check digits, so it is not used as an identifier; the account holder's
-name, "Vantage Logistics Ltd", matches one supplier of the business unit exactly.
+name, "Vantage Logistics Ltd", matches one creditor of the matter exactly.
 
 ```
-bank_details for engagement 13: NOT_SATISFIED (document 44)
+bank_details for claim 13: NOT_SATISFIED (document 44)
   [metadata] bank_channel_verified        PASS    received through a verified channel
              evidence record: channels: staff_verified
   [field   ] bank_iban_valid              FAIL    IBAN check digits are invalid
@@ -92,13 +92,13 @@ on file are free and exact.
 listing its subsidiaries under "Subsidiaries covered". Born digital.
 
 **Matching.** The insured name matches the parent company, which is in scope because one of its subsidiaries is
-engaged in this business unit (the runner-up name is 31 points behind). The covered names are resolved among the
-parent's own subsidiaries only, so a group policy can never be stretched over an unrelated supplier with a similar
+engaged in this matter (the runner-up name is 31 points behind). The covered names are resolved among the
+parent's own subsidiaries only, so a group policy can never be stretched over an unrelated creditor with a similar
 name.
 
 ```
-insurance for engagement 30: COVERED_BY_PARENT (document 81)
-  [metadata] received_before_start        PASS    received before the engagement started
+insurance for claim 30: COVERED_BY_TRUSTEE (document 81)
+  [metadata] received_before_start        PASS    received before the claim started
              evidence record: first received 2026-06-02
   [field   ] ins_name_matches             PASS    'Foxley Holdings plc' matches 'Foxley Holdings plc' (100)
              evidence p.1: Insured: Foxley Holdings plc
@@ -113,8 +113,8 @@ insurance for engagement 30: COVERED_BY_PARENT (document 81)
 ```
 
 The name check compares against the *insured party* (the parent), while the limit is compared against the tier of
-the subsidiary's engagement. The status says how the requirement is met, COVERED_BY_PARENT, so a reviewer knows the
-evidence is the group's, not the supplier's own. If the subsidiary later uploads its own certificate, the direct
+the subsidiary's claim. The status says how the requirement is met, COVERED_BY_TRUSTEE, so a reviewer knows the
+evidence is the group's, not the creditor's own. If the subsidiary later uploads its own certificate, the direct
 document takes precedence.
 
 ## What did not happen

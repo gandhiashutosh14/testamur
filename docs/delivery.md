@@ -11,7 +11,7 @@ ways an agent that wrote it could be wrong.
 | Lint | style and obvious mistakes | `ruff check` |
 | Tests | behaviour; a skipped test fails the run unless allow-listed with a reason; a full run that collects fewer tests than the floor fails | `pytest`, [`tests/conftest.py`](../tests/conftest.py) |
 | Mutation proof | that the safety tests can fail: 45 safety rules are broken on purpose, one at a time, and the suite must go red for each | [`scripts/prove_tests_fire.py`](../scripts/prove_tests_fire.py) |
-| Harness | the dangerous directions, on a generated world with ground truth: no false assurance, no critical false PASS, no wrong match, classification at least 95%, deferral at most 25%, every planted instruction detected, no model PASS on a hostile document, nothing paid twice on re-index | [`gates.yaml`](../gates.yaml) |
+| Harness | the dangerous directions, on a generated world with ground truth: no false vouching, no critical false PASS, no wrong match, classification at least 95%, deferral at most 25%, every planted instruction detected, no model PASS on a hostile document, nothing paid twice on re-index | [`gates.yaml`](../gates.yaml) |
 | Recorded model answers | the clause tier runs in CI from answers recorded on the CI platform; an answer that was not recorded fails the job instead of passing silently | `reports/cassettes/` |
 | Golden set | the assistant: right answers, no wrong value, version, entity or tenant | `testamur golden` |
 | The pipeline itself | actions pinned to commit hashes, no workflow input expanded into a shell, no credentials left on disk, valid workflow syntax | zizmor, actionlint |
@@ -53,6 +53,6 @@ Coding agents are useful on a codebase like this one, and they fail in character
 | Weaken a test until it passes | the mutation proof: the weakened test no longer catches its mutant |
 | Skip or delete a failing test | the skip rule and the test floor |
 | Edit a report to show the expected number | reports are regenerated from a clean checkout and stamped |
-| "Fix" the status policy or a rule to make a case pass | high-risk label, code-owner review, and the harness gates on false assurance |
+| "Fix" the status policy or a rule to make a case pass | high-risk label, code-owner review, and the harness gates on false vouching |
 | Follow instructions planted in a document it was asked to process | at run time, agents only propose (ADR 0014); documents that address automated readers never reach a model |
 | Pull in a dependency or an action at a moving version | versions pinned; actions pinned to commit hashes; zizmor |

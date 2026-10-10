@@ -6,31 +6,31 @@ trade-offs.
 
 ## The job
 
-A buying organisation (a *tenant*) works with many suppliers across several *business units*. Each *engagement* (one
-supplier in one business unit, with a risk tier, a type and dates) requires a set of evidence: an insurance
+A buying organisation (a *tenant*) works with many creditors across several *matters*. Each *claim* (one
+creditor in one matter, with a risk tier, a type and dates) requires a set of evidence: an insurance
 certificate, a security certification, a bank-details letter, a tax registration form, a signed master agreement.
-The tenant must be able to show, at any moment and per engagement, that every required document exists, belongs to
-that supplier, and says what it should.
+The tenant must be able to show, at any moment and per claim, that every required document exists, belongs to
+that creditor, and says what it should.
 
 The evidence arrives badly: scans and phone photos, filenames that say nothing, the same file uploaded twice, an old
-certificate next to its renewal, a parent company's group policy instead of the subsidiary's own, supplier names
-that differ by one word across business units, bank letters whose account details quietly changed, and documents
+certificate next to its renewal, a parent company's group policy instead of the subsidiary's own, creditor names
+that differ by one word across matters, bank letters whose account details quietly changed, and documents
 that contain text written for whatever automated system reads them.
 
-The output is a **status per engagement and requirement**, each backed by **verdicts with evidence**: the page and
+The output is a **status per claim and requirement**, each backed by **verdicts with evidence**: the page and
 line the engine read, the rule it applied, and what to do about a failure.
 
 ## Pipeline
 
 ```mermaid
 flowchart TD
-    U["Upload: file + business unit + channel (+ the supplier who uploaded it)"] --> H["Hash the bytes; store once per tenant"]
+    U["Upload: file + matter + channel (+ the creditor who uploaded it)"] --> H["Hash the bytes; store once per tenant"]
     H -->|seen before| R["New upload event only: re-check how and when it arrived"]
     H -->|new| X["Extract: text layer, OCR only for image pages (cached)"]
     X --> C["Classify: title + labels; a model only if ambiguous"]
     C --> F["Read fields with page and line; keep conflicts and unreadable values"]
-    F --> M["Match: identifiers, then names in the business unit; abstain on doubt"]
-    M --> K["For each engagement and requirement this document bears on"]
+    F --> M["Match: identifiers, then names in the matter; abstain on doubt"]
+    M --> K["For each claim and requirement this document bears on"]
     R --> K
     K --> D["Pick the current document (direct beats group cover; newest wins)"]
     D --> V["Checks, cheapest tier first: metadata, field rules, model"]
@@ -60,20 +60,20 @@ conflict, and every check that needs it abstains.
 
 ### Matching: whose document is this?
 1. Identifiers with valid check digits (LEI, IBAN, company number, VAT number) decide outright.
-2. Otherwise the name is compared with the suppliers engaged in the business unit the file was uploaded to (plus
+2. Otherwise the name is compared with the creditors engaged in the matter the file was uploaded to (plus
    their parent companies). A clear winner decides; an exact legal-name match beats a near twin; if two names tie,
-   the uploading supplier's own claim breaks the tie.
-3. A strong match in a different business unit is not taken (the file may be misfiled), and nothing can match across
+   the uploading creditor's own claim breaks the tie.
+3. A strong match in a different matter is not taken (the file may be misfiled), and nothing can match across
    tenants because the session cannot see other tenants.
-4. A supplier uploading evidence that belongs to someone else is stopped.
+4. A creditor uploading evidence that belongs to someone else is stopped.
 
-When it abstains, the engine names the suppliers the document might belong to, so their requirements show NEEDS
+When it abstains, the engine names the creditors the document might belong to, so their requirements show NEEDS
 REVIEW instead of being judged on older evidence as if the new file did not exist.
 
 ### Checks: the cheapest tier that can decide
 | Tier | What it reads | Examples | Cost |
 |---|---|---|---|
-| metadata | facts known before reading: upload channel, dates, the engagement record | received before the engagement started; bank details arrived through a verified channel | free |
+| metadata | facts known before reading: upload channel, dates, the claim record | received before the claim started; bank details arrived through a verified channel | free |
 | field | a value read from the page, with a deterministic rule | expiry after the as-of date; limit meets the tier minimum; IBAN check digits; IBAN matches the account on file | near free |
 | model | located passages of a contract, judged by a language model | liability is capped; the customer may audit; personal data is processed only on instructions | paid per call |
 
@@ -94,20 +94,20 @@ with a weak model and becomes decisive with a better one ([ADR 0005](decisions/0
 ### Status policy
 | Rule, in order | Status |
 |---|---|
-| the requirement does not apply to this engagement | NOT_REQUIRED |
+| the requirement does not apply to this claim | NOT_REQUIRED |
 | no current document; verified by call-back | VERIFIED_OUT_OF_BAND |
 | no current document | MISSING |
 | no check could be evaluated at all | NEEDS_REVIEW |
 | a critical check abstained | NEEDS_REVIEW |
 | critical failures are all lapses | EXPIRED |
 | any other critical failure | NOT_SATISFIED |
-| satisfied through a parent's group policy | COVERED_BY_PARENT |
+| satisfied through a parent's group policy | COVERED_BY_TRUSTEE |
 | a non-critical check failed or abstained | SATISFIED_WITH_FINDINGS |
 | everything passed | SATISFIED |
 | and: a negative status while an unresolved document might change it | NEEDS_REVIEW |
 | and: a vouching status on a document carrying text aimed at automated readers, until a person clears it | NEEDS_REVIEW |
 
-Five statuses *vouch* for the supplier (SATISFIED, SATISFIED_WITH_FINDINGS, COVERED_BY_PARENT,
+Five statuses *vouch* for the creditor (SATISFIED, SATISFIED_WITH_FINDINGS, COVERED_BY_TRUSTEE,
 VERIFIED_OUT_OF_BAND, NOT_REQUIRED). Reporting one of them when the truth is otherwise is the error the gates hold at
 zero.
 
@@ -117,7 +117,7 @@ first:
 
 | Item | Why it is there | What a person can do |
 |---|---|---|
-| document owner | the match abstained (near twins, misfiled, someone else's evidence); its candidates' bad news is held | assign it to a supplier, or reject it |
+| document owner | the match abstained (near twins, misfiled, someone else's evidence); its candidates' bad news is held | assign it to a creditor, or reject it |
 | document type | no type could be recognised | classify it, or reject it |
 | document security | it carries text aimed at automated readers; it cannot vouch | clear it after reading it, or reject it |
 | check | the engine could not decide a check of a current document | decide PASS or FAIL, or correct the field it read |
@@ -160,15 +160,15 @@ testamur review recertify ins_limit_meets_tier --by lead@buyer --note "aggregate
 
 `testamur reviewsim` closes the loop on a world with ground truth: a simulated reviewer works the whole queue (every
 status must then be right, and a re-index must change none), and a planted fault shows the audit sample tripping the
-breaker and the false assurance stopping.
+breaker and the false vouching stopping.
 
 ### From finding to action
 ```mermaid
 flowchart LR
     S["Status change"] -->|same transaction| O[("outbox")]
     O --> D["Dispatcher: one transaction per event"]
-    D --> T["Task: chase the supplier, or follow up"]
-    D --> R["Reminder to the supplier (one a week at most)"]
+    D --> T["Task: chase the creditor, or follow up"]
+    D --> R["Reminder to the creditor (one a week at most)"]
     D --> H["Purchasing hold, placed and released"]
     D --> W[("webhook messages")]
     W -->|"signed, retried, stable id"| B["Buyer's systems: verify, process once"]
@@ -176,25 +176,25 @@ flowchart LR
 
 Every status change writes an event in the same transaction as the change; the dispatcher turns each event into
 work in one transaction with its dispatched mark, so a crash re-handles it from scratch and the database keeps every
-action single (one open task per requirement, one open hold per engagement, unique keys on reminders and messages).
+action single (one open task per requirement, one open hold per claim, unique keys on reminders and messages).
 Webhook messages leave after the transaction, signed (Standard Webhooks), retried with backoff and declared dead
 after eight attempts; their id is stable, so the receiver processes each once
 ([ADR 0011](decisions/0011-findings-become-work-through-an-outbox.md)). The first workflow automated is the
-supplier chase for insurance: frequent, decided by rules, reversible, measurable
+creditor chase for insurance: frequent, decided by rules, reversible, measurable
 ([ADR 0012](decisions/0012-the-first-workflow.md)). Verdicts that depend on the date carry the date they were judged
 at and are judged again when it moves, so cover that lapses tonight is EXPIRED tomorrow without a new upload.
 
 ```bash
 testamur dispatch --db data/harness.db --tenant 1      # findings become tasks, reminders, holds, messages
-testamur tasks --db data/harness.db --tenant 1         # open work, and engagements on hold
-testamur actionsim --world data/world --days 60        # days pass; suppliers answer; the loop is measured
+testamur tasks --db data/harness.db --tenant 1         # open work, and claims on hold
+testamur actionsim --world data/world --days 60        # days pass; creditors answer; the loop is measured
 ```
 
 ### The assistant
 Staff ask in their own words; the assistant answers from the engine's records wherever it can (standing, dates,
 limits, findings), so it inherits the engine's readings and people's decisions, and it cites the page and line it
 read ([`assistant.py`](../testamur/assistant.py), [ADR 0013](decisions/0013-the-assistant-answers-from-the-records.md)).
-Filters come before ranking: the tenant (the session), the supplier (the capitalised name in the question, compared
+Filters come before ranking: the tenant (the session), the creditor (the capitalised name in the question, compared
 whole, asked back when a first word fits several), and the current document behind each requirement. Every quote
 must be found on the cited page. What the engine could not settle is said as such. Free-text questions use hybrid
 retrieval (BM25 and character trigrams, fused by reciprocal rank) over current passages, never over passages that
@@ -210,7 +210,7 @@ A customer's own agents connect over the Model Context Protocol ([`mcp_server.py
 [`agents.py`](../testamur/agents.py), [ADR 0014](decisions/0014-agents-propose-people-dispose.md)). A key belongs
 to one named agent of one tenant and is stored as a hash; every tool runs in that tenant's session. The tenant's
 catalogue decides which tools exist for its agents: only granted tools are listed, and the grant is checked on every
-call. Reads (engagements, a requirement with its checks, the review queue, open tasks, the assistant) paginate with
+call. Reads (claims, a requirement with its checks, the review queue, open tasks, the assistant) paginate with
 a fixed number of queries per page. There are no write tools: an agent proposes a check verdict, a field reading or
 a document decision, and a person confirms or declines it; a confirmed proposal is applied under the person's name
 with the agent's beside it, once.
@@ -224,7 +224,7 @@ testamur proposals confirm 3 --by reviewer@buyer --tenant 1    # a person applie
 ```
 
 ### Revisions and retries
-Verdicts are stored per engagement, requirement, check, document and engine version. A transient failure (a timeout,
+Verdicts are stored per claim, requirement, check, document and engine version. A transient failure (a timeout,
 a provider error) is recorded as a transient ABSTAIN, retried on the next pass, and never overwrites a conclusive
 verdict for the same document.
 
@@ -273,13 +273,13 @@ flowchart LR
 
 ## Measurement
 
-The harness generates an adversarial supplier world from a seed (fictional names, rendered and degraded documents,
+The harness generates an adversarial creditor world from a seed (fictional names, rendered and degraded documents,
 ground truth for every field, check and requirement), runs the real engine over it, and compares. The truth is
 computed from what the generator wrote, by logic independent of the engine; the status policy is shared on purpose,
 as the specification ([ADR 0006](decisions/0006-synthetic-world.md)).
 
 Gates (in `gates.yaml`) hold the dangerous direction at zero: no vouching status the truth contradicts, no critical
-check saying PASS against a FAIL, no document attached to the wrong supplier. Other gates keep the engine honest about
+check saying PASS against a FAIL, no document attached to the wrong creditor. Other gates keep the engine honest about
 cost (a re-index pays for nothing) and about how much it hands to people (deferral rate).
 
 `scripts/prove_tests_fire.py` breaks each safety rule on purpose and requires the tests to fail: a test that asserts

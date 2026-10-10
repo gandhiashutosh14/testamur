@@ -1,7 +1,7 @@
 # 0011: Findings become work through a transactional outbox
 
 ## Context
-A status nobody acts on is a dashboard. When a certificate lapses, someone must chase the supplier, the buyer's
+A status nobody acts on is a dashboard. When a certificate lapses, someone must chase the creditor, the buyer's
 purchasing system may need to stop new orders, and the buyer's own systems want to know. Each of those is a side
 effect, and side effects are where pipelines go wrong: a crash after the status changed but before the reminder was
 written loses the reminder; a retry after the reminder was written sends it twice; a webhook that timed out may or
@@ -14,7 +14,7 @@ may not have been received.
 - **Dispatch per event, in one transaction.** The dispatcher handles events oldest first. For each, it writes the
   resulting rows (a task, a reminder, a hold, webhook messages) and marks the event dispatched, all in one
   transaction. A crash or an error anywhere rolls the whole event back, and it is handled again from scratch.
-- **The database keeps actions single.** At most one open task per requirement and one open hold per engagement
+- **The database keeps actions single.** At most one open task per requirement and one open hold per claim
   (partial unique indexes); reminders and webhook messages carry unique keys. Doing an event twice cannot double
   anything, whatever the code does.
 - **Outside effects after the transaction, at least once.** Webhook messages are sent by a separate step, signed
@@ -28,7 +28,7 @@ may not have been received.
 ## Consequences
 - The simulation (`testamur actionsim`) kills the dispatcher in the middle of an event and runs a receiver that is
   down a fifth of the time and loses a tenth of its acknowledgements; the invariants hold: one event per status
-  change, at most one open task per requirement, at most one open hold per engagement, each message processed once.
+  change, at most one open task per requirement, at most one open hold per claim, each message processed once.
 - Events are dispatched in order per tenant; a slow event delays the ones after it. A broker can replace the polling
   dispatcher later behind the same two calls (dispatch, deliver).
 - Reminders are written, not sent: the e-mail gateway is outside this repository.

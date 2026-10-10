@@ -27,7 +27,7 @@ HIGH = {
     "testamur/checks.py": "check rules",
     "testamur/textnorm.py": "reading values",
     "testamur/understand.py": "reading documents",
-    "testamur/match.py": "matching documents to suppliers",
+    "testamur/match.py": "matching documents to creditors",
     "testamur/engine.py": "verdicts, decisions and statuses",
     "testamur/store.py": "tenant isolation and storage",
     "testamur/accuracy.py": "accuracy and the breaker",

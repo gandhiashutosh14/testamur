@@ -20,13 +20,13 @@ def _statuses(url, world, out, blobs):
     load_registry(store, world)
     engine = Engine(store, load_pack(), world.as_of, blobs)
     for u in world.uploads:
-        engine.process(u.tenant_id, engine.ingest(u.tenant_id, u.business_unit_id, u.filename,
+        engine.process(u.tenant_id, engine.ingest(u.tenant_id, u.matter_id, u.filename,
                                                   (out / u.file).read_bytes(), u.channel, u.uploaded_at,
-                                                  u.claimed_supplier_id))
+                                                  u.declared_creditor_id))
     for t in world.tenants:
         engine.refresh(t.id)
     with store.system() as s:
-        result = {(r.tenant_id, r.engagement_id, r.requirement_id): r.status for r in s.scalars(select(RequirementState))}
+        result = {(r.tenant_id, r.claim_id, r.requirement_id): r.status for r in s.scalars(select(RequirementState))}
     store.engine.dispose()
     return result
 

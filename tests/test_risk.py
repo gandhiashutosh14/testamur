@@ -10,7 +10,7 @@ spec.loader.exec_module(risk)
 def test_what_decides_vouching_or_isolation_is_high_risk():
     level, areas = risk.classify(["testamur/status.py", "docs/architecture.md"])
     assert level == "high" and areas == ["the status policy"]
-    assert risk.classify(["testamur/packs/supplier_assurance/pack.yaml"])[0] == "high"
+    assert risk.classify(["testamur/packs/insolvency_claims/pack.yaml"])[0] == "high"
     assert risk.classify([".github/workflows/ci.yml"])[0] == "high"           # the pipeline judges the rest
     assert risk.classify(["scripts/risk.py"])[0] == "high"                    # and this file judges the pipeline
     assert risk.classify(["tests\\conftest.py"])[0] == "high"                 # Windows separators too

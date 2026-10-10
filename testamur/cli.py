@@ -11,7 +11,7 @@ from .model import TIER_ORDER, Verdict
 from .pack import load_pack
 
 app = typer.Typer(add_completion=False, no_args_is_help=True,
-                  help="TESTAMUR: evidence assurance for supplier compliance.")
+                  help="TESTAMUR: verifying creditors' claims in a corporate insolvency process.")
 
 
 def _model(model_path: str | None, model_url: str | None, model_name: str | None, cassette: str | None):
@@ -28,10 +28,10 @@ def _model(model_path: str | None, model_url: str | None, model_name: str | None
 
 @app.command()
 def world(seed: int = 7, size: str = "small", out: str = "data/world"):
-    """Generate a synthetic supplier world with documents and ground truth."""
+    """Generate a synthetic creditor world with documents and ground truth."""
     from .synth.world import build_world
     w = build_world(seed=seed, size=size, out=out)
-    typer.echo(f"{len(w.tenants)} tenants, {len(w.suppliers)} suppliers, {len(w.engagements)} engagements, "
+    typer.echo(f"{len(w.tenants)} tenants, {len(w.creditors)} creditors, {len(w.claims)} claims, "
                f"{len(w.uploads)} uploads -> {out}")
 
 
@@ -104,7 +104,7 @@ def queue(db: str = "data/harness.db", tenant: int = 1):
     """What is waiting for a person, most consequential first."""
     items = _engine(db).queue(tenant)
     for i in items:
-        where = (f"engagement {i.engagement_id} {i.requirement_id}/{i.check_id}" if i.kind == "check"
+        where = (f"claim {i.claim_id} {i.requirement_id}/{i.check_id}" if i.kind == "check"
                  else f"document {i.document_id}")
         tail = (f"; candidates {i.options}" if i.options else "") + ("; the engine will retry" if i.retrying else "")
         typer.echo(f"{i.kind:18} {'blocking' if i.blocking else 'finding ':8} {where}: {i.reason}{tail}")
@@ -125,14 +125,14 @@ def _decide(fn, *args):
 
 
 @review.command("check")
-def review_check(engagement: int, requirement: str, check: str, verdict: str, by: str = BY, note: str = "",
+def review_check(claim: int, requirement: str, check: str, verdict: str, by: str = BY, note: str = "",
                  kind: str = typer.Option("queue", help="queue (it was waiting for a person) or audit (drawn by "
                                                         "`testamur audit`)"),
                  db: str = "data/harness.db", tenant: int = 1):
     """PASS or FAIL for one check of the document behind a requirement (the reading is right, the judgement
     needs a person)."""
-    after = _decide(_engine(db).review_check, tenant, engagement, requirement, check, verdict.upper(), by, note, kind)
-    typer.echo(f"{requirement} for engagement {engagement}: {after}")
+    after = _decide(_engine(db).review_check, tenant, claim, requirement, check, verdict.upper(), by, note, kind)
+    typer.echo(f"{requirement} for claim {claim}: {after}")
 
 
 @review.command("recertify")
@@ -159,11 +159,11 @@ def review_classify(document: int, doc_type: str, by: str = BY, note: str = "", 
 
 
 @review.command("assign")
-def review_assign(document: int, supplier: int, by: str = BY, note: str = "", db: str = "data/harness.db",
+def review_assign(document: int, creditor: int, by: str = BY, note: str = "", db: str = "data/harness.db",
                   tenant: int = 1):
     """Say whose evidence a document is."""
-    _decide(_engine(db).assign, tenant, document, supplier, by, note)
-    typer.echo(f"document {document}: supplier {supplier}")
+    _decide(_engine(db).assign, tenant, document, creditor, by, note)
+    typer.echo(f"document {document}: creditor {creditor}")
 
 
 @review.command("reject")
@@ -185,7 +185,7 @@ def audit(db: str = "data/harness.db", tenant: int = 1, seed: str = "audit"):
     """Draw the audit sample: a random share of the engine's conclusive verdicts for people to check."""
     items = _engine(db).audit_sample(tenant, seed)
     for i in items:
-        typer.echo(f"engagement {i.engagement_id} {i.requirement_id}/{i.check_id} (document {i.document_id}): {i.reason}")
+        typer.echo(f"claim {i.claim_id} {i.requirement_id}/{i.check_id} (document {i.document_id}): {i.reason}")
     typer.echo(f"{len(items)} verdict(s) to audit; record each with: testamur review check ... --kind audit")
 
 
@@ -202,7 +202,7 @@ def health(db: str = "data/harness.db", tenant: int = 1):
 
 @app.command()
 def reviewsim(world_dir: str = typer.Option("data/world", "--world"), db: str = "data/reviewsim.db",
-              report: str = "reports/review-sim.md", fault: str = "limit-scale",
+              report: str = "reports/review-sim.md", fault: str = "limitation-years",
               audit_rate: float = typer.Option(None, help="one audit rate for every severity (default: the pack's)"),
               seed: int = 1, scenarios: str = typer.Option("queue,fault", help="queue, fault, or both"),
               model_path: str = typer.Option(None), model_url: str = typer.Option(None),
@@ -265,7 +265,7 @@ def calibrate(seeds: str = "21-30", size: str = "full", alpha: str = "0.01,0.02,
 
 @app.command()
 def dispatch(db: str = "data/harness.db", tenant: int = 1):
-    """Turn reported status changes into work: tasks, supplier reminders, holds and webhook messages."""
+    """Turn reported status changes into work: tasks, creditor reminders, holds and webhook messages."""
     from .actions import dispatch as run_dispatch
     from .store import utcnow
     eng = _engine(db)
@@ -275,7 +275,7 @@ def dispatch(db: str = "data/harness.db", tenant: int = 1):
 
 @app.command()
 def tasks(db: str = "data/harness.db", tenant: int = 1, show_closed: bool = False):
-    """Open remediation work (and closed, with --show-closed), and the engagements on a purchasing hold."""
+    """Open remediation work (and closed, with --show-closed), and the claims on hold (votes not counted, nothing paid)."""
     from .store import Hold, Task
     eng = _engine(db)
     with eng.store.tenant(tenant) as s:
@@ -284,14 +284,14 @@ def tasks(db: str = "data/harness.db", tenant: int = 1, show_closed: bool = Fals
         for t in s.scalars(q):
             typer.echo(f"{t.status:10} due {t.due_at:%Y-%m-%d} {t.kind:15} {t.title}")
         for h in s.scalars(select(Hold).where(Hold.released_at.is_(None))):
-            typer.echo(f"HOLD       engagement {h.engagement_id} since {h.placed_at:%Y-%m-%d}: {', '.join(h.requirements)}")
+            typer.echo(f"HOLD       claim {h.claim_id} since {h.placed_at:%Y-%m-%d}: {', '.join(h.requirements)}")
 
 
 @app.command()
 def actionsim(world_dir: str = typer.Option("data/world", "--world"), db: str = "data/actionsim.db",
               report: str = "reports/action-sim.md", days: int = 60, response_rate: float = 0.15, seed: int = 1,
               outage: float = 0.2, ack_loss: float = 0.1, cassette: str = typer.Option(None)):
-    """Simulate days passing: findings become work, suppliers answer, webhooks are retried; the loop is measured."""
+    """Simulate days passing: findings become work, creditors answer, webhooks are retried; the loop is measured."""
     from .actionsim import run, write
     from .synth.world import load_world
     r = run(world_dir, db, days, response_rate, seed, outage, ack_loss, _model(None, None, None, cassette))
@@ -304,7 +304,7 @@ def actionsim(world_dir: str = typer.Option("data/world", "--world"), db: str = 
 
 @app.command()
 def ask(question: str, db: str = "data/harness.db", tenant: int = 1):
-    """Ask the assistant about suppliers and their evidence; every answer cites the page it read."""
+    """Ask the assistant about creditors and their evidence; every answer cites the page it read."""
     from .assistant import Assistant
     a = Assistant(_engine(db)).ask(tenant, question)
     typer.echo(a.text)
@@ -398,23 +398,23 @@ def mcp(db: str = "data/harness.db"):
 @app.command()
 def status(db: str = "data/harness.db", tenant: int = 1):
     """Requirement statuses for one tenant."""
-    from .store import Engagement, RequirementState, Store, Supplier
+    from .store import Claim, Creditor, RequirementState, Store
     store = Store(f"sqlite:///{db}")
     with store.tenant(tenant) as s:
-        names = {x.id: x.legal_name for x in s.scalars(select(Supplier))}
-        engs = {e.id: e for e in s.scalars(select(Engagement))}
-        for r in sorted(s.scalars(select(RequirementState)), key=lambda r: (r.engagement_id, r.requirement_id)):
-            e = engs[r.engagement_id]
-            typer.echo(f"{r.engagement_id:4} {names[e.supplier_id][:38]:38} {e.tier:9} {r.requirement_id:24} {r.status}")
+        names = {x.id: x.legal_name for x in s.scalars(select(Creditor))}
+        engs = {e.id: e for e in s.scalars(select(Claim))}
+        for r in sorted(s.scalars(select(RequirementState)), key=lambda r: (r.claim_id, r.requirement_id)):
+            e = engs[r.claim_id]
+            typer.echo(f"{r.claim_id:4} {names[e.creditor_id][:38]:38} {e.tier:9} {r.requirement_id:24} {r.status}")
 
 
 @app.command()
-def explain(engagement: int, requirement: str, db: str = "data/harness.db", tenant: int = 1):
+def explain(claim: int, requirement: str, db: str = "data/harness.db", tenant: int = 1):
     """Every check behind one status, with its evidence, the fix hint, and any decision a person made."""
-    st, results = _engine(db).verdicts(tenant, engagement, requirement)
+    st, results = _engine(db).verdicts(tenant, claim, requirement)
     if st is None:
-        raise typer.BadParameter("no such engagement and requirement for this tenant")
-    typer.echo(f"{requirement} for engagement {engagement}: {st.status} (document {st.document_id})")
+        raise typer.BadParameter("no such claim and requirement for this tenant")
+    typer.echo(f"{requirement} for claim {claim}: {st.status} (document {st.document_id})")
     for r in sorted(results, key=lambda r: TIER_ORDER[r.tier]):          # stable: pack order within a tier
         typer.echo(f"  [{r.tier:8}] {r.check_id:28} {r.verdict:7} {r.reason}")
         for ev in r.evidence:

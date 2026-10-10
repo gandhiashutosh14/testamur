@@ -1,41 +1,57 @@
 """Fictional names, addresses and identifiers. Every name is assembled from generic words; none refers to a real
-organisation."""
+organisation, and the banks, registrar offices and companies are invented. Identifiers are well-formed (a GSTIN
+carries a correct check character, an LEI correct check digits) but belong to nobody."""
 from __future__ import annotations
 
 import random
 import string
 
-from ..ids import iban_with_check, lei_with_check
+from ..ids import gstin_with_check, lei_with_check
 
-FIRST = ["Brightwater", "Northgate", "Harbourline", "Kestrel", "Ashford", "Corrin", "Lumen", "Vantage", "Meridale",
-         "Stonebridge", "Fallowfield", "Greyhaven", "Oakhurst", "Riverton", "Silvermere", "Thornbury", "Westbrook",
-         "Ambergate", "Blackmoor", "Copperfield", "Eastholm", "Foxley", "Glenmore", "Hollins", "Ivybridge", "Juniper",
-         "Kingsmere", "Larchmont", "Marlowe", "Netherby", "Oxleigh", "Pennant", "Quarry Hill", "Redcliffe", "Saltmarsh",
-         "Tidewell", "Upton Vale", "Verity", "Wychwood", "Yarrow"]
+FIRST = ["Aadhira", "Akshara", "Anvaya", "Aranya", "Bhavya", "Charvi", "Dhanvi", "Ekansh", "Gaurika", "Hiranya",
+         "Ishita", "Jivika", "Kaustubh", "Lavanya", "Madhvi", "Mrinmay", "Navya", "Nirvaan", "Ojasvi", "Parnika",
+         "Prakhar", "Rudraksh", "Sanvika", "Shubhra", "Tanmay", "Tejasvi", "Udbhav", "Vaidehi", "Yashasvi", "Aditri",
+         "Devika", "Kalindi", "Vasudha", "Ritvik", "Saanvi", "Ishanvi", "Avyukt", "Mahira", "Shaurya", "Trisha"]
 INDUSTRY = {
-    "cloud_hosting": ["Hosting", "Cloud Systems", "Data Centres"],
-    "payroll_services": ["Payroll Services", "Payroll Bureau", "People Payments"],
-    "logistics": ["Logistics", "Freight", "Haulage"],
-    "facilities": ["Cleaning", "Facilities", "Property Services"],
-    "software_development": ["Software", "Digital", "Applications"],
+    "working_capital": ["Fincorp", "Credit", "Capital"],
+    "term_loan": ["Infra Credit", "Industrial Finance", "Project Finance"],
+    "equipment_finance": ["Equipment Finance", "Leasing", "Machinery Finance"],
+    "vehicle_finance": ["Motor Finance", "Auto Credit", "Fleet Finance"],
+    "inter_corporate_deposit": ["Investments", "Treasury Services", "Commercial Investments"],
 }
-SUFFIX = ["Ltd", "Limited", "plc", "GmbH", "BV", "Ltd", "Ltd"]
-STREETS = ["Quay Street", "Market Row", "Mill Lane", "Station Road", "Harbour Way", "Chapel Walk", "Foundry Yard",
-           "Canal Side", "Abbey Close", "Weaver Street", "Granary Court", "Bridge End"]
-TOWNS = ["Leith", "Halbury", "Kirkwall", "Dunmore", "Ashby Fold", "Penrith Vale", "Carrow", "Elmswick", "Tarnby",
-         "Wexley"]
-BANKS = ["Calder Commercial Bank", "Northern Mercantile Bank", "Harbour Trust Bank", "Union Exchange Bank"]
-BANK_CODES = {"Calder Commercial Bank": "CALD", "Northern Mercantile Bank": "NMBK", "Harbour Trust Bank": "HTBK",
-              "Union Exchange Bank": "UXBK"}
-INSURERS = ["Harbourline Mutual Insurance plc", "Granite Assurance Company", "Ashgrove Underwriting Ltd",
-            "Polaris Indemnity Group"]
-UNACCREDITED = ["Global Certificates Online", "QuickCert International", "Assurance Hub Registrar"]
+SUFFIX = ["Ltd", "Limited", "Pvt Ltd", "Private Limited", "Ltd", "Pvt Ltd"]
+LEGAL_FORMS = sorted(set(SUFFIX), key=len, reverse=True)
+TRUSTEE_ROOTS = ["Dhruvatara", "Sthirta", "Aashraya", "Nishtha", "Pratibhuti", "Samarthan"]
+BUILDINGS = ["Shreeji Chambers", "Sai Arcade", "Commerce House", "Trade Centre", "Corporate Point", "Business Bay",
+             "Mercantile House", "Sterling Chambers"]
+STREETS = ["MG Road", "Station Road", "Ring Road", "Link Road", "Nehru Marg", "Tilak Road", "LBS Marg",
+           "Residency Road", "College Road", "Market Yard Road"]
+# city, state code for a CIN, state code for a GSTIN, first three digits of its PIN codes
+CITIES = [("Pune", "MH", 27, "411"), ("Nashik", "MH", 27, "422"), ("Nagpur", "MH", 27, "440"), ("Indore", "MP", 23, "452"),
+          ("Surat", "GJ", 24, "395"), ("Vadodara", "GJ", 24, "390"), ("Coimbatore", "TN", 33, "641"),
+          ("Jaipur", "RJ", 8, "302"), ("Lucknow", "UP", 9, "226"), ("Kochi", "KL", 32, "682")]
+UNRECOGNISED = ["Charge Filing Services Pvt Ltd", "Online Charge Registry", "Corporate Records Bureau"]
+PEOPLE = ["Ananya Kulkarni", "Rohan Deshpande", "Meera Iyer", "Arjun Mehta", "Kavita Nair", "Sandeep Rao",
+          "Priya Menon", "Vikram Joshi", "Neha Bhatt", "Aditya Sen", "Farah Siddiqui", "Gurpreet Sandhu",
+          "Lakshmi Raghavan", "Manoj Pillai"]
+TITLES = ["Assistant General Manager", "Chief Manager", "Vice President, Legal", "Company Secretary",
+          "Head, Stressed Assets", "Authorised Officer"]
+# NIC 2008 codes for lending and other financial service activities
+NIC = ["64920", "64990", "64910", "66190"]
+
+
+def split_form(name: str) -> tuple[str, str]:
+    """('Anvaya Fincorp', 'Pvt Ltd') from 'Anvaya Fincorp Pvt Ltd'."""
+    for form in LEGAL_FORMS:
+        if name.endswith(" " + form):
+            return name[: -len(form) - 1], form
+    return name, ""
 
 
 def legal_name(rng: random.Random, category: str, used: set[str]) -> str:
     for _ in range(500):
         name = f"{rng.choice(FIRST)} {rng.choice(INDUSTRY[category])} {rng.choice(SUFFIX)}"
-        key = name.rsplit(" ", 1)[0]
+        key = split_form(name)[0]
         if key not in used:
             used.add(key)
             return name
@@ -44,24 +60,35 @@ def legal_name(rng: random.Random, category: str, used: set[str]) -> str:
 
 def near_duplicate(name: str, rng: random.Random) -> str:
     """A different company whose name a careless matcher would confuse with this one."""
-    base, suffix = name.rsplit(" ", 1)
-    variants = [f"{base} Services {suffix}", f"{base} Group {suffix}", f"{base} ({rng.choice(TOWNS)}) {suffix}",
-                f"{base.split(' ')[0]} {base.split(' ', 1)[1] if ' ' in base else base} UK {suffix}"]
-    return rng.choice(variants)
+    base, form = split_form(name)
+    city = rng.choice(CITIES)[0]
+    return rng.choice([f"{base} Services {form}", f"Shree {base} {form}", f"{base} ({city}) {form}",
+                       f"{base} India {form}"])
 
 
-def address(rng: random.Random) -> str:
-    code = f"{rng.choice(string.ascii_uppercase)}{rng.choice(string.ascii_uppercase)}{rng.randint(1, 19)} " \
-           f"{rng.randint(1, 9)}{rng.choice(string.ascii_uppercase)}{rng.choice(string.ascii_uppercase)}"
-    return f"{rng.randint(1, 240)} {rng.choice(STREETS)}, {rng.choice(TOWNS)}, {code}"
+def place(rng: random.Random) -> tuple[str, str, int, str]:
+    return rng.choice(CITIES)
 
 
-def company_number(rng: random.Random) -> str:
-    return f"{rng.randint(10_000_000, 99_999_999)}"
+def address(rng: random.Random, city: tuple[str, str, int, str]) -> str:
+    return (f"{rng.randint(1, 240)}, {rng.choice(BUILDINGS)}, {rng.choice(STREETS)}, {city[0]} "
+            f"{city[3]}{rng.randint(1, 99):03d}")
 
 
-def vat_number(rng: random.Random) -> str:
-    return f"GB{rng.randint(100_000_000, 999_999_999)}"
+def pan(rng: random.Random, name: str, holder: str = "C") -> str:
+    """Three letters, the kind of holder ('C': a company), the first letter of the name, four digits, a letter."""
+    first = next((ch for ch in name.upper() if ch.isalpha()), "X")
+    return ("".join(rng.choice(string.ascii_uppercase) for _ in range(3)) + holder + first +
+            f"{rng.randint(1, 9999):04d}" + rng.choice(string.ascii_uppercase))
+
+
+def gstin(state_code: int, pan_value: str) -> str:
+    return gstin_with_check(state_code, pan_value)
+
+
+def cin(rng: random.Random, name: str, state: str, listed: bool = False) -> str:
+    kind = "PTC" if "Pvt" in name or "Private" in name else "PLC"
+    return f"{'L' if listed else 'U'}{rng.choice(NIC)}{state}{rng.randint(1995, 2019)}{kind}{rng.randint(1, 999999):06d}"
 
 
 def lei(rng: random.Random) -> str:
@@ -70,10 +97,9 @@ def lei(rng: random.Random) -> str:
     return lei_with_check(prefix)
 
 
-def iban(rng: random.Random, bank: str) -> str:
-    bban = BANK_CODES[bank] + "".join(rng.choice(string.digits) for _ in range(14))
-    return iban_with_check("GB", bban)
+def account_number(rng: random.Random) -> str:
+    return "".join(rng.choice(string.digits) for _ in range(rng.choice([12, 14, 15])))
 
 
-def bic(bank: str) -> str:
-    return BANK_CODES[bank] + "GB2L"
+def ifsc(rng: random.Random, bank_code: str) -> str:
+    return f"{bank_code}0{rng.randint(1, 999999):06d}"

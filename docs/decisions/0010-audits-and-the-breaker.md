@@ -27,7 +27,7 @@ unbiased and if it changes what the engine does.
 
 ## Consequences
 - The review simulation plants a fault (a limit compared with a fifth of the tier's minimum) and shows the loop:
-  the fault's false assurance, the audit that trips the breaker, no false assurance after it, and the confirmations
+  the fault's false vouching, the audit that trips the breaker, no false vouching after it, and the confirmations
   it then costs (`testamur reviewsim`, `reports/review-sim-*.md`).
 - Detection is probabilistic: a sample at rate r misses a fault with n false PASS verdicts with probability
   (1 - r)^n. The audit rate is a choice between review effort and time to detection, and the report shows it.

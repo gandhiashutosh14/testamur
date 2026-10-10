@@ -24,7 +24,7 @@ ALLOWED_SKIPS: dict[str, str] = {
             "needs a Postgres server: runs in the postgres CI job",
     }),
 }
-MIN_TESTS = 143
+MIN_TESTS = 160
 
 
 def pytest_collection_finish(session):
@@ -57,14 +57,14 @@ def pytest_sessionfinish(session, exitstatus):
 @pytest.fixture(scope="session")
 def built(tmp_path_factory):
     out = tmp_path_factory.mktemp("world")
-    world = build_world(seed=3, size="tiny", out=out, digital_only=True)
+    world = build_world(seed=11, size="tiny", out=out, digital_only=True)
     base = tmp_path_factory.mktemp("base")
     store = Store(f"sqlite:///{base / 'w.db'}")
     load_registry(store, world)
     engine = Engine(store, load_pack(), world.as_of, base / "blobs")
     for u in world.uploads:
-        uid = engine.ingest(u.tenant_id, u.business_unit_id, u.filename, (out / u.file).read_bytes(), u.channel,
-                            u.uploaded_at, u.claimed_supplier_id, external_ref=f"world:{u.id}")
+        uid = engine.ingest(u.tenant_id, u.matter_id, u.filename, (out / u.file).read_bytes(), u.channel,
+                            u.uploaded_at, u.declared_creditor_id, external_ref=f"world:{u.id}")
         engine.process(u.tenant_id, uid)
     for t in world.tenants:
         engine.refresh(t.id)

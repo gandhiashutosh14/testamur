@@ -14,6 +14,7 @@ from typing import Any
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     Date,
     DateTime,
@@ -54,40 +55,48 @@ class Tenant(Base):
     name: Mapped[str] = mapped_column(String(200))
 
 
-class BusinessUnit(TenantScoped, Base):
-    __tablename__ = "business_units"
+class Matter(TenantScoped, Base):
+    """One corporate insolvency resolution process: the corporate debtor and the dates its clock runs from."""
+    __tablename__ = "matters"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(200))
+    name: Mapped[str] = mapped_column(String(200))                     # the corporate debtor
+    debtor_cin: Mapped[str] = mapped_column(String(40), default="")
+    commencement: Mapped[date] = mapped_column(Date)                   # insolvency commencement date
+    announced: Mapped[date] = mapped_column(Date)                      # public announcement
+    claims_due: Mapped[date] = mapped_column(Date)                     # last date for claims in the announcement
 
 
-class Supplier(TenantScoped, Base):
-    __tablename__ = "suppliers"
+class Creditor(TenantScoped, Base):
+    __tablename__ = "creditors"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     legal_name: Mapped[str] = mapped_column(String(300))
     address: Mapped[str] = mapped_column(String(300), default="")
-    company_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    vat_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    cin: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    gstin: Mapped[str | None] = mapped_column(String(40), nullable=True)
     lei: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    iban: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    parent_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    account_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    ifsc: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    trustee_id: Mapped[int | None] = mapped_column(Integer, nullable=True)   # the debenture trustee acting for it
 
 
-class Engagement(TenantScoped, Base):
-    __tablename__ = "engagements"
+class Claim(TenantScoped, Base):
+    """A financial creditor's claim in one process. The amounts come from the corporate debtor's records: what its
+    books show as owed, and the facility the creditor sanctioned."""
+    __tablename__ = "claims"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    business_unit_id: Mapped[int] = mapped_column(ForeignKey("business_units.id"))
-    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
+    matter_id: Mapped[int] = mapped_column(ForeignKey("matters.id"))
+    creditor_id: Mapped[int] = mapped_column(ForeignKey("creditors.id"))
     tier: Mapped[str] = mapped_column(String(20))
-    engagement_type: Mapped[str] = mapped_column(String(40))
-    service_category: Mapped[str] = mapped_column(String(60))
-    start_date: Mapped[date] = mapped_column(Date)
-    end_date: Mapped[date] = mapped_column(Date)
+    claim_type: Mapped[str] = mapped_column(String(40))                # secured | unsecured
+    facility_type: Mapped[str] = mapped_column(String(60))
+    book_balance: Mapped[int] = mapped_column(BigInteger)              # rupees
+    sanctioned: Mapped[int] = mapped_column(BigInteger)                # rupees
 
 
 class Attestation(TenantScoped, Base):
     __tablename__ = "attestations"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    supplier_id: Mapped[int] = mapped_column(Integer)
+    creditor_id: Mapped[int] = mapped_column(Integer)
     requirement_id: Mapped[str] = mapped_column(String(60))
     verified_by: Mapped[str] = mapped_column(String(120))
     verified_on: Mapped[date] = mapped_column(Date)
@@ -109,22 +118,22 @@ class Blob(TenantScoped, Base):
 class UploadRow(TenantScoped, Base):
     __tablename__ = "uploads"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    business_unit_id: Mapped[int] = mapped_column(Integer)
+    matter_id: Mapped[int] = mapped_column(Integer)
     sha256: Mapped[str] = mapped_column(String(64), index=True)
     filename: Mapped[str] = mapped_column(String(300))
     channel: Mapped[str] = mapped_column(String(40))
     uploaded_at: Mapped[datetime] = mapped_column(DateTime)
-    claimed_supplier_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    declared_creditor_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     external_ref: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
 
-class ExtractionClaim(TenantScoped, Base):
+class ReadingLock(TenantScoped, Base):
     """A worker reading a file right now. Another worker that needs the same file waits instead of paying for the
-    same OCR twice; a claim older than CLAIM_SECONDS (engine.py) is a dead worker's and may be taken over."""
-    __tablename__ = "extraction_claims"
+    same OCR twice; a lock older than LOCK_SECONDS (engine.py) is a dead worker's and may be taken over."""
+    __tablename__ = "reading_locks"
     sha256: Mapped[str] = mapped_column(String(64), primary_key=True)
     tenant_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    claimed_at: Mapped[datetime] = mapped_column(DateTime)
+    locked_at: Mapped[datetime] = mapped_column(DateTime)
 
 
 class Document(TenantScoped, Base):
@@ -136,7 +145,7 @@ class Document(TenantScoped, Base):
     doc_type: Mapped[str | None] = mapped_column(String(60), nullable=True)
     class_method: Mapped[str] = mapped_column(String(40), default="")
     class_score: Mapped[float] = mapped_column(Float, default=0.0)
-    supplier_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    creditor_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     covers: Mapped[list[Any]] = mapped_column(JSON, default=list)
     match_method: Mapped[str] = mapped_column(String(40), default="")
     match_score: Mapped[float] = mapped_column(Float, default=0.0)
@@ -166,10 +175,10 @@ class ExtractionRow(TenantScoped, Base):
 
 class VerdictRow(TenantScoped, Base):
     __tablename__ = "verdicts"
-    __table_args__ = (UniqueConstraint("tenant_id", "engagement_id", "requirement_id", "check_id", "document_id",
+    __table_args__ = (UniqueConstraint("tenant_id", "claim_id", "requirement_id", "check_id", "document_id",
                                        "engine_version"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    engagement_id: Mapped[int] = mapped_column(Integer, index=True)
+    claim_id: Mapped[int] = mapped_column(Integer, index=True)
     requirement_id: Mapped[str] = mapped_column(String(60))
     check_id: Mapped[str] = mapped_column(String(60))
     document_id: Mapped[int] = mapped_column(Integer, index=True)
@@ -187,14 +196,14 @@ class VerdictRow(TenantScoped, Base):
 
 
 class CheckReview(TenantScoped, Base):
-    """A person's verdict on one check, for one engagement and document. It replaces the engine's verdict for as
+    """A person's verdict on one check, for one claim and document. It replaces the engine's verdict for as
     long as the check still means what it meant when the person decided (its rule digest), across re-runs and engine
     versions. The engine's verdict at the time is kept: comparing the two is per-check accuracy. `kind` says how
     the verdict reached the person: from the review queue (the engine could not decide) or from an audit sample
     (a random draw of the engine's conclusive verdicts, the unbiased basis for accuracy estimates)."""
     __tablename__ = "check_reviews"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    engagement_id: Mapped[int] = mapped_column(Integer, index=True)
+    claim_id: Mapped[int] = mapped_column(Integer, index=True)
     requirement_id: Mapped[str] = mapped_column(String(60))
     check_id: Mapped[str] = mapped_column(String(60), index=True)
     document_id: Mapped[int] = mapped_column(Integer, index=True)
@@ -244,7 +253,7 @@ class DocumentReview(TenantScoped, Base):
     document_id: Mapped[int] = mapped_column(Integer, index=True)
     action: Mapped[str] = mapped_column(String(10))
     doc_type: Mapped[str | None] = mapped_column(String(60), nullable=True)
-    supplier_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    creditor_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     machine: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     reviewer: Mapped[str] = mapped_column(String(300))
     note: Mapped[str] = mapped_column(Text, default="")
@@ -253,12 +262,12 @@ class DocumentReview(TenantScoped, Base):
 
 class RequirementState(TenantScoped, Base):
     __tablename__ = "requirement_states"
-    engagement_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    claim_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     requirement_id: Mapped[str] = mapped_column(String(60), primary_key=True)
     tenant_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     status: Mapped[str] = mapped_column(String(40))
     document_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    via_parent: Mapped[bool] = mapped_column(Boolean, default=False)
+    via_trustee: Mapped[bool] = mapped_column(Boolean, default=False)
     reasons: Mapped[list[Any]] = mapped_column(JSON, default=list)
     failing: Mapped[list[Any]] = mapped_column(JSON, default=list)      # checks that FAIL, for findings that act
     version: Mapped[int] = mapped_column(Integer, default=0)            # one more for every change reported
@@ -279,15 +288,15 @@ class OutboxEvent(TenantScoped, Base):
 
 
 class Task(TenantScoped, Base):
-    """Remediation work for a person: chase a supplier for evidence, or follow a finding up. At most one open task
-    per engagement and requirement, enforced by the database, not by remembering to check."""
+    """Remediation work for a person: chase a creditor for evidence, or follow a finding up. At most one open task
+    per claim and requirement, enforced by the database, not by remembering to check."""
     __tablename__ = "tasks"
-    __table_args__ = (Index("one_open_task", "tenant_id", "engagement_id", "requirement_id", unique=True,
+    __table_args__ = (Index("one_open_task", "tenant_id", "claim_id", "requirement_id", unique=True,
                             sqlite_where=text("status = 'open'"), postgresql_where=text("status = 'open'")),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    engagement_id: Mapped[int] = mapped_column(Integer, index=True)
+    claim_id: Mapped[int] = mapped_column(Integer, index=True)
     requirement_id: Mapped[str] = mapped_column(String(60))
-    kind: Mapped[str] = mapped_column(String(20))                       # chase_supplier | follow_up
+    kind: Mapped[str] = mapped_column(String(20))                       # chase_creditor | follow_up
     title: Mapped[str] = mapped_column(Text)
     detail: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(10), default="open")    # open | done | superseded
@@ -299,13 +308,13 @@ class Task(TenantScoped, Base):
 
 
 class Notification(TenantScoped, Base):
-    """A message to a supplier, kept as written. `key` makes each one unique; a cooldown keeps reminders apart."""
+    """A message to a creditor, kept as written. `key` makes each one unique; a cooldown keeps reminders apart."""
     __tablename__ = "notifications"
     __table_args__ = (UniqueConstraint("tenant_id", "key"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     key: Mapped[str] = mapped_column(String(160))
-    supplier_id: Mapped[int] = mapped_column(Integer)
-    engagement_id: Mapped[int] = mapped_column(Integer, index=True)
+    creditor_id: Mapped[int] = mapped_column(Integer)
+    claim_id: Mapped[int] = mapped_column(Integer, index=True)
     requirement_id: Mapped[str] = mapped_column(String(60))
     subject: Mapped[str] = mapped_column(Text)
     body: Mapped[str] = mapped_column(Text)
@@ -314,20 +323,20 @@ class Notification(TenantScoped, Base):
 
 
 class Hold(TenantScoped, Base):
-    """A purchasing hold on an engagement while a critical requirement is unmet. Placed and released by the engine,
-    announced by webhook; reversible by design. At most one open hold per engagement."""
+    """A hold on a claim while a critical requirement is unmet: its votes are not counted and nothing is paid to it.
+    Placed and released by the engine, announced by webhook; reversible by design. At most one open hold per claim."""
     __tablename__ = "holds"
-    __table_args__ = (Index("one_open_hold", "tenant_id", "engagement_id", unique=True,
+    __table_args__ = (Index("one_open_hold", "tenant_id", "claim_id", unique=True,
                             sqlite_where=text("released_at IS NULL"), postgresql_where=text("released_at IS NULL")),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    engagement_id: Mapped[int] = mapped_column(Integer, index=True)
+    claim_id: Mapped[int] = mapped_column(Integer, index=True)
     requirements: Mapped[list[Any]] = mapped_column(JSON, default=list)
     placed_at: Mapped[datetime] = mapped_column(DateTime)
     released_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class WebhookEndpoint(TenantScoped, Base):
-    """Where a tenant's own systems (purchasing, ticketing) want to hear about changes; messages are signed with
+    """Where a tenant's own systems (case management, ticketing) want to hear about changes; messages are signed with
     the endpoint's secret (Standard Webhooks)."""
     __tablename__ = "webhook_endpoints"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

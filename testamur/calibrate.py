@@ -1,7 +1,7 @@
 """Choose the name-matching threshold with a guarantee instead of by eye.
 
-How low can the bar for attaching a document to a supplier by name go before more than alpha of documents are
-attached to the wrong supplier? Learn then Test (Angelopoulos, Bates, Candes, Jordan and Lei; Annals of Applied
+How low can the bar for attaching a document to a creditor by name go before more than alpha of documents are
+attached to the wrong creditor? Learn then Test (Angelopoulos, Bates, Candes, Jordan and Lei; Annals of Applied
 Statistics, 2025) answers with a finite-sample guarantee. For each candidate threshold, strictest first, test the
 hypothesis "the wrong-attachment rate exceeds alpha" with an exact binomial p-value on labelled documents, and keep
 lowering the bar while the test rejects at level delta. With probability at least 1 - delta over the calibration
@@ -19,7 +19,7 @@ from sqlalchemy import select
 
 from .accuracy import binom_cdf
 from .match import ACCEPT, EXACT, MARGIN, NAME_FIELD, scope
-from .store import Document, Store, Supplier, UploadRow
+from .store import Creditor, Document, Store, UploadRow
 from .synth.world import World
 from .textnorm import name_similarity
 
@@ -28,9 +28,9 @@ GRID = [round(100 - 0.5 * i, 1) for i in range(61)]          # 100.0 down to 70.
 
 @dataclass
 class Labelled:
-    best: float           # similarity of the best-scoring supplier in scope
+    best: float           # similarity of the best-scoring creditor in scope
     second: float         # ... of the runner-up
-    correct: bool         # the best-scoring supplier is the document's true owner
+    correct: bool         # the best-scoring creditor is the document's true owner
 
 
 def accepted(r: Labelled, threshold: float) -> bool:
@@ -45,8 +45,8 @@ def labelled_names(world: World, store: Store) -> list[Labelled]:
     uploads = {u.id: u for u in world.uploads}
     rows: list[Labelled] = []
     with store.system() as s:
-        pool: dict[int, list[Supplier]] = {}
-        for sup in s.scalars(select(Supplier)):
+        pool: dict[int, list[Creditor]] = {}
+        for sup in s.scalars(select(Creditor)):
             pool.setdefault(sup.tenant_id, []).append(sup)
         for d in s.scalars(select(Document).order_by(Document.id)):
             if d.doc_type is None or d.match_method == "identifier":
@@ -57,11 +57,11 @@ def labelled_names(world: World, store: Store) -> list[Labelled]:
             up = s.scalars(select(UploadRow).where(UploadRow.tenant_id == d.tenant_id, UploadRow.sha256 == d.sha256)
                            .order_by(UploadRow.id)).first()
             truth = uploads[int(up.external_ref.split(":")[1])].truth
-            in_scope = scope(s, pool[d.tenant_id], up.business_unit_id)
+            in_scope = scope(s, pool[d.tenant_id], up.matter_id)
             scored = sorted(((name_similarity(name, x.legal_name), x.id) for x in pool[d.tenant_id] if x.id in in_scope),
                             reverse=True)
             (best, best_id), (second, _) = (scored + [(0.0, None), (0.0, None)])[:2]
-            rows.append(Labelled(best, second, best_id is not None and best_id == truth.owner_supplier_id))
+            rows.append(Labelled(best, second, best_id is not None and best_id == truth.owner_creditor_id))
     return rows
 
 
@@ -112,7 +112,7 @@ def render(cal: list[dict], n_rows: int, seeds: str, validation: dict | None, me
     out += ["", "## What this does and does not show", "",
             "- The guarantee holds for documents like the calibration ones. Scans and photographs are a different "
             "distribution (OCR changes names), which is why the threshold is checked on a scanned world as well.",
-            "- The generator's near-twin names are one model of how names collide; real supplier registers will "
+            "- The generator's near-twin names are one model of how names collide; real creditor registers will "
             "collide differently. In production the labels come from people's decisions on matches.",
             "- Accepting more by name only automates more if nothing else holds the document back: claims, misfiled "
             "uploads and identifiers still apply.", ""]

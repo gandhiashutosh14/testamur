@@ -19,13 +19,12 @@ PACKS = Path(__file__).parent / "packs"
 # The pack tables each rule reads. A person's decision about a check is bound to the check's definition and to these
 # tables (see Pack.rule_digest): change either and the decision stops applying, because the check no longer means
 # what the person decided about.
-RULE_TABLES = {"money_at_least": ("tier_minimum_liability",), "in_allowlist": ("accredited_bodies",),
-               "scope_mentions": ("service_terms",)}
+RULE_TABLES = {"in_allowlist": ("registrar_offices",), "scope_mentions": ("asset_terms",), "ifsc_valid": ("bank_codes",)}
 
 
 class FieldSpec(BaseModel):
     labels: list[str]
-    type: str                                   # text | money | date | list
+    type: str                                   # text | money | words | date | list
 
 
 class DocTypeSpec(BaseModel):
@@ -45,11 +44,11 @@ class CheckSpec(BaseModel):
 
 class Applicability(BaseModel):
     tiers: list[str] | None = None
-    engagement_types: list[str] | None = None
+    claim_types: list[str] | None = None
 
-    def matches(self, tier: str, engagement_type: str) -> bool:
+    def matches(self, tier: str, claim_type: str) -> bool:
         return (self.tiers is None or tier in self.tiers) and \
-               (self.engagement_types is None or engagement_type in self.engagement_types)
+               (self.claim_types is None or claim_type in self.claim_types)
 
 
 class RequirementSpec(BaseModel):
@@ -57,10 +56,10 @@ class RequirementSpec(BaseModel):
     applies_to: Applicability = Field(default_factory=Applicability)
     checks: list[str]
     check_applies: dict[str, Applicability] = Field(default_factory=dict)
-    group_cover: bool = False
+    trustee_cover: bool = False
 
 
-class Assurance(BaseModel):
+class AuditPolicy(BaseModel):
     """How much error each severity may carry, measured as the share of the engine's PASS verdicts a person would
     overturn, and the share of conclusive verdicts people audit to know it (see accuracy.py)."""
     false_pass_budget: dict[str, float] = Field(default_factory=lambda: {"critical": 0.01, "major": 0.05,
@@ -70,30 +69,30 @@ class Assurance(BaseModel):
 
 
 class ActionPolicy(BaseModel):
-    """What a finding turns into (see actions.py). The first workflow automated is the supplier chase for insurance:
-    frequent, triggered by a rule (a date or a limit), and reversible (a reminder and a task)."""
-    chase_requirements: list[str] = Field(default_factory=lambda: ["insurance"])
+    """What a finding turns into (see actions.py). The first workflow automated is the chase for a creditor's lapsing
+    authority: frequent, triggered by a rule (a date), and reversible (a reminder and a task)."""
+    chase_requirements: list[str] = Field(default_factory=lambda: ["authority"])
     chase_statuses: list[str] = Field(default_factory=lambda: ["MISSING", "EXPIRED", "NOT_SATISFIED"])
-    chase_findings: list[str] = Field(default_factory=lambda: ["ins_renewal_due"])
+    chase_findings: list[str] = Field(default_factory=lambda: ["auth_renewal_due"])
     follow_up_statuses: list[str] = Field(default_factory=lambda: ["MISSING", "EXPIRED", "NOT_SATISFIED"])
-    hold_requirements: list[str] = Field(default_factory=lambda: ["insurance", "bank_details"])
+    hold_requirements: list[str] = Field(default_factory=lambda: ["authority", "bank_details"])
     hold_statuses: list[str] = Field(default_factory=lambda: ["EXPIRED", "NOT_SATISFIED"])
     notify_cooldown_days: int = 7
-    task_due_days: dict[str, int] = Field(default_factory=lambda: {"critical": 5, "high": 10, "standard": 15,
-                                                                   "low": 30})
+    task_due_days: dict[str, int] = Field(default_factory=lambda: {"critical": 2, "high": 3, "standard": 5,
+                                                                   "low": 7})
 
 
 class Pack(BaseModel):
     name: str
     version: int
-    tier_minimum_liability: dict[str, int]
-    accredited_bodies: list[str]
+    registrar_offices: list[str]
+    bank_codes: dict[str, str]
     doc_types: dict[str, DocTypeSpec]
     checks: dict[str, CheckSpec]
     requirements: dict[str, RequirementSpec]
-    service_terms: dict[str, list[str]]
+    asset_terms: dict[str, list[str]]
     injection_markers: list[str]
-    assurance: Assurance = Field(default_factory=Assurance)
+    audit: AuditPolicy = Field(default_factory=AuditPolicy)
     actions: ActionPolicy = Field(default_factory=ActionPolicy)
     digest: str = ""
 
@@ -109,8 +108,8 @@ class Pack(BaseModel):
                 if cid not in req.checks:
                     raise ValueError(f"requirement {rid}: check_applies names {cid}, which it does not run")
         for cid, chk in self.checks.items():
-            if chk.tier == Tier.MODEL and not {"claim", "counterclaim", "search"} <= set(chk.params):
-                raise ValueError(f"check {cid}: a model-tier check needs claim, counterclaim and search")
+            if chk.tier == Tier.MODEL and not {"statement", "opposite", "search"} <= set(chk.params):
+                raise ValueError(f"check {cid}: a model-tier check needs statement, opposite and search")
         for marker in self.injection_markers:
             re.compile(marker)
         return self
@@ -133,7 +132,7 @@ def pack_digest(raw: bytes) -> str:
 
 
 @lru_cache(maxsize=8)
-def load_pack(name: str = "supplier_assurance") -> Pack:
+def load_pack(name: str = "insolvency_claims") -> Pack:
     raw = (PACKS / name / "pack.yaml").read_bytes()
     pack = Pack.model_validate(yaml.safe_load(raw))
     pack.digest = pack_digest(raw)
