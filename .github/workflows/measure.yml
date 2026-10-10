@@ -1,0 +1,142 @@
+name: measure
+
+# Regenerates the committed measurements on GitHub's machines, CPU only: the full world with the open-weight model run
+# live and every call recorded, the assistant's golden set, the review simulations, the threshold calibration, the
+# finding-to-action simulation, the load test, the shadow OCR trial, and the small-world recording the CI harness
+# replays. Manual: it downloads a 2.5 GB model and takes a few hours. The reports come back as artifacts and are
+# committed by hand, each stamped with the commit and the command that produced it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_repo:
+        description: Hugging Face repository of the GGUF model
+        default: unsloth/Qwen3-4B-Instruct-2507-GGUF
+      model_file:
+        description: GGUF file name
+        default: Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+
+permissions:
+  contents: read
+
+jobs:
+  model:
+    name: full world with the model live, golden set, review simulations, calibration, actions
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    env:
+      MODEL_REPO: ${{ inputs.model_repo }}
+      MODEL_FILE: ${{ inputs.model_file }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[ocr]"
+      - run: python -m pip install "llama-cpp-python>=0.3" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: models
+          key: gguf-${{ inputs.model_file }}
+      - name: Download the model
+        run: |
+          case "$MODEL_FILE$MODEL_REPO" in *[!A-Za-z0-9._/-]*) echo "unexpected characters in the inputs"; exit 1;; esac
+          mkdir -p models
+          [ -f "models/$MODEL_FILE" ] || curl -sSL -o "models/$MODEL_FILE" \
+            "https://huggingface.co/$MODEL_REPO/resolve/main/$MODEL_FILE"
+          ls -la models
+      - run: testamur world --seed 11 --size full --out data/world_full11
+      - name: The full world, the model live, every call recorded
+        run: |
+          mkdir -p reports/cassettes
+          testamur harness --world data/world_full11 --db data/harness_full11.db \
+            --report reports/harness-full-seed11.md --model-path "models/$MODEL_FILE" \
+            --cassette reports/cassettes/full-seed11.jsonl || echo "harness gates failed: see the report" >> "$GITHUB_STEP_SUMMARY"
+      - run: testamur golden --world data/world_full11 --db data/harness_full11.db --report reports/assistant-golden-full-seed11.md
+      - name: Simulated reviewers at the pack's audit rates
+        run: |
+          testamur reviewsim --world data/world_full11 --db data/reviewsim.db \
+            --report reports/review-sim-full-seed11.md --cassette reports/cassettes/full-seed11.jsonl
+      - name: The planted fault at a 50% audit rate
+        run: |
+          testamur reviewsim --world data/world_full11 --db data/reviewsim50.db --scenarios fault --audit-rate 0.5 \
+            --report reports/review-sim-full-seed11-audit50.md --cassette reports/cassettes/full-seed11.jsonl
+      - name: Name-matching thresholds by Learn then Test
+        run: |
+          testamur calibrate --seeds 21-30 --size full --validate-world data/world_full11 \
+            --validate-db data/harness_full11.db --report reports/calibration-matching.md
+      - name: Sixty days of findings becoming work
+        run: |
+          testamur actionsim --world data/world_full11 --db data/actionsim.db --days 60 \
+            --report reports/action-sim-full-seed11.md --cassette reports/cassettes/full-seed11.jsonl
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: measure-model
+          path: reports/
+
+  load:
+    name: load test and shadow OCR trial
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      TESTAMUR_MACHINE: a GitHub-hosted runner
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[ocr]"
+      - run: testamur world --seed 11 --size full --out data/world_full11
+      - run: |
+          testamur loadtest --world data/world_full11 --out data/load_full11 --workers 1,2,4 --budget-pages 40 \
+            --report reports/loadtest-full-seed11.md
+      - run: testamur shadow --world data/world_full11 --report reports/shadow-ocr-full-seed11.md
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: measure-load
+          path: reports/
+
+  small:
+    name: the small world recorded on Linux, for the CI harness to replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      MODEL_REPO: ${{ inputs.model_repo }}
+      MODEL_FILE: ${{ inputs.model_file }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[ocr]"
+      - run: python -m pip install "llama-cpp-python>=0.3" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: models
+          key: gguf-${{ inputs.model_file }}
+      - name: Download the model
+        run: |
+          case "$MODEL_FILE$MODEL_REPO" in *[!A-Za-z0-9._/-]*) echo "unexpected characters in the inputs"; exit 1;; esac
+          mkdir -p models
+          [ -f "models/$MODEL_FILE" ] || curl -sSL -o "models/$MODEL_FILE" \
+            "https://huggingface.co/$MODEL_REPO/resolve/main/$MODEL_FILE"
+      - run: testamur world --seed 7 --size small --out data/world
+      - name: Run the harness live and record every model call
+        run: |
+          mkdir -p reports/cassettes
+          testamur harness --world data/world --db data/harness.db --report reports/harness-small-seed7-linux.md \
+            --model-path "models/$MODEL_FILE" --cassette reports/cassettes/small-seed7-linux.jsonl \
+            || echo "harness gates failed: see the report" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: measure-small
+          path: reports/
