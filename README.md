@@ -13,7 +13,7 @@ person, turn findings into work, and never say PASS without evidence.*
 > **In plain English:** when a company goes into insolvency in India, everyone it owes money to must prove what they
 > are owed. A resolution professional checks every claim against a short statutory clock, and the result decides who
 > sits on the committee that votes on the company's future, and with how many votes. The proof arrives as scanned
-> forms, phone photos of authority letters and PDFs called `IMG-20260914-WA0007.jpg`. TESTAMUR reads each file, works
+> forms, phone photos of authority letters and files called `IMG-20260914-WA0007.jpg`. TESTAMUR reads each file, works
 > out which creditor it belongs to, checks what it says (is the debt within limitation? does the claim match the
 > company's books? is the charge really registered against this company? may this person vote?), and records a
 > verdict with the line of the page it read. When it cannot be sure, it says so and hands the case to a person,
