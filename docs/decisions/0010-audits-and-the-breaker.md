@@ -8,7 +8,7 @@ unbiased and if it changes what the engine does.
 
 ## Decision
 - **Random audits.** A share of the engine's conclusive verdicts (PASS and FAIL) is drawn for people to check: 10%
-  for critical checks, 5% for major, 2% for minor (the pack's `assurance` section). The draw is a hash of a seed and
+  for critical checks, 5% for major, 2% for minor (the pack's `audit` section). The draw is a hash of a seed and
   the verdict's identity, independent of what the verdict says, so the estimate is unbiased, and reproducible.
 - **One question per check:** when the engine says PASS, how often would a person overturn it? Exact one-sided
   Clopper-Pearson bounds at 95%. Only audits and confirmations count; reviews of abstentions are excluded (the hard
@@ -27,7 +27,7 @@ unbiased and if it changes what the engine does.
 
 ## Consequences
 - The review simulation plants a fault (a limit compared with a fifth of the tier's minimum) and shows the loop:
-  the fault's false assurance, the audit that trips the breaker, no false assurance after it, and the confirmations
+  the fault's false vouching, the audit that trips the breaker, no false vouching after it, and the confirmations
   it then costs (`testamur reviewsim`, `reports/review-sim-*.md`).
 - Detection is probabilistic: a sample at rate r misses a fault with n false PASS verdicts with probability
   (1 - r)^n. The audit rate is a choice between review effort and time to detection, and the report shows it.

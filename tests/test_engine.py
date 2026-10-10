@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 @pytest.fixture(scope="module")
 def tiny(tmp_path_factory):
     out = tmp_path_factory.mktemp("world")
-    world = build_world(seed=3, size="tiny", out=out, digital_only=True)
+    world = build_world(seed=11, size="tiny", out=out, digital_only=True)
     return out, world
 
 
@@ -38,7 +38,7 @@ def test_the_tiny_world_passes_the_dangerous_direction_gates(tiny, tmp_path):
     report = run(out, tmp_path / "h.db", model=None)
     apply_gates(report, ROOT / "gates.yaml")
     by_name = {g["gate"]: g for g in report.gates}
-    for gate in ("status false assurance", "critical check false passes", "documents matched to the wrong supplier",
+    for gate in ("status false vouching", "critical check false passes", "documents matched to the wrong creditor",
                  "model PASS on hostile documents", "OCR pages paid again on re-index"):
         assert by_name[gate]["ok"], by_name[gate]
     assert report.metrics["classification"]["accuracy"] >= 0.95
@@ -49,11 +49,11 @@ def test_the_same_file_twice_is_one_document_and_one_extraction(tiny, tmp_path):
     store = Store(f"sqlite:///{tmp_path / 'd.db'}")
     load_registry(store, world)
     engine = Engine(store, load_pack(), world.as_of, tmp_path / "blobs")
-    u = next(x for x in world.uploads if x.truth.doc_type == "tax_registration")
+    u = next(x for x in world.uploads if x.truth.doc_type == "claim_form")
     data = (out / u.file).read_bytes()
-    first = engine.process(u.tenant_id, engine.ingest(u.tenant_id, u.business_unit_id, "a.pdf", data, "staff_upload",
+    first = engine.process(u.tenant_id, engine.ingest(u.tenant_id, u.matter_id, "a.pdf", data, "staff_upload",
                                                       u.uploaded_at))
-    second = engine.process(u.tenant_id, engine.ingest(u.tenant_id, u.business_unit_id, "copy.pdf", data,
+    second = engine.process(u.tenant_id, engine.ingest(u.tenant_id, u.matter_id, "copy.pdf", data,
                                                        "email_ingest", u.uploaded_at))
     assert not first.deduplicated and second.deduplicated and first.document_id == second.document_id
     with store.tenant(u.tenant_id) as s:
@@ -67,11 +67,11 @@ def test_a_transient_abstain_never_replaces_a_conclusive_verdict(tiny, tmp_path)
     store = Store(f"sqlite:///{tmp_path / 'r.db'}")
     engine = Engine(store, load_pack(), world.as_of, tmp_path / "blobs")
     with store.tenant(1) as s:
-        row = VerdictRow(engagement_id=1, requirement_id="insurance", check_id="ins_cover_current", document_id=7,
+        row = VerdictRow(claim_id=1, requirement_id="authority", check_id="auth_current", document_id=7,
                          verdict="PASS", severity="critical", tier="field", engine_version=engine.version)
         s.add(row)
         s.flush()
-        flaky = CheckResult(check_id="ins_cover_current", requirement_id="insurance", verdict=Verdict.ABSTAIN,
+        flaky = CheckResult(check_id="auth_current", requirement_id="authority", verdict=Verdict.ABSTAIN,
                             severity=Severity.CRITICAL, tier=Tier.FIELD, reason="timeout", transient=True)
         kept = engine._store(s, 1, 7, flaky, row)
         assert kept.verdict == Verdict.PASS and row.verdict == "PASS"
@@ -93,16 +93,16 @@ def test_a_hostile_document_is_never_shown_to_the_model(tiny, tmp_path):
 
     engine = Engine(store, load_pack(), world.as_of, tmp_path / "blobs", model=WouldPass())
     with store.tenant(1) as s:
-        doc = Document(sha256="cd" * 32, doc_type="master_agreement", hostile=True)
+        doc = Document(sha256="cd" * 32, doc_type="facility_agreement", hostile=True)
         s.add(doc)
         s.flush()
-        r = engine._model_check(s, 1, "clause_liability_cap", "master_agreement", doc, None, {})
+        r = engine._model_check(s, 1, "clause_interest", "evidence_of_debt", doc, None, {})
     assert r.verdict == Verdict.ABSTAIN and "automated readers" in r.reason and WouldPass.calls == 0
 
 
 def test_the_gates_fail_when_the_engine_vouches_wrongly(tiny, tmp_path):
     out, _ = tiny
     report = run(out, tmp_path / "g.db", model=None, reindex_check=False)
-    report.metrics["status"]["false_assurance"] = 1
+    report.metrics["status"]["false_vouching"] = 1
     apply_gates(report, ROOT / "gates.yaml")
     assert not report.passed

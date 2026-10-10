@@ -36,8 +36,12 @@ def render_pdf(content: DocContent, rng: random.Random) -> bytes:
                 c.drawString(margin, y, item[1])
                 y -= 30
             elif kind == "kv":
-                c.setFont(body_font, 10.5)
-                c.drawString(margin, y, f"{item[1]}: {item[2]}")
+                text = f"{item[1]}: {item[2]}"
+                size = 10.5                         # a long value is set smaller, never wrapped: it stays one line
+                if c.stringWidth(text, body_font, size) > width - 2 * margin:
+                    size = max(7.0, size * (width - 2 * margin) / c.stringWidth(text, body_font, size))
+                c.setFont(body_font, size)
+                c.drawString(margin, y, text)
                 y -= 19
             elif kind == "para":
                 c.setFont(body_font, 10)

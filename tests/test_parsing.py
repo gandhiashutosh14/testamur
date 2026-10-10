@@ -3,60 +3,93 @@ from decimal import Decimal
 
 import pytest
 
-from testamur.ids import company_number_valid, iban_valid, iban_with_check, lei_valid, lei_with_check, vat_valid
-from testamur.textnorm import after_label, name_similarity, parse_date, parse_money
+from testamur.ids import (
+    cin_valid,
+    gstin_valid,
+    gstin_with_check,
+    ifsc_valid,
+    lei_valid,
+    lei_with_check,
+    pan_of_gstin,
+    pan_valid,
+)
+from testamur.textnorm import (
+    after_label,
+    format_inr,
+    name_similarity,
+    parse_date,
+    parse_money,
+    parse_rupee_words,
+    rupees_in_words,
+)
 
 
-def test_check_digit_identifiers_validate_and_reject_single_digit_errors():
+def test_identifiers_validate_and_reject_single_character_errors():
     lei = lei_with_check("5493001KJTIIGC8Y1R")
     assert lei_valid(lei)
     assert not lei_valid(lei[:-1] + ("0" if lei[-1] != "0" else "1"))
-    assert iban_valid("GB33BUKB20201555555555")          # the published example
-    assert iban_valid("GB33 BUKB 2020 1555 5555 55")      # spacing is not significant
-    assert not iban_valid("GB34BUKB20201555555555")
-    assert iban_valid(iban_with_check("GB", "NMBK12345678901234"))
-    assert company_number_valid("12345678") and not company_number_valid("1234")
-    assert vat_valid("GB123456789") and not vat_valid("GB1234")
+    assert gstin_valid("27AAPFU0939F1ZV")                 # the example the GST portal's own guides use
+    assert gstin_valid("27 AAPFU 0939 F1ZV")              # spacing is not significant
+    assert not gstin_valid("27AAPFU0939F1ZW")             # one wrong check character
+    assert not gstin_valid("27AAPFU0939F1Z")              # one character short
+    assert gstin_valid(gstin_with_check(33, "AAKCA1234K"))
+    assert pan_of_gstin("27AAPFU0939F1ZV") == "AAPFU0939F"
+    assert pan_valid("AAKCA1234K") and not pan_valid("AAKXA1234K")     # 'X' is not a kind of holder
+    assert cin_valid("U64920MH2004PTC123456") and not cin_valid("U64920MH2004XYZ123456")
+    assert ifsc_valid("NRMX0004521") and not ifsc_valid("NRMX1004521")  # the fifth character is always zero
 
 
 @pytest.mark.parametrize("text, expected", [
-    ("EUR 5,000,000", (Decimal("5000000"), "EUR")),
-    ("€5m", (Decimal("5000000"), "EUR")),
-    ("5.000.000 EUR", (Decimal("5000000"), "EUR")),
-    ("GBP 2,500,000.00", (Decimal("2500000.00"), "GBP")),
-    ("EUR 10000000 any one occurrence", (Decimal("10000000"), "EUR")),
-    ("EUR 5 000 000", (Decimal("5000000"), "EUR")),
-    ("EUR 5,000000", None),          # an OCR slip: must not become five thousand
-    ("EUR 5,000.000", None),         # mixed separators
-    ("EUR 5,00,000", None),
-    ("5,000,000", None),             # no currency, no amount
+    ("Rs. 12,34,56,000/-", (Decimal("123456000"), "INR")),     # lakh and crore grouping
+    ("INR 123,456,000", (Decimal("123456000"), "INR")),        # thousands grouping
+    ("Rs 25 crore", (Decimal("250000000"), "INR")),
+    ("Rs. 12.5 lakh", (Decimal("1250000"), "INR")),
+    ("INR 12,34,56,000.50", (Decimal("123456000.50"), "INR")),
+    ("Rs. 25,00,00,000/- only", (Decimal("250000000"), "INR")),
+    ("Rs. 1,23,4567", None),          # an OCR slip in the grouping: not guessed
+    ("Rs. 12,345,67,000", None),      # two groupings mixed
+    ("Rs. 5,00,000 plus interest of Rs. 20,000", None),   # two amounts: which one is a question for a person
+    ("12,34,56,000", None),           # no currency
 ])
 def test_money_is_parsed_strictly(text, expected):
     assert parse_money(text) == expected
 
 
+def test_amounts_in_words_are_read_the_indian_way():
+    assert rupees_in_words(123456000) == "Rupees Twelve Crore Thirty-Four Lakh Fifty-Six Thousand Only"
+    assert rupees_in_words(2500000000) == "Rupees Two Hundred Fifty Crore Only"
+    for n in (1005, 100000, 47800000, 123456000, 2500000000, 999999999):
+        assert parse_rupee_words(rupees_in_words(n)) == n
+    assert parse_rupee_words("Rupees One Lakh Crore Only") is None        # a scale with no number before it
+    assert parse_rupee_words("Rupees Five Lakh Two Crore Only") is None   # scales out of order
+    assert parse_rupee_words("Rupees Twenty-Two Hundred Only") is None    # not how an Indian form writes it
+    assert parse_rupee_words("Rupees Twelve Crore and Fifty Paise Only") is None
+    assert format_inr(123456000) == "Rs. 12,34,56,000"
+
+
 @pytest.mark.parametrize("text, expected", [
-    ("28 February 2027", date(2027, 2, 28)), ("28February2027", date(2027, 2, 28)), ("2027-02-28", date(2027, 2, 28)),
-    ("28/02/2027", date(2027, 2, 28)), ("February 28, 2027", date(2027, 2, 28)), ("1st March 2026", date(2026, 3, 1)),
-    ("31 Feb 2027", None), ("sometime in 2027", None),
+    ("20.06.2026", date(2026, 6, 20)), ("20/06/2026", date(2026, 6, 20)), ("20-06-2026", date(2026, 6, 20)),
+    ("20-Jun-2026", date(2026, 6, 20)), ("20th June, 2026", date(2026, 6, 20)),
+    ("20th day of June, 2026", date(2026, 6, 20)), ("2026-06-20", date(2026, 6, 20)),
+    ("31.02.2027", None), ("sometime in 2027", None),
 ])
 def test_dates_are_day_first_and_impossible_dates_rejected(text, expected):
     assert parse_date(text) == expected
 
 
 def test_labels_match_only_at_the_start_and_on_a_word_boundary():
-    assert after_label("Expiry date: 28 February 2027", ["expiry date"]) == "28 February 2027"
-    assert after_label("Prior period expiry date: 01 Jan 2026", ["expiry date"]) is None   # the decoy label
-    assert after_label("Insurer: Harbourline Mutual", ["insured"]) is None                  # Insurer is not Insured
-    assert after_label("Policynumber:HM-1", ["policy number"]) == "HM-1"                    # OCR dropped the space
+    assert after_label("Valid until: 31.03.2027", ["valid until"]) == "31.03.2027"
+    assert after_label("Earlier authority valid until: 31.03.2026", ["valid until"]) is None   # the decoy label
+    assert after_label("Lenders: Anvaya Fincorp Ltd", ["lender"]) is None                     # Lenders is not Lender
+    assert after_label("Dateofdefault:14.03.2024", ["date of default"]) == "14.03.2024"       # OCR dropped the spaces
     assert after_label("BANK ACCOUNT CONFIRMATION", ["bank"], require_separator=True) is None
-    assert after_label("Bank: Calder Commercial Bank", ["bank"], require_separator=True) == "Calder Commercial Bank"
+    assert after_label("Bank: Narmada Commercial Bank", ["bank"], require_separator=True) == "Narmada Commercial Bank"
 
 
 def test_name_similarity_ignores_legal_form_but_not_extra_words():
-    assert name_similarity("Brightwater Logistics Ltd", "Brightwater Logistics Limited") == 100
-    assert name_similarity("BrightwaterLogisticsLtd", "Brightwater Logistics Ltd") == 100    # OCR glued the words
-    assert name_similarity("Vantage Holdings ple", "Vantage Holdings plc") == 100            # OCR misread the suffix
-    assert name_similarity("Purple Logistics Ltd", "Pur Logistics Ltd") < 92                 # only the suffix slot
-    assert name_similarity("Harbor Freight", "Harbor Freight Holdings") < 92                 # parent is not the subsidiary
-    assert name_similarity("Northgate Cleaning Ltd", "Northgate Cleaning Services Ltd") < 92
+    assert name_similarity("Anvaya Fincorp Pvt Ltd", "Anvaya Fincorp Private Limited") == 100
+    assert name_similarity("AnvayaFincorpPvtLtd", "Anvaya Fincorp Pvt Ltd") == 100          # OCR glued the words
+    assert name_similarity("Anvaya Fincorp Pvl Ltd", "Anvaya Fincorp Pvt Ltd") == 100        # OCR misread the suffix
+    assert name_similarity("Shree Anvaya Fincorp Ltd", "Anvaya Fincorp Ltd") < 92            # a different company
+    assert name_similarity("Anvaya Fincorp Services Ltd", "Anvaya Fincorp Ltd") < 92
+    assert name_similarity("Anvaya Fincorp India Ltd", "Anvaya Fincorp Ltd") < 92

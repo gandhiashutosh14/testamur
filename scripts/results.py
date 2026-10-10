@@ -28,15 +28,26 @@ def _commit(r: dict) -> str:
     return (r.get("meta") or {}).get("commit", "?")
 
 
+def _world(h: dict | None) -> str:
+    if not h:
+        return ""
+    from testamur.pack import load_pack
+    from testamur.synth.world import SIZES
+    meta, st = h["meta"], h["metrics"]["status"]
+    claims = st["requirement_instances"] // len(load_pack().requirements)
+    return (f" The main world is seed {meta['world_seed']}: {SIZES[meta['world_size']]['tenants']} insolvency firms, "
+            f"{claims} claims, {meta['uploads']} uploads.")
+
+
 def render() -> str:
-    out = ["## Results", "",
-           "Measured on generated, adversarial supplier worlds with ground truth: fictional companies; scans and phone "
-           "photos; near-twin names; decoy pages; certificates that contradict themselves; changed bank accounts; text "
-           "aimed at automated readers. Each number below is written from a committed report by "
-           "[`scripts/results.py`](scripts/results.py) (a test keeps the two in step), and each report states the "
-           "commit and the command that produced it. The main world is seed 11: 3 tenants, 117 engagements, "
-           "378 uploads."]
     h = _load("harness-full-seed11.json")
+    out = ["## Results", "",
+           "Measured on generated, adversarial insolvency worlds with ground truth: fictional lenders, trustees and "
+           "corporate debtors; scans and phone photos; near-twin names; decoy pages; authorities that contradict "
+           "themselves; claims above the books; defaults outside limitation; changed bank accounts; text aimed at "
+           "automated readers. Each number below is written from a committed report by "
+           "[`scripts/results.py`](scripts/results.py) (a test keeps the two in step), and each report states the "
+           "commit and the command that produced it." + _world(h)]
     if h:
         m = h["metrics"]
         st, ck, cl, mt, sec, cost = (m["status"], m["checks"]["by_tier"], m["classification"], m["matching"],
@@ -50,13 +61,13 @@ def render() -> str:
                 f"| Handed to a person instead (NEEDS_REVIEW) | {st.get('deferred_to_review', 0)} "
                 f"({_pct(st['deferral_rate'])}) |",
                 f"| Vouching kept, a non-critical doubt shown as a finding | {st.get('abstention_as_finding', 0)} |",
-                f"| **Vouching when the truth says otherwise** | **{st.get('false_assurance', 0)}** |",
+                f"| **Vouching when the truth says otherwise** | **{st.get('false_vouching', 0)}** |",
                 f"| Raising an alarm when the truth is fine | {st.get('false_alarm', 0)} |",
                 f"| Field and metadata judgements agreeing with the truth | {det[0]:,} of {det[1]:,} |",
-                f"| Contract-clause judgements, local model on CPU: agree / abstain / false PASS | {mod['agree']} / "
+                f"| Agreement-clause judgements, local model on CPU: agree / abstain / false PASS | {mod['agree']} / "
                 f"{mod['abstained']} / {mod['false_pass']} of {mod['n']} |",
                 f"| Documents classified right | {cl['correct']} of {cl['documents']} |",
-                f"| Documents attached to the wrong supplier | {mt.get('wrong_match', 0)} |",
+                f"| Documents attached to the wrong creditor | {mt.get('wrong_match', 0)} |",
                 f"| Planted instructions detected; model PASS on such documents | {sec['detected']} of "
                 f"{sec['injected_documents']}; {sec['model_pass_on_hostile_documents']} |",
                 f"| Re-index of every document: new OCR pages, new model calls | "
@@ -95,8 +106,8 @@ def render() -> str:
                 + ", ".join(f"{v} {k}" for k, v in sorted(q["effort"].items())) + f"). Afterwards "
                 f"{q['after'].get('exact', 0)} of {q['pairs']} statuses were exactly right, and a full re-index changed "
                 f"{q['changed_by_reindex']}.", "",
-                f"A planted fault (a liability limit compared with a fifth of the tier's minimum) made the engine vouch "
-                f"wrongly {a['before'].get('false_assurance', 0)} times. At the default audit rate (10% of critical "
+                f"A planted fault (the limitation period read as five years instead of three) made the engine vouch "
+                f"wrongly {a['before'].get('false_vouching', 0)} times. At the default audit rate (10% of critical "
                 "verdicts) the sample drew " +
                 ("none of the false PASS verdicts" if not any(t["tripped_after"] for t in a["tenants"]) else
                  "some of them") +
@@ -109,8 +120,8 @@ def render() -> str:
             tripped = [t for t in b["tenants"] if t["tripped_after"]]
             out[-1] += (f" At 50% ([report](reports/review-sim-full-seed11-audit50.md)), the breaker tripped in "
                         f"{len(tripped)} of {sum(1 for t in b['tenants'] if t['false_pass_verdicts'])} affected tenants "
-                        f"(after {', '.join(str(t['tripped_after']) for t in tripped)} audits), false assurance fell "
-                        f"from {b['before'].get('false_assurance', 0)} to {b['after_audit'].get('false_assurance', 0)}, "
+                        f"(after {', '.join(str(t['tripped_after']) for t in tripped)} audits), false vouching fell "
+                        f"from {b['before'].get('false_vouching', 0)} to {b['after_audit'].get('false_vouching', 0)}, "
                         f"and after the confirmations {b['final'].get('exact', 0)} of {b['pairs']} statuses were right.")
     cal = _load("calibration-matching.json")
     if cal:
@@ -132,14 +143,14 @@ def render() -> str:
                 f"`{_commit(act)}`)", "",
                 f"{act['days']} simulated days: {inv['events']} status changes, each reported once and dispatched; "
                 f"tasks " + ", ".join(f"{k} {v}" for k, v in sorted(act["tasks"].items())) +
-                (f"; a supplier chase closed a median {act['days_to_close_chase_median']} days after it opened"
+                (f"; a creditor chase closed a median {act['days_to_close_chase_median']} days after it opened"
                  if act.get("days_to_close_chase_median") is not None else "") +
                 f"; {act['reminders_written']} reminders (one a week at most); holds placed {tot.get('hold_placed', 0)}, "
                 f"released {tot.get('hold_released', 0)}; {sum(act['deliveries'].values())} webhook messages "
                 f"({', '.join(f'{k} {v}' for k, v in sorted(act['deliveries'].items()))}) to a receiver that was down "
                 f"{act['outage']:.0%} of the time, each processed once "
                 f"({sum(r['duplicates_ignored'] for r in act['receivers'].values())} repeats ignored). At most one open "
-                f"task per requirement and one open hold per engagement throughout; a dispatcher killed mid-event left "
+                f"task per requirement and one open hold per claim throughout; a dispatcher killed mid-event left "
                 "nothing half done."]
     g = _load("assistant-golden-full-seed11.json")
     if g:
@@ -152,9 +163,9 @@ def render() -> str:
                 f"`{_commit(g)}`)", "",
                 f"{g['right']} of {g['questions']} questions answered right: field lookups with citations "
                 f"({f.get('right', 0)} of {f.get('n', 0)}, including {f.get('unsettled', 0)} the engine had not settled, "
-                f"answered as such), near-twin names, shared first words asked back, another tenant's suppliers, "
-                f"unanswerable questions, hostile documents and expiry lists. Wrong values, wrong versions or wrong "
-                f"suppliers: {wrong}. Citations outside the tenant: {leaked}."]
+                f"answered as such), near-twin names, shared first words asked back, another tenant's creditors, "
+                f"unanswerable questions, hostile documents and lists of lapsing authorities. Wrong values, wrong versions or wrong "
+                f"creditors: {wrong}. Citations outside the tenant: {leaked}."]
     jc = REPORTS / "judge-comparison.md"
     if jc.exists():
         rows = [r for r in jc.read_text(encoding="utf-8").splitlines() if r.startswith("| ") and "| clean |" in r]

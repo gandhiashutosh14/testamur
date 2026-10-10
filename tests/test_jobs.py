@@ -7,9 +7,9 @@ import pytest
 
 from testamur import jobs
 from testamur.budget import BudgetExceeded
-from testamur.engine import CLAIM_SECONDS, Engine, ReadingElsewhere
+from testamur.engine import LOCK_SECONDS, Engine, ReadingElsewhere
 from testamur.pack import load_pack
-from testamur.store import BusinessUnit, ExtractionClaim, ExtractionRow, Store, Tenant, TenantBudget, UsageRow
+from testamur.store import ExtractionRow, Matter, ReadingLock, Store, Tenant, TenantBudget, UsageRow
 from testamur.synth.render import DocContent, render_pdf, to_scan_pdf
 
 T0 = datetime(2026, 10, 1, 9, 0)
@@ -56,10 +56,10 @@ def test_a_deferral_is_not_an_attempt(store):
 
 def test_a_tenant_over_its_ocr_budget_pays_for_nothing(store, tmp_path):
     with store.system() as s:
-        s.add_all([Tenant(id=1, name="T"), BusinessUnit(id=1, tenant_id=1, name="U"),
+        s.add_all([Tenant(id=1, name="T"), Matter(id=1, tenant_id=1, name="U", commencement=T0.date(), announced=T0.date(), claims_due=T0.date()),
                    TenantBudget(tenant_id=1, ocr_pages_per_day=0)])
     rng = random.Random(1)
-    scan = to_scan_pdf(render_pdf(DocContent([[("title", "CERTIFICATE OF INSURANCE"), ("kv", "Insurer", "X")]]), rng), rng)
+    scan = to_scan_pdf(render_pdf(DocContent([[("title", "LETTER OF AUTHORITY"), ("kv", "Financial creditor", "X")]]), rng), rng)
     engine = Engine(store, load_pack(), T0.date(), tmp_path / "blobs", clock=lambda: T0)
     uid = engine.ingest(1, 1, "scan.pdf", scan, "staff_upload", T0)
     with pytest.raises(BudgetExceeded) as exc:
@@ -67,8 +67,8 @@ def test_a_tenant_over_its_ocr_budget_pays_for_nothing(store, tmp_path):
     assert exc.value.retry_at == datetime(2026, 10, 2)
     with store.tenant(1) as s:
         assert s.query(UsageRow).count() == 0                            # refused before any page was read
-    born_digital = render_pdf(DocContent([[("title", "CERTIFICATE OF INSURANCE"), ("kv", "Insurer", "X"),
-                                           ("kv", "Policy number", "P-1")]]), rng)
+    born_digital = render_pdf(DocContent([[("title", "LETTER OF AUTHORITY"), ("kv", "Financial creditor", "X"),
+                                           ("kv", "Valid until", "31.03.2027")]]), rng)
     engine.prefetch(1, engine.ingest(1, 1, "digital.pdf", born_digital, "staff_upload", T0))   # no OCR: allowed
 
 
@@ -103,22 +103,22 @@ def test_a_document_larger_than_a_days_cap_runs_alone_on_a_fresh_day(store):
 def test_a_file_one_worker_is_reading_is_not_paid_for_again_by_another(store, tmp_path):
     import hashlib
     with store.system() as s:
-        s.add_all([Tenant(id=1, name="T"), BusinessUnit(id=1, tenant_id=1, name="U")])
+        s.add_all([Tenant(id=1, name="T"), Matter(id=1, tenant_id=1, name="U", commencement=T0.date(), announced=T0.date(), claims_due=T0.date())])
     rng = random.Random(2)
-    scan = to_scan_pdf(render_pdf(DocContent([[("title", "CERTIFICATE OF INSURANCE"), ("kv", "Insurer", "X")]]), rng), rng)
+    scan = to_scan_pdf(render_pdf(DocContent([[("title", "LETTER OF AUTHORITY"), ("kv", "Financial creditor", "X")]]), rng), rng)
     now = [T0]
     engine = Engine(store, load_pack(), T0.date(), tmp_path / "blobs", clock=lambda: now[0])
     first = engine.ingest(1, 1, "a.pdf", scan, "staff_upload", T0)
     second = engine.ingest(1, 1, "b.pdf", scan, "email_ingest", T0)
     with store.tenant(1) as s:                                       # worker A has claimed it and is reading it
-        s.add(ExtractionClaim(sha256=hashlib.sha256(scan).hexdigest(), tenant_id=1, claimed_at=T0))
+        s.add(ReadingLock(sha256=hashlib.sha256(scan).hexdigest(), tenant_id=1, locked_at=T0))
     with pytest.raises(ReadingElsewhere):
         engine.prefetch(1, second)                                    # worker B waits instead of paying again
-    now[0] = T0 + timedelta(seconds=CLAIM_SECONDS + 1)                # worker A died; its claim went stale
+    now[0] = T0 + timedelta(seconds=LOCK_SECONDS + 1)                # worker A died; its lock went stale
     assert engine.prefetch(1, second) > 0                            # taken over and read once
     assert engine.prefetch(1, first) == 0                            # and never again
     with store.tenant(1) as s:
-        assert s.query(ExtractionClaim).count() == 0 and s.query(ExtractionRow).count() == 1
+        assert s.query(ReadingLock).count() == 0 and s.query(ExtractionRow).count() == 1
 
 
 def test_concurrent_workers_never_lease_the_same_job(store):

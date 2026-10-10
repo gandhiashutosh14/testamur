@@ -21,7 +21,7 @@ from .synth.world import load_world
 from .textnorm import name_similarity, squash
 from .understand import read_fields
 
-NAME_FIELDS = {"insured_name", "organisation", "account_holder", "legal_name", "certification_body"}
+NAME_FIELDS = {"creditor_name", "charge_holder", "account_holder", "company", "registrar", "lender"}
 GATE = {"max_accuracy_drop_points": 0.5, "max_fields_lost_share": 0.01, "min_speedup": 1.2}
 
 
@@ -40,8 +40,6 @@ def _correct(name: str, got: str | None, truth: str) -> bool:
         return False
     if name in NAME_FIELDS:
         return name_similarity(got, truth) >= 92
-    if name == "iban":
-        return squash(got) == squash(truth)
     return squash(got) == squash(truth)
 
 

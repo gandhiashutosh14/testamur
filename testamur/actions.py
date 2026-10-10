@@ -1,18 +1,18 @@
-"""From a finding to work: tasks, supplier reminders, purchasing holds and signed webhooks.
+"""From a finding to work: tasks, creditor reminders, holds and signed webhooks.
 
 Every status change writes an event to the outbox in the same transaction as the change (engine.py). The dispatcher
 turns each event into actions, in order, and marks it dispatched, all in one transaction: if anything fails or the
 process dies, the event is handled again from scratch, and the database keeps each action single (one open task per
-requirement, one open hold per engagement, unique keys on reminders and webhook messages). Outside effects happen
+requirement, one open hold per claim, unique keys on reminders and webhook messages). Outside effects happen
 after the transaction: webhook messages are sent by `deliver`, at least once, with a stable id the receiver uses to
 ignore repeats, so the effect happens once.
 
 The policy (the pack's `actions` section):
-- **Chase the supplier** for insurance that is missing, expired, not satisfied or due for renewal: a task with a due
-  date set by the engagement's risk tier, and a reminder to the supplier, at most one per cooldown.
-- **Follow up**: any other unmet requirement becomes a task for the buyer's staff.
-- **Hold**: while insurance or bank details are expired or not satisfied, the engagement is on a purchasing hold,
-  released by itself when they are put right.
+- **Chase the creditor** for a representative's authority that is missing, expired, not satisfied or due for renewal:
+  a task with a due date set by the claim's tier, and a reminder to the creditor, at most one per cooldown.
+- **Follow up**: any other unmet requirement becomes a task for the resolution professional's team.
+- **Hold**: while the authority or the bank details are expired or not satisfied, the claim is on hold: its votes
+  are not counted and nothing is paid to it. The hold is released by itself when they are put right.
 - A task closes by itself when its requirement is met again.
 """
 from __future__ import annotations
@@ -31,14 +31,14 @@ from sqlalchemy.orm import Session
 
 from .pack import Pack
 from .store import (
+    Claim,
+    Creditor,
     Delivery,
-    Engagement,
     Hold,
     Notification,
     OutboxEvent,
     RequirementState,
     Store,
-    Supplier,
     Task,
     WebhookEndpoint,
 )
@@ -85,31 +85,31 @@ def _superseded(s: Session, ev: OutboxEvent) -> bool:
 
 def _act(s: Session, pack: Pack, ev: OutboxEvent, now: datetime) -> Counter:
     policy, p, out = pack.actions, ev.payload, Counter()
-    eid, rid, to = p["engagement"], p["requirement"], p["to"]
-    e = s.get(Engagement, eid)
-    supplier = s.get(Supplier, e.supplier_id)
+    eid, rid, to = p["claim"], p["requirement"], p["to"]
+    e = s.get(Claim, eid)
+    creditor = s.get(Creditor, e.creditor_id)
     chase = rid in policy.chase_requirements and (to in policy.chase_statuses
                                                   or bool(set(p["failing"]) & set(policy.chase_findings)))
     follow_up = not chase and rid not in policy.chase_requirements and to in policy.follow_up_statuses
-    task = s.scalar(select(Task).where(Task.engagement_id == eid, Task.requirement_id == rid, Task.status == "open"))
+    task = s.scalar(select(Task).where(Task.claim_id == eid, Task.requirement_id == rid, Task.status == "open"))
     hints = " ".join(p["hints"]) or f"The requirement is {to.lower().replace('_', ' ')}."
     if chase or follow_up:
-        kind = "chase_supplier" if chase else "follow_up"
+        kind = "chase_creditor" if chase else "follow_up"
         if task is not None and task.kind != kind:
             task.status, task.closed_at, task.closed_reason = "superseded", now, f"now {kind}"
             s.flush()
             task = None
         if task is None:
-            title = (f"Chase {supplier.legal_name} for {rid.replace('_', ' ')} evidence" if chase else
-                     f"Follow up {rid.replace('_', ' ')} for {supplier.legal_name} ({to.lower().replace('_', ' ')})")
-            s.add(Task(engagement_id=eid, requirement_id=rid, kind=kind, title=title, detail=hints, opened_at=now,
+            title = (f"Chase {creditor.legal_name} for {rid.replace('_', ' ')} evidence" if chase else
+                     f"Follow up {rid.replace('_', ' ')} for {creditor.legal_name} ({to.lower().replace('_', ' ')})")
+            s.add(Task(claim_id=eid, requirement_id=rid, kind=kind, title=title, detail=hints, opened_at=now,
                        due_at=now + timedelta(days=policy.task_due_days.get(e.tier, 15)), event_key=ev.key))
             out["task_opened"] += 1
         else:
             task.detail = hints
             out["task_updated"] += 1
         if chase:
-            out[_remind(s, policy, ev, supplier, eid, rid, hints, now)] += 1
+            out[_remind(s, policy, ev, creditor, eid, rid, hints, now)] += 1
     elif task is not None:
         task.status, task.closed_at, task.closed_reason = "done", now, f"requirement now {to.lower()}"
         out["task_closed"] += 1
@@ -118,33 +118,33 @@ def _act(s: Session, pack: Pack, ev: OutboxEvent, now: datetime) -> Counter:
     return out
 
 
-def _remind(s: Session, policy, ev: OutboxEvent, supplier: Supplier, eid: int, rid: str, hints: str,
+def _remind(s: Session, policy, ev: OutboxEvent, creditor: Creditor, eid: int, rid: str, hints: str,
             now: datetime) -> str:
-    last = s.scalar(select(Notification).where(Notification.engagement_id == eid, Notification.requirement_id == rid)
+    last = s.scalar(select(Notification).where(Notification.claim_id == eid, Notification.requirement_id == rid)
                     .order_by(Notification.created_at.desc()))
     if last is not None and now - last.created_at < timedelta(days=policy.notify_cooldown_days):
         return "reminder_suppressed"
-    s.add(Notification(key=f"{ev.key}:reminder", supplier_id=supplier.id, engagement_id=eid, requirement_id=rid,
-                       subject=f"Action needed: {rid.replace('_', ' ')} evidence for {supplier.legal_name}",
-                       body=f"Dear {supplier.legal_name},\n\n{hints}\n\nPlease upload the evidence through the "
-                            "supplier portal.", created_at=now))
-    return "supplier_reminded"
+    s.add(Notification(key=f"{ev.key}:reminder", creditor_id=creditor.id, claim_id=eid, requirement_id=rid,
+                       subject=f"Action needed: {rid.replace('_', ' ')} evidence for {creditor.legal_name}",
+                       body=f"Dear {creditor.legal_name},\n\n{hints}\n\nPlease upload the evidence through the "
+                            "creditor portal.", created_at=now))
+    return "creditor_reminded"
 
 
 def _hold(s: Session, pack: Pack, ev: OutboxEvent, eid: int, now: datetime) -> Counter:
-    """A hold mirrors the engagement's current statuses, whatever order events arrive in."""
+    """A hold mirrors the claim's current statuses, whatever order events arrive in."""
     policy, out = pack.actions, Counter()
     holding = sorted(st.requirement_id for st in s.scalars(select(RequirementState).where(
-        RequirementState.engagement_id == eid)) if st.requirement_id in policy.hold_requirements
+        RequirementState.claim_id == eid)) if st.requirement_id in policy.hold_requirements
         and st.status in policy.hold_statuses)
-    hold = s.scalar(select(Hold).where(Hold.engagement_id == eid, Hold.released_at.is_(None)))
+    hold = s.scalar(select(Hold).where(Hold.claim_id == eid, Hold.released_at.is_(None)))
     if holding and hold is None:
-        s.add(Hold(engagement_id=eid, requirements=holding, placed_at=now))
-        _announce(s, ev, "hold.placed", {"engagement": eid, "requirements": holding}, now)
+        s.add(Hold(claim_id=eid, requirements=holding, placed_at=now))
+        _announce(s, ev, "hold.placed", {"claim": eid, "requirements": holding}, now)
         out["hold_placed"] += 1
     elif hold is not None and not holding:
         hold.released_at = now
-        _announce(s, ev, "hold.released", {"engagement": eid}, now)
+        _announce(s, ev, "hold.released", {"claim": eid}, now)
         out["hold_released"] += 1
     elif hold is not None and hold.requirements != holding:
         hold.requirements = holding

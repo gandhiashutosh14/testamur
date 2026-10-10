@@ -30,10 +30,10 @@ def test_lapse_is_reported_as_expired_but_another_critical_failure_wins():
     assert decide(applicable=True, results=both)[0] == Status.NOT_SATISFIED
 
 
-def test_findings_and_group_cover():
+def test_findings_and_trustee_cover():
     minor = [r("a", Verdict.PASS), r("b", Verdict.FAIL, Severity.MINOR)]
     assert decide(applicable=True, results=minor)[0] == Status.SATISFIED_WITH_FINDINGS
-    assert decide(applicable=True, results=[r("a", Verdict.PASS)], via_parent=True)[0] == Status.COVERED_BY_PARENT
+    assert decide(applicable=True, results=[r("a", Verdict.PASS)], via_trustee=True)[0] == Status.COVERED_BY_TRUSTEE
     assert decide(applicable=True, results=[r("a", Verdict.PASS)])[0] == Status.SATISFIED
 
 
@@ -42,6 +42,15 @@ def test_a_pending_document_turns_bad_news_into_review_but_never_good_news():
     assert decide(applicable=True, results=expired, pending_review=True)[0] == Status.NEEDS_REVIEW
     assert decide(applicable=True, results=None, pending_review=True)[0] == Status.NEEDS_REVIEW
     assert decide(applicable=True, results=[r("a", Verdict.PASS)], pending_review=True)[0] == Status.SATISFIED
+
+
+def test_a_pending_document_that_may_be_the_creditors_own_suspends_trustee_cover():
+    """Found by the generated world: a creditor's own lapsed authority, misfiled and waiting for a person, while the
+    trustee's authority listed them. The creditor's own document takes precedence, so the cover cannot vouch."""
+    clean = [r("a", Verdict.PASS)]
+    assert decide(applicable=True, results=clean, via_trustee=True)[0] == Status.COVERED_BY_TRUSTEE
+    status, reasons = decide(applicable=True, results=clean, via_trustee=True, pending_review=True)
+    assert status == Status.NEEDS_REVIEW and any("take precedence" in x for x in reasons)
 
 
 def test_hostile_evidence_never_vouches_even_when_every_rule_passes():

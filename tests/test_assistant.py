@@ -22,17 +22,17 @@ def test_a_quote_that_is_not_on_the_page_is_not_cited(env):
     world, store, engine = env
     a = Assistant(engine)
     with store.tenant(1) as s:
-        doc = s.scalars(select(Document).where(Document.doc_type == "insurance_certificate")).first()
-        line = doc.fields["expiry_date"]["line"]
-        assert a._verified(s, doc, doc.fields["expiry_date"]["page"], line) is not None
-        assert a._verified(s, doc, doc.fields["expiry_date"]["page"], "Expiry date: 31/12/2099 (renewed)") is None
+        doc = s.scalars(select(Document).where(Document.doc_type == "authority_letter")).first()
+        line = doc.fields["valid_until"]["line"]
+        assert a._verified(s, doc, doc.fields["valid_until"]["page"], line) is not None
+        assert a._verified(s, doc, doc.fields["valid_until"]["page"], "Valid until: 31.12.2099 (renewed)") is None
 
 
-def test_another_tenants_supplier_is_never_found(env):
+def test_another_tenants_creditor_is_never_found(env):
     world, store, engine = env
-    mine = {x.legal_name for x in world.suppliers if x.tenant_id == 1}
-    other = next(x for x in world.suppliers if x.tenant_id == 2 and x.legal_name not in mine)
-    a = Assistant(engine).ask(1, f"When does {other.legal_name}'s insurance expire?")
+    mine = {x.legal_name for x in world.creditors if x.tenant_id == 1}
+    other = next(x for x in world.creditors if x.tenant_id == 2 and x.legal_name not in mine)
+    a = Assistant(engine).ask(1, f"When does {other.legal_name}'s authority expire?")
     assert a.kind in ("refuse", "clarify") and not a.citations
     assert all(name in mine for name in a.candidates)
 

@@ -1,0 +1,349 @@
+# Domain pack: verifying financial creditors' claims in a corporate insolvency resolution process (India).
+#
+# Everything domain-specific lives here, not in code: what kinds of document exist and how to recognise them, which
+# fields to read, which requirements apply to which claims, and which checks decide each requirement. The engine reads
+# this file; a different domain would be a different pack.
+#
+# The setting. When a company is admitted into insolvency under the Insolvency and Bankruptcy Code, 2016, its
+# creditors submit claims with proof, and the resolution professional must verify every claim, as on the insolvency
+# commencement date, within seven days of the last date for receiving claims (CIRP Regulations, regulation 13). The
+# list of creditors that comes out of it decides who sits on the committee of creditors and with how many votes. This
+# pack covers financial creditors' claims (Form C); operational creditors would be a second pack. Statutory references
+# are for orientation; they are not legal advice.
+
+name: insolvency_claims
+version: 1
+
+# Offices whose certificates of registration of charge are accepted (an allow-list, compared by name). Fictional
+# office names: every document in the synthetic world is fictional.
+registrar_offices:
+  - Registrar of Companies, Western Circle
+  - Registrar of Companies, Southern Circle
+  - Registrar of Companies, Northern Circle
+  - Registrar of Companies, Eastern Circle
+
+# The four-letter bank code that opens every IFSC of each bank (fictional banks).
+bank_codes:
+  Narmada Commercial Bank: NRMX
+  Deccan Mercantile Bank: DCMX
+  Coromandel Union Bank: CRUX
+  Sindhu Co-operative Bank: SNDX
+
+doc_types:
+  claim_form:
+    title_keywords: ["proof of claim by financial creditors", "form c", "proof of claim"]
+    filename_aliases: ["form c", "claim", "proof of claim", "poc"]
+    key_labels: ["name of the financial creditor", "total amount of claim", "date of default"]
+    fields:
+      creditor_name: {labels: ["name of the financial creditor", "name of financial creditor"], type: text}
+      cin: {labels: ["cin", "corporate identity number"], type: text}
+      pan: {labels: ["pan", "permanent account number"], type: text}
+      gstin: {labels: ["gstin", "gst registration number"], type: text}
+      lei: {labels: ["lei", "legal entity identifier"], type: text}
+      amount_claimed: {labels: ["total amount of claim", "amount claimed"], type: money}
+      amount_in_words: {labels: ["amount in words", "in words"], type: words}
+      default_date: {labels: ["date of default", "default date"], type: date}
+      claim_date: {labels: ["date of claim", "claim dated"], type: date}
+  authority_letter:
+    title_keywords: ["letter of authority", "authority letter", "certificate of authorisation"]
+    filename_aliases: ["authority", "authorisation", "loa", "board resolution"]
+    key_labels: ["financial creditor", "authorised representative", "valid until"]
+    fields:
+      creditor_name: {labels: ["financial creditor", "name of the creditor"], type: text}
+      representative: {labels: ["authorised representative", "authorized representative"], type: text}
+      powers: {labels: ["powers", "scope of authority"], type: text}
+      effective_date: {labels: ["effective from", "with effect from"], type: date}
+      valid_until: {labels: ["valid until", "valid till"], type: date}
+      issue_date: {labels: ["date of issue", "issued on"], type: date}
+      represented_holders: {labels: ["debenture holders represented", "holders represented"], type: list}
+  charge_certificate:
+    title_keywords: ["certificate of registration of charge", "registration of charge", "certificate of charge"]
+    filename_aliases: ["charge", "chg", "roc", "security"]
+    key_labels: ["charge id", "charge holder", "amount secured"]
+    fields:
+      charge_holder: {labels: ["charge holder", "chargeholder", "in favour of"], type: text}
+      company: {labels: ["company", "name of the company"], type: text}
+      amount_secured: {labels: ["amount secured", "amount secured by the charge"], type: money}
+      assets: {labels: ["assets charged", "particulars of the assets charged"], type: text}
+      creation_date: {labels: ["date of creation", "created on"], type: date}
+      registration_date: {labels: ["date of registration", "registered on"], type: date}
+      registrar: {labels: ["registered by", "issuing office"], type: text}
+  bank_mandate:
+    title_keywords: ["bank account confirmation", "confirmation of bank details", "bank mandate"]
+    filename_aliases: ["bank", "account", "mandate", "cancelled cheque"]
+    key_labels: ["account holder", "account number", "ifsc"]
+    fields:
+      bank_name: {labels: ["bank"], type: text}
+      account_holder: {labels: ["account holder", "name of the account holder"], type: text}
+      account_number: {labels: ["account number", "account no"], type: text}
+      ifsc: {labels: ["ifsc", "ifsc code"], type: text}
+      letter_date: {labels: ["date"], type: date}
+  facility_agreement:
+    title_keywords: ["facility agreement", "loan agreement", "term loan agreement"]
+    filename_aliases: ["agreement", "loan", "facility", "signed"]
+    key_labels: ["lender", "borrower", "facility amount"]
+    fields:
+      lender: {labels: ["lender"], type: text}
+      borrower: {labels: ["borrower"], type: text}
+      facility_amount: {labels: ["facility amount", "sanctioned amount"], type: money}
+      effective_date: {labels: ["date of agreement", "effective date"], type: date}
+      lender_signatory: {labels: ["signed for the lender", "for and on behalf of the lender"], type: text}
+      borrower_signatory: {labels: ["signed for the borrower", "for and on behalf of the borrower"], type: text}
+
+# Checks. Each names its tier (the cheapest that can decide it), its severity, the rule that evaluates it and a fix
+# hint shown with a FAIL. Model-tier checks state a statement, its opposite, and the words to search for.
+checks:
+  received_by_due_date:
+    tier: metadata
+    severity: minor
+    rule: received_by_due_date
+    hint: "The claim arrived {days_late} days after the last date for claims ({due_date}). A late claim is verified separately and the reason for the delay recorded (regulations 12 and 13)."
+  claim_name_matches:
+    tier: field
+    severity: critical
+    rule: name_matches
+    params: {field: creditor_name, against: creditor, pass_at: 92, fail_below: 80}
+    hint: "The form names '{found}', not '{expected}'. Ask {creditor} to submit the claim in its own legal name."
+  claim_within_books:
+    tier: field
+    severity: major
+    rule: money_within_record
+    params: {field: amount_claimed, record: book_balance, tolerance: 0.02}
+    hint: "The claim is {found}; the corporate debtor's books show {required}. Ask {creditor} for a reconciliation and the documents behind the difference (regulation 13(2))."
+  claim_words_match:
+    tier: field
+    severity: major
+    rule: words_match_figures
+    params: {figures: amount_claimed, words: amount_in_words}
+    hint: "The amount in words ({found}) does not agree with the figures ({required}). Ask {creditor} for a corrected form."
+  claim_not_time_barred:
+    tier: field
+    severity: critical
+    rule: date_not_before
+    params: {field: default_date, anchor: commencement, offset_years: -3}
+    hint: "The default on {found} is more than three years before the insolvency commencement date ({anchor}). Admit it only if a written acknowledgement of the debt within limitation is on file (Limitation Act, section 18)."
+  claim_dated_after_announcement:
+    tier: field
+    severity: minor
+    rule: date_not_before
+    params: {field: claim_date, anchor: announced, offset_years: 0}
+    hint: "The form is dated {found}, before the public announcement of {anchor}: it was prepared for something else. Ask {creditor} for a form signed for this process."
+  claim_gstin_valid:
+    tier: field
+    severity: major
+    rule: gstin_checksum
+    params: {field: gstin}
+    hint: "The GSTIN '{found}' fails its check character; confirm it with {creditor}."
+  claim_pan_in_gstin:
+    tier: field
+    severity: major
+    rule: pan_in_gstin
+    params: {pan: pan, gstin: gstin}
+    hint: "The PAN '{found}' is not the PAN inside the GSTIN ({required}): the two identify different entities."
+  claim_lei_valid:
+    tier: field
+    severity: major
+    rule: lei_checksum
+    params: {field: lei, optional: true}
+    hint: "The LEI '{found}' fails its check digits."
+  auth_creditor_matches:
+    tier: field
+    severity: critical
+    rule: name_matches
+    params: {field: creditor_name, against: filing_party, pass_at: 92, fail_below: 80}
+    hint: "The authority is issued by '{found}', not '{expected}'. Ask {creditor} for an authority issued in its own name."
+  auth_current:
+    tier: field
+    severity: critical
+    rule: date_covers
+    params: {field: valid_until, margin_days: 0}
+    hint: "The representative's authority lapsed on {found}. Ask {creditor} for a fresh authority before the next meeting of the committee of creditors."
+  auth_renewal_due:
+    tier: field
+    severity: minor
+    rule: date_covers
+    params: {field: valid_until, margin_days: 30}
+    hint: "The authority ends {found}, within 30 days. Ask {creditor} for a renewed authority before it lapses."
+  auth_issued_recently:
+    tier: field
+    severity: minor
+    rule: within_days
+    params: {field: issue_date, days: 400}
+    hint: "The authority was issued {found}; ask for a current one."
+  auth_covers_voting:
+    tier: field
+    severity: major
+    rule: scope_mentions
+    params: {field: powers, terms: ["vote", "voting"]}
+    hint: "The authority does not mention voting: a representative who may only file the claim cannot vote for {creditor} in the committee of creditors."
+  charge_holder_matches:
+    tier: field
+    severity: critical
+    rule: name_matches
+    params: {field: charge_holder, against: creditor, pass_at: 92, fail_below: 80}
+    hint: "The charge is held by '{found}', not '{expected}'; a charge in someone else's favour does not secure this claim."
+  charge_on_debtor:
+    tier: field
+    severity: critical
+    rule: name_matches
+    params: {field: company, against: debtor, pass_at: 92, fail_below: 80}
+    hint: "The charge was created by '{found}', not by the corporate debtor '{expected}'; it secures nothing in this process."
+  charge_registrar_recognised:
+    tier: field
+    severity: major
+    rule: in_allowlist
+    params: {field: registrar, allowlist: registrar_offices, pass_at: 92}
+    hint: "'{found}' is not a Registrar of Companies; check the charge in the register of charges before treating the claim as secured."
+  charge_covers_assets:
+    tier: field
+    severity: major
+    rule: scope_mentions
+    params: {field: assets, terms_from: facility_type}
+    hint: "The assets charged do not include {required}; confirm the security for this facility before treating the claim as secured."
+  charge_amount_covers:
+    tier: field
+    severity: major
+    rule: money_at_least
+    params: {field: amount_secured, record: sanctioned}
+    hint: "The charge secures {found}, less than the facility of {required}; the excess is unsecured."
+  bank_channel_verified:
+    tier: metadata
+    severity: critical
+    rule: channel_in
+    params: {allowed: [staff_verified]}
+    hint: "Bank details for payouts must be confirmed by a call-back to a known number; this letter arrived via {channel}."
+  bank_ifsc_valid:
+    tier: field
+    severity: critical
+    rule: ifsc_valid
+    params: {field: ifsc, bank_field: bank_name}
+    hint: "The IFSC '{found}' is malformed or belongs to a different bank from the one named; confirm the account with {creditor} by call-back."
+  bank_account_on_file:
+    tier: field
+    severity: critical
+    rule: matches_record
+    params: {field: account_number, record: account_number}
+    hint: "These bank details differ from the account on file. Changed bank details are the classic payment-fraud pattern: verify the change by call-back before updating."
+  bank_holder_matches:
+    tier: field
+    severity: critical
+    rule: name_matches
+    params: {field: account_holder, against: creditor, pass_at: 92, fail_below: 80}
+    hint: "The account is held by '{found}', not '{expected}'. Payment details for a different entity are a fraud signal."
+  bank_letter_recent:
+    tier: field
+    severity: minor
+    rule: within_days
+    params: {field: letter_date, days: 180}
+    hint: "The bank letter is dated {found}; ask for one from the last six months."
+  facility_signed:
+    tier: field
+    severity: critical
+    rule: both_signed
+    params: {fields: [lender_signatory, borrower_signatory]}
+    hint: "The agreement is not signed by both parties; ask {creditor} for the executed copy."
+  clause_disbursement:
+    tier: model
+    severity: critical
+    rule: clause_present
+    params:
+      statement: "The Lender has disbursed, or is obliged to disburse, money to the Borrower under the agreement."
+      opposite: "The agreement does not record any disbursement of money by the Lender to the Borrower, and creates no obligation to disburse."
+      search: "disburse disbursed advance drawdown tranche made available to the Borrower"
+    hint: "No disbursement found. A financial debt is money disbursed against the time value of money (section 5(8)); ask {creditor} for the disbursement record."
+  clause_interest:
+    tier: model
+    severity: major
+    rule: clause_present
+    params:
+      statement: "The Borrower must pay interest on the amounts outstanding at a stated rate."
+      opposite: "The agreement does not require the Borrower to pay interest."
+      search: "interest rate per cent per annum outstanding payable"
+    hint: "No interest term found; interest claimed up to the commencement date needs a contractual basis."
+  clause_security:
+    tier: model
+    severity: critical
+    rule: clause_present
+    params:
+      statement: "The Borrower creates, or must create, a charge or other security over its assets in favour of the Lender."
+      opposite: "The agreement creates no security over the Borrower's assets in favour of the Lender."
+      search: "security hypothecation charge secured in favour of the Lender assets"
+    hint: "No security term found; without one the claim is unsecured, whatever else is on file."
+  clause_assignment:
+    tier: model
+    severity: minor
+    rule: clause_present
+    params:
+      statement: "The Lender may assign or transfer its rights under the agreement."
+      opposite: "The Lender may not assign or transfer its rights under the agreement."
+      search: "assign transfer rights Lender successors"
+    hint: "No right to assign found; if the claim is filed by an assignee, ask for the deed of assignment."
+
+# Requirements: which document must exist for which claims, and the checks that decide it.
+requirements:
+  proof_of_claim:
+    doc_type: claim_form
+    applies_to: {}
+    checks: [received_by_due_date, claim_name_matches, claim_within_books, claim_words_match, claim_not_time_barred,
+             claim_dated_after_announcement, claim_gstin_valid, claim_pan_in_gstin, claim_lei_valid]
+  authority:
+    doc_type: authority_letter
+    applies_to: {}
+    checks: [auth_creditor_matches, auth_current, auth_renewal_due, auth_issued_recently, auth_covers_voting]
+    trustee_cover: true        # a debenture trustee's authority covers the holders it lists (section 21(6A)(a))
+  security_interest:
+    doc_type: charge_certificate
+    applies_to: {claim_types: [secured]}
+    checks: [charge_holder_matches, charge_on_debtor, charge_registrar_recognised, charge_covers_assets,
+             charge_amount_covers]
+  bank_details:
+    doc_type: bank_mandate
+    applies_to: {}
+    checks: [bank_channel_verified, bank_ifsc_valid, bank_account_on_file, bank_holder_matches, bank_letter_recent]
+  evidence_of_debt:
+    doc_type: facility_agreement
+    applies_to: {tiers: [critical, high, standard]}
+    checks: [facility_signed, clause_disbursement, clause_interest, clause_security, clause_assignment]
+    check_applies:
+      clause_security: {claim_types: [secured]}
+
+# Words that show the assets charged cover the assets a facility of each type is secured on.
+asset_terms:
+  working_capital: ["stock", "book debts", "receivables", "current assets"]
+  term_loan: ["plant and machinery", "movable fixed assets"]
+  equipment_finance: ["equipment", "machinery"]
+  vehicle_finance: ["vehicles", "motor vehicles"]
+  inter_corporate_deposit: ["current assets", "receivables"]
+
+# Text that addresses an automated reader rather than a person. Found inside a document, it marks the document as
+# hostile: model-tier checks on it abstain and a security finding is raised.
+injection_markers:
+  - "ignore (all |any )?(previous|prior|above) instructions"
+  - "automated (reviewer|review|system|reader|checker)"
+  - "(answer|respond|reply) (yes|no|pass|true)\\b"
+  - "system prompt"
+  - "you are (an|a) (ai|assistant|language model)"
+  - "disregard (the|all|any)"
+  - "mark (this|the) (document|certificate|check|claim) as (compliant|valid|passed|verified|admitted)"
+
+# How much error each severity may carry (the share of the engine's PASS verdicts a person would overturn), the share
+# of conclusive verdicts people audit to measure it, and the confidence of the bounds. A critical check with any
+# confirmed false PASS is demoted regardless: its PASS stops vouching until a person re-certifies it.
+audit:
+  false_pass_budget: {critical: 0.01, major: 0.05, minor: 0.10}
+  audit_rate: {critical: 0.10, major: 0.05, minor: 0.02}
+  confidence: 0.95
+
+# What a finding turns into. The representative's authority is chased with the creditor (a task and a reminder, at
+# most one a week); any other unmet requirement becomes a follow-up task for the resolution professional's team; while
+# the authority or the bank details are expired or not satisfied, the claim is on hold: its votes are not counted and
+# nothing is paid to it. Due dates by the claim's tier.
+actions:
+  chase_requirements: [authority]
+  chase_statuses: [MISSING, EXPIRED, NOT_SATISFIED]
+  chase_findings: [auth_renewal_due]
+  follow_up_statuses: [MISSING, EXPIRED, NOT_SATISFIED]
+  hold_requirements: [authority, bank_details]
+  hold_statuses: [EXPIRED, NOT_SATISFIED]
+  notify_cooldown_days: 7
+  task_due_days: {critical: 2, high: 3, standard: 5, low: 7}

@@ -1,9 +1,9 @@
-"""Compare judging strategies and models on every contract clause in a world, against ground truth.
+"""Compare judging strategies and models on every agreement clause in a world, against ground truth.
 
 Strategies:
   single    one yes/no question; PASS needs a verified quote
   inverse   the question and its inverse must give opposite answers; PASS needs a verified quote
-  swapped   the engine's method: a claim and its opposite, asked in both orders; PASS needs a verified quote
+  swapped   the engine's method: a statement and its opposite, asked in both orders; PASS needs a verified quote
 
 Each strategy is run with no hostile-document screen, so planted instructions reach the model: the report shows
 what they do to each strategy, and why the engine refuses such documents instead.
@@ -26,14 +26,14 @@ from testamur.pack import load_pack
 from testamur.synth.world import load_world
 
 QUESTIONS = {
-    "clause_liability_cap": ("Does the agreement cap or limit the Supplier's total liability to a stated amount or formula?",
-                             "Is the Supplier's total liability left unlimited, with no stated cap?"),
-    "clause_audit_rights": ("Does the agreement give the Customer a right to audit or inspect the Supplier?",
-                            "Does the agreement leave the Customer without any right to audit or inspect the Supplier?"),
-    "clause_data_protection": ("Must the Supplier process personal data only on the Customer's instructions and protect it?",
-                               "Is the agreement silent on how the Supplier must process and protect personal data?"),
-    "clause_anti_assignment": ("Is the Supplier prevented from assigning the agreement without the Customer's consent?",
-                               "May the Supplier assign the agreement freely, without the Customer's consent?"),
+    "clause_disbursement": ("Has the Lender disbursed money to the Borrower, or is it obliged to?",
+                            "Is the agreement silent on any disbursement of money by the Lender to the Borrower?"),
+    "clause_interest": ("Must the Borrower pay interest on the amounts outstanding at a stated rate?",
+                        "Is the Borrower free of any obligation to pay interest?"),
+    "clause_security": ("Does the Borrower create, or have to create, security over its assets for the Lender?",
+                        "Does the agreement leave the Lender without any security over the Borrower's assets?"),
+    "clause_assignment": ("May the Lender assign or transfer its rights under the agreement?",
+                          "Is the Lender prevented from assigning or transferring its rights under the agreement?"),
 }
 
 
@@ -68,7 +68,7 @@ def inverse(client, cid, excerpt):
 
 def swapped(client, cid, excerpt, pack):
     p = pack.checks[cid].params
-    j = judge(client, p["claim"], p["counterclaim"], excerpt)
+    j = judge(client, p["statement"], p["opposite"], excerpt)
     return j.verdict, j.calls
 
 
@@ -84,7 +84,7 @@ def main() -> None:
     ex = Extractor()
     cases = []
     for u in world.uploads:
-        if u.truth.doc_type != "master_agreement" or u.truth.duplicate_of:
+        if u.truth.doc_type != "facility_agreement" or u.truth.duplicate_of:
             continue
         data = (Path(args.world) / u.file).read_bytes()
         lines = [line.text for p in ex.extract(data, sniff_mime(data)).pages for line in p.lines]

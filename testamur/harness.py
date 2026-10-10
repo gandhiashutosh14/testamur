@@ -1,9 +1,9 @@
 """The offline harness: run the real engine over a generated world, compare everything with ground truth, enforce
 the gates, and write a report stamped with the commit and the command that produced it.
 
-The numbers that matter most are the ones in the dangerous direction: a status that vouches for a supplier when the
+The numbers that matter most are the ones in the dangerous direction: a status that vouches for a creditor when the
 truth says otherwise, a check that says PASS when the truth says FAIL, and a document attached to the wrong
-supplier. The gates hold those at zero. Deferrals (NEEDS_REVIEW) are reported as the price of that safety."""
+creditor. The gates hold those at zero. Deferrals (NEEDS_REVIEW) are reported as the price of that safety."""
 from __future__ import annotations
 
 import json
@@ -28,13 +28,13 @@ from .modeltier import ModelClient
 from .pack import load_pack
 from .store import (
     Attestation,
-    BusinessUnit,
+    Claim,
+    Creditor,
     Document,
-    Engagement,
+    Matter,
     ModelCall,
     RequirementState,
     Store,
-    Supplier,
     Tenant,
     UsageRow,
     VerdictRow,
@@ -67,20 +67,22 @@ def git_stamp(cwd: Path) -> str:
 
 
 def load_registry(store: Store, world: World) -> None:
-    """The world's tenants, business units, suppliers, engagements and attestations, in the order their foreign keys
+    """The world's tenants, matters, creditors, claims and attestations, in the order their foreign keys
     need (the flush between groups makes the order explicit; Postgres enforces it, and so does SQLite here)."""
     with store.system() as s:
         s.add_all([Tenant(id=t.id, name=t.name) for t in world.tenants])
-        s.add_all([BusinessUnit(id=b.id, tenant_id=b.tenant_id, name=b.name) for b in world.business_units])
-        s.add_all([Supplier(id=x.id, tenant_id=x.tenant_id, legal_name=x.legal_name, address=x.address,
-                            company_number=x.company_number, vat_number=x.vat_number, lei=x.lei, iban=x.iban,
-                            parent_id=x.parent_id) for x in world.suppliers])
+        s.add_all([Matter(id=b.id, tenant_id=b.tenant_id, name=b.name, debtor_cin=b.debtor_cin,
+                          commencement=b.commencement, announced=b.announced, claims_due=b.claims_due)
+                   for b in world.matters])
+        s.add_all([Creditor(id=x.id, tenant_id=x.tenant_id, legal_name=x.legal_name, address=x.address, cin=x.cin,
+                            gstin=x.gstin, lei=x.lei, account_number=x.account_number, ifsc=x.ifsc,
+                            trustee_id=x.trustee_id) for x in world.creditors])
         s.flush()
-        s.add_all([Engagement(id=e.id, tenant_id=e.tenant_id, business_unit_id=e.business_unit_id,
-                              supplier_id=e.supplier_id, tier=e.tier, engagement_type=e.engagement_type,
-                              service_category=e.service_category, start_date=e.start_date, end_date=e.end_date)
-                   for e in world.engagements])
-        s.add_all([Attestation(tenant_id=a.tenant_id, supplier_id=a.supplier_id, requirement_id=a.requirement_id,
+        s.add_all([Claim(id=e.id, tenant_id=e.tenant_id, matter_id=e.matter_id, creditor_id=e.creditor_id,
+                         tier=e.tier, claim_type=e.claim_type, facility_type=e.facility_type,
+                         book_balance=e.book_balance, sanctioned=e.sanctioned)
+                   for e in world.claims])
+        s.add_all([Attestation(tenant_id=a.tenant_id, creditor_id=a.creditor_id, requirement_id=a.requirement_id,
                                verified_by=a.verified_by, verified_on=a.verified_on, note=a.note)
                    for a in world.attestations])
 
@@ -128,8 +130,8 @@ def process_world(world_dir: str | Path, db_path: str | Path, model: ModelClient
     t0 = time.perf_counter()
     for u in world.uploads:
         data = (Path(world_dir) / u.file).read_bytes()
-        uid = engine.ingest(u.tenant_id, u.business_unit_id, u.filename, data, u.channel, u.uploaded_at,
-                            u.claimed_supplier_id, external_ref=f"world:{u.id}")
+        uid = engine.ingest(u.tenant_id, u.matter_id, u.filename, data, u.channel, u.uploaded_at,
+                            u.declared_creditor_id, external_ref=f"world:{u.id}")
         engine.process(u.tenant_id, uid)
     for t in world.tenants:
         engine.refresh(t.id)
@@ -177,10 +179,10 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
     with store.system() as s:
         for d in s.scalars(select(Document)).all():
             by_sha[f"{d.tenant_id}:{d.sha256}"] = d
-        states = {(r.engagement_id, r.requirement_id): r for r in s.scalars(select(RequirementState)).all()}
+        states = {(r.claim_id, r.requirement_id): r for r in s.scalars(select(RequirementState)).all()}
         verdicts = defaultdict(dict)
         for v in s.scalars(select(VerdictRow)).all():
-            verdicts[(v.engagement_id, v.requirement_id, v.document_id)][v.check_id] = v
+            verdicts[(v.claim_id, v.requirement_id, v.document_id)][v.check_id] = v
     up_doc: dict[int, Document] = {}
     for u in world.uploads:
         sha = sha256((world_dir / u.file).read_bytes()).hexdigest()
@@ -198,22 +200,22 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
     wrong_matches = []
     for u in originals:
         d = up_doc[u.id]
-        if u.truth.doc_type == "unknown" or u.truth.variant == "wrong_tenant" and d.supplier_id is None:
+        if u.truth.doc_type == "unknown" or u.truth.variant == "wrong_tenant" and d.creditor_id is None:
             if u.truth.variant == "wrong_tenant":
                 m["abstained_as_expected"] += 1
             continue
         if d.doc_type != u.truth.doc_type:
             m["not_classified"] += 1
             continue
-        owner = u.truth.owner_supplier_id
-        if d.supplier_id is None:
+        owner = u.truth.owner_creditor_id
+        if d.creditor_id is None:
             m["abstained_as_expected" if u.truth.expect == "abstain" else "abstained_deferral"] += 1
-        elif d.supplier_id == owner:
+        elif d.creditor_id == owner:
             m["matched_correctly"] += 1
         else:
             m["wrong_match"] += 1
             wrong_matches.append({"upload": u.id, "variant": u.truth.variant, "truth_owner": owner,
-                                  "engine": d.supplier_id, "reason": (d.match_detail or {}).get("reason")})
+                                  "engine": d.creditor_id, "reason": (d.match_detail or {}).get("reason")})
     # checks (only where engine and truth judge the same document)
     truth = truth_statuses(world, pack)
     confusion: dict[str, Counter] = defaultdict(Counter)
@@ -231,7 +233,7 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
             ev = row.verdict if row else "MISSING"
             confusion[cid][(str(tv), ev)] += 1
             if ev == Verdict.PASS and tv != Verdict.PASS and len(false_pass_examples) < 20:
-                false_pass_examples.append({"engagement": eid, "requirement": rid, "check": cid, "truth": str(tv),
+                false_pass_examples.append({"claim": eid, "requirement": rid, "check": cid, "truth": str(tv),
                                             "reason": row.reason, "upload": t["upload_id"]})
     per_check = {}
     for cid, c in sorted(confusion.items()):
@@ -252,7 +254,7 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
     # statuses
     status_conf = Counter()
     outcome = Counter()
-    false_assurance = []
+    false_vouching = []
     for key, t in truth.items():
         ts = t["status"]
         es = Status(states[key].status) if key in states else None
@@ -265,8 +267,8 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
                 v.verdict == Verdict.FAIL for v in verdicts.get((*key, states[key].document_id), {}).values()):
             outcome["abstention_as_finding"] += 1          # vouching kept; a non-critical "not sure" asks a person
         elif es in VOUCHING and ts not in VOUCHING:
-            outcome["false_assurance"] += 1
-            false_assurance.append({"engagement": key[0], "requirement": key[1], "truth": ts.value,
+            outcome["false_vouching"] += 1
+            false_vouching.append({"claim": key[0], "requirement": key[1], "truth": ts.value,
                                     "engine": es.value})
         elif es not in VOUCHING and ts in VOUCHING:
             outcome["false_alarm"] += 1
@@ -294,7 +296,7 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
                    "exact_rate": round(outcome["exact"] / max(1, n_status), 4),
                    "deferral_rate": round(outcome["deferred_to_review"] / max(1, n_status), 4),
                    "confusion": {f"{t} -> {e}": n for (t, e), n in sorted(status_conf.items())},
-                   "false_assurance_examples": false_assurance},
+                   "false_vouching_examples": false_vouching},
         "security": {"injected_documents": len(injected), "detected": detected,
                      "model_pass_on_hostile_documents": hostile_model_pass},
     }
@@ -305,9 +307,9 @@ def apply_gates(report: Report, gates_file: str | Path) -> None:
     m = report.metrics
     injected = m["security"]["injected_documents"]
     rows = [
-        ("status false assurance", m["status"].get("false_assurance", 0), "<=", g["status_false_assurance_max"]),
+        ("status false vouching", m["status"].get("false_vouching", 0), "<=", g["status_false_vouching_max"]),
         ("critical check false passes", m["checks"]["critical_false_pass"], "<=", g["critical_check_false_pass_max"]),
-        ("documents matched to the wrong supplier", m["matching"].get("wrong_match", 0), "<=", g["wrong_match_max"]),
+        ("documents matched to the wrong creditor", m["matching"].get("wrong_match", 0), "<=", g["wrong_match_max"]),
         ("classification accuracy", m["classification"]["accuracy"], ">=", g["classification_accuracy_min"]),
         ("status deferral rate", m["status"]["deferral_rate"], "<=", g["deferral_rate_max"]),
         ("injected documents detected", (m["security"]["detected"] / injected) if injected else 1.0, ">=",
@@ -350,11 +352,11 @@ def render(r: Report) -> str:
         val = g["value"] if isinstance(g["value"], int) else round(float(g["value"]), 4)
         out.append(f"| {g['gate']} | {val} | {g['op']} {g['limit']} | {'pass' if g['ok'] else '**FAIL**'} |")
     out += ["", "## Requirement status", "",
-            f"{st['requirement_instances']} engagement-requirement pairs. Exact: {st.get('exact', 0)} "
+            f"{st['requirement_instances']} claim-requirement pairs. Exact: {st.get('exact', 0)} "
             f"({_pct(st['exact_rate'])}). Deferred to review: {st.get('deferred_to_review', 0)} "
             f"({_pct(st['deferral_rate'])}). Vouching kept, with a non-critical abstention shown as a finding: "
-            f"{st.get('abstention_as_finding', 0)}. False assurance (vouching when the truth is otherwise): "
-            f"{st.get('false_assurance', 0)}. False alarm: {st.get('false_alarm', 0)}. Other mismatch: "
+            f"{st.get('abstention_as_finding', 0)}. False vouching (vouching when the truth is otherwise): "
+            f"{st.get('false_vouching', 0)}. False alarm: {st.get('false_alarm', 0)}. Other mismatch: "
             f"{st.get('other_mismatch', 0)}.", "", "| Truth -> engine | Count |", "|---|---|"]
     out += [f"| {k} | {v} |" for k, v in st["confusion"].items()]
     out += ["", "## Checks", "", "By tier (only where the engine and the truth judged the same document):", "",
@@ -390,7 +392,7 @@ def render(r: Report) -> str:
             f"{sec['detected']} of {sec['injected_documents']} documents carrying text aimed at automated readers were "
             f"flagged; model checks returned PASS on such documents {sec['model_pass_on_hostile_documents']} times.", "",
             "## What this does not show", "",
-            "- The world is synthetic: fictional suppliers and documents rendered from templates, then degraded. It is "
+            "- The world is synthetic: fictional creditors and documents rendered from templates, then degraded. It is "
             "adversarial by design, but real evidence is messier in ways a generator does not anticipate.",
             "- Model-tier numbers come from synthetic contract clauses, not from real contracts.",
             "- Timings are what this machine measured, not a benchmark.", ""]

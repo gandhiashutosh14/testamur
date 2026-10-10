@@ -1,9 +1,9 @@
 # 0014: A tool server for agents: one tenant per key, a catalogue per tenant, and proposals instead of writes
 
 ## Context
-Customers will point their own agents at the platform: to ask which suppliers are blocked, to work the review queue,
-to draft the chase for an expiring certificate. An agent calls tools far more often than a person clicks, follows
-instructions it reads, and is not the person accountable for a compliance decision. A tool surface for agents has to
+Customers will point their own agents at the platform: to ask which creditors are blocked, to work the review queue,
+to draft the chase for a lapsing authority. An agent calls tools far more often than a person clicks, follows
+instructions it reads, and is not the person accountable for admitting a claim. A tool surface for agents has to
 assume all three.
 
 ## Decision

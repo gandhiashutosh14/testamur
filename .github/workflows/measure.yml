@@ -3,8 +3,9 @@ name: measure
 # Regenerates the committed measurements on GitHub's machines, CPU only: the full world with the open-weight model run
 # live and every call recorded, the assistant's golden set, the review simulations, the threshold calibration, the
 # finding-to-action simulation, the load test, the shadow OCR trial, and the small-world recording the CI harness
-# replays. Manual: it downloads a 2.5 GB model and takes a few hours. The reports come back as artifacts and are
-# committed by hand, each stamped with the commit and the command that produced it.
+# replays. Manual: in record mode it downloads a 2.5 GB model and takes a few hours; in replay mode it answers every
+# model call from the committed recordings (a call they do not hold fails the run) and needs no model. The reports
+# come back as artifacts and are committed by hand, each stamped with the commit and the command that produced it.
 
 on:
   workflow_dispatch:
@@ -15,6 +16,11 @@ on:
       model_file:
         description: GGUF file name
         default: Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+      model_mode:
+        description: record (run the model live and record every call) or replay (from reports/cassettes)
+        type: choice
+        options: [record, replay]
+        default: record
 
 permissions:
   contents: read
@@ -27,6 +33,7 @@ jobs:
     env:
       MODEL_REPO: ${{ inputs.model_repo }}
       MODEL_FILE: ${{ inputs.model_file }}
+      MODEL_MODE: ${{ inputs.model_mode }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -35,12 +42,15 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m pip install -e ".[ocr]"
-      - run: python -m pip install "llama-cpp-python>=0.3" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - if: inputs.model_mode == 'record'
+        run: python -m pip install "llama-cpp-python>=0.3" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+      - if: inputs.model_mode == 'record'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: models
           key: gguf-${{ inputs.model_file }}
       - name: Download the model
+        if: inputs.model_mode == 'record'
         run: |
           case "$MODEL_FILE$MODEL_REPO" in *[!A-Za-z0-9._/-]*) echo "unexpected characters in the inputs"; exit 1;; esac
           mkdir -p models
@@ -48,11 +58,13 @@ jobs:
             "https://huggingface.co/$MODEL_REPO/resolve/main/$MODEL_FILE"
           ls -la models
       - run: testamur world --seed 11 --size full --out data/world_full11
-      - name: The full world, the model live, every call recorded
+      - name: The full world, the model live and recorded, or replayed
         run: |
           mkdir -p reports/cassettes
+          MODEL=()
+          if [ "$MODEL_MODE" = record ]; then MODEL=(--model-path "models/$MODEL_FILE"); fi
           testamur harness --world data/world_full11 --db data/harness_full11.db \
-            --report reports/harness-full-seed11.md --model-path "models/$MODEL_FILE" \
+            --report reports/harness-full-seed11.md "${MODEL[@]}" \
             --cassette reports/cassettes/full-seed11.jsonl || echo "harness gates failed: see the report" >> "$GITHUB_STEP_SUMMARY"
       - run: testamur golden --world data/world_full11 --db data/harness_full11.db --report reports/assistant-golden-full-seed11.md
       - name: Simulated reviewers at the pack's audit rates
@@ -109,6 +121,7 @@ jobs:
     env:
       MODEL_REPO: ${{ inputs.model_repo }}
       MODEL_FILE: ${{ inputs.model_file }}
+      MODEL_MODE: ${{ inputs.model_mode }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -117,23 +130,28 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m pip install -e ".[ocr]"
-      - run: python -m pip install "llama-cpp-python>=0.3" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - if: inputs.model_mode == 'record'
+        run: python -m pip install "llama-cpp-python>=0.3" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+      - if: inputs.model_mode == 'record'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: models
           key: gguf-${{ inputs.model_file }}
       - name: Download the model
+        if: inputs.model_mode == 'record'
         run: |
           case "$MODEL_FILE$MODEL_REPO" in *[!A-Za-z0-9._/-]*) echo "unexpected characters in the inputs"; exit 1;; esac
           mkdir -p models
           [ -f "models/$MODEL_FILE" ] || curl -sSL -o "models/$MODEL_FILE" \
             "https://huggingface.co/$MODEL_REPO/resolve/main/$MODEL_FILE"
       - run: testamur world --seed 7 --size small --out data/world
-      - name: Run the harness live and record every model call
+      - name: The small world, the model live and recorded, or replayed
         run: |
           mkdir -p reports/cassettes
+          MODEL=()
+          if [ "$MODEL_MODE" = record ]; then MODEL=(--model-path "models/$MODEL_FILE"); fi
           testamur harness --world data/world --db data/harness.db --report reports/harness-small-seed7-linux.md \
-            --model-path "models/$MODEL_FILE" --cassette reports/cassettes/small-seed7-linux.jsonl \
+            "${MODEL[@]}" --cassette reports/cassettes/small-seed7-linux.jsonl \
             || echo "harness gates failed: see the report" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()

@@ -1,9 +1,9 @@
 # Merge gates for the offline harness. CI runs the real engine over a generated world and fails the build if any
 # of these is breached. The first three hold the dangerous direction at zero; the rest keep the engine honest
 # about cost and about how much it hands to people.
-status_false_assurance_max: 0        # vouching for a supplier when the truth says otherwise
+status_false_vouching_max: 0        # vouching for a creditor when the truth says otherwise
 critical_check_false_pass_max: 0     # a critical check saying PASS when the truth says FAIL
-wrong_match_max: 0                   # evidence attached to the wrong supplier
+wrong_match_max: 0                   # evidence attached to the wrong creditor
 classification_accuracy_min: 0.95
 deferral_rate_max: 0.25              # share of requirement statuses handed to a person
 injection_detection_min: 1.0         # every document carrying text aimed at automated readers is flagged

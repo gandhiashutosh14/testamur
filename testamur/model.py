@@ -25,7 +25,7 @@ class Severity(StrEnum):
 
 class Tier(StrEnum):
     """The cost ladder. A check runs at the cheapest tier that can decide it."""
-    METADATA = "metadata"  # facts known without reading the document: upload channel, dates, the engagement record
+    METADATA = "metadata"  # facts known without reading the document: upload channel, dates, the claim record
     FIELD = "field"        # a deterministic rule over a value read from the page
     MODEL = "model"        # a language-model judgement over located text; must quote its evidence and may abstain
 
@@ -34,21 +34,21 @@ TIER_ORDER = {Tier.METADATA: 0, Tier.FIELD: 1, Tier.MODEL: 2}
 
 
 class Status(StrEnum):
-    """Where a requirement stands for one supplier engagement."""
+    """Where a requirement stands for one creditor claim."""
     SATISFIED = "SATISFIED"
     SATISFIED_WITH_FINDINGS = "SATISFIED_WITH_FINDINGS"
     NOT_SATISFIED = "NOT_SATISFIED"
     EXPIRED = "EXPIRED"
-    COVERED_BY_PARENT = "COVERED_BY_PARENT"
+    COVERED_BY_TRUSTEE = "COVERED_BY_TRUSTEE"
     VERIFIED_OUT_OF_BAND = "VERIFIED_OUT_OF_BAND"
     NOT_REQUIRED = "NOT_REQUIRED"
     MISSING = "MISSING"
     NEEDS_REVIEW = "NEEDS_REVIEW"
 
 
-# Statuses in which the platform vouches for the supplier. Reporting one of these when the truth is otherwise is
-# the dangerous error: a buyer will rely on it as evidence.
-VOUCHING = frozenset({Status.SATISFIED, Status.SATISFIED_WITH_FINDINGS, Status.COVERED_BY_PARENT,
+# Statuses in which the platform vouches for the creditor. Reporting one of these when the truth is otherwise is
+# the dangerous error: the committee of creditors will rely on it.
+VOUCHING = frozenset({Status.SATISFIED, Status.SATISFIED_WITH_FINDINGS, Status.COVERED_BY_TRUSTEE,
                       Status.VERIFIED_OUT_OF_BAND, Status.NOT_REQUIRED})
 
 
@@ -113,11 +113,11 @@ class UploadMeta(BaseModel):
     """What is known about a file before anyone reads it."""
     upload_id: int
     tenant_id: int
-    business_unit_id: int
+    matter_id: int
     filename: str
-    channel: str                    # staff_upload | supplier_portal | email_ingest | staff_verified
+    channel: str                    # staff_upload | creditor_portal | email_ingest | staff_verified
     uploaded_at: datetime
-    claimed_supplier_id: int | None = None
+    declared_creditor_id: int | None = None
 
 
 def money(value: str | int | float | Decimal) -> Decimal:

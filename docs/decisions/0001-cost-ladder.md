@@ -1,8 +1,8 @@
 # 0001: Route every check to the cheapest tier that can decide it
 
 ## Context
-Most questions about a compliance document are cheap to answer exactly: compare two dates, check a number against a
-threshold, validate check digits. A few need language judgement (does this clause cap liability?). Language models
+Most questions about a claim document are cheap to answer exactly: compare two dates, check a number against a
+threshold, validate check characters. A few need language judgement (does this agreement provide for interest?). Language models
 are slow and paid per call, and they are wrong in ways rules are not.
 
 ## Decision

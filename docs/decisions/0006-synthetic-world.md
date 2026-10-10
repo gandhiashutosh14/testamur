@@ -1,15 +1,15 @@
 # 0006: Measure on a generated adversarial world with ground truth
 
 ## Context
-Real supplier evidence is confidential, and nobody publishes thousands of insurance certificates labelled with
-whether each one satisfies a given engagement. Without ground truth there is no false-pass rate, and without a
+Real claim files are confidential, and nobody publishes thousands of proofs of claim, authorities and charge
+certificates labelled with whether each one satisfies a given claim. Without ground truth there is no false-pass rate, and without a
 false-pass rate there is no safety claim.
 
 ## Decision
-A seeded generator builds a world of fictional tenants, business units and suppliers, renders their documents as
+A seeded generator builds a world of fictional tenants, matters and creditors, renders their documents as
 born-digital PDFs, degraded scans and phone photos, and records the truth: every document's type, owner and field
 values, and every check's and requirement's correct outcome. The world is adversarial on purpose (decoy pages,
-contradicting endorsements, near-twin supplier names, group policies, changed bank details, planted instructions,
+contradicting amendments, near-twin creditor names, debenture trustees, changed bank details, planted instructions,
 duplicates, misfiled uploads, documents of no known type).
 
 The truth is computed from what the generator wrote, by code independent of the engine. The status policy is shared

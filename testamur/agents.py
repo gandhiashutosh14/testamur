@@ -25,19 +25,19 @@ from .model import Verdict
 from .store import (
     ApiKey,
     AuditRow,
+    Claim,
+    Creditor,
     Document,
-    Engagement,
     Hold,
     Proposal,
     RequirementState,
     Store,
-    Supplier,
     Task,
     ToolGrant,
     utcnow,
 )
 
-READ_TOOLS = ("list_engagements", "get_requirement", "review_queue", "open_tasks", "ask", "proposal_status")
+READ_TOOLS = ("list_claims", "get_requirement", "review_queue", "open_tasks", "ask", "proposal_status")
 PROPOSE_TOOLS = ("propose_check_verdict", "propose_field_reading", "propose_document_decision")
 TOOLS = READ_TOOLS + PROPOSE_TOOLS
 PROPOSAL_TTL = timedelta(days=7)
@@ -100,31 +100,31 @@ def require(store: Store, tenant_id: int, tool: str) -> None:
 
 # ---------------------------------------------------------------------------------------------- reads
 
-def list_engagements(store: Store, tenant_id: int, cursor: int = 0, limit: int = 25) -> dict:
-    """A page of engagements with each requirement's status and any purchasing hold. Four queries, whatever the
-    page size: engagements, their suppliers, their statuses, their holds."""
+def list_claims(store: Store, tenant_id: int, cursor: int = 0, limit: int = 25) -> dict:
+    """A page of claims with each requirement's status and any hold. Four queries, whatever the
+    page size: claims, their creditors, their statuses, their holds."""
     limit = max(1, min(limit, MAX_PAGE))
     with store.tenant(tenant_id) as s:
-        engs = s.scalars(select(Engagement).where(Engagement.id > cursor).order_by(Engagement.id).limit(limit)).all()
+        engs = s.scalars(select(Claim).where(Claim.id > cursor).order_by(Claim.id).limit(limit)).all()
         ids = [e.id for e in engs]
-        names = {x.id: x.legal_name for x in s.scalars(select(Supplier).where(
-            Supplier.id.in_({e.supplier_id for e in engs})))}
+        names = {x.id: x.legal_name for x in s.scalars(select(Creditor).where(
+            Creditor.id.in_({e.creditor_id for e in engs})))}
         states: dict[int, dict] = defaultdict(dict)
-        for st in s.scalars(select(RequirementState).where(RequirementState.engagement_id.in_(ids))):
-            states[st.engagement_id][st.requirement_id] = st.status
-        held = {h.engagement_id for h in s.scalars(select(Hold).where(Hold.engagement_id.in_(ids),
+        for st in s.scalars(select(RequirementState).where(RequirementState.claim_id.in_(ids))):
+            states[st.claim_id][st.requirement_id] = st.status
+        held = {h.claim_id for h in s.scalars(select(Hold).where(Hold.claim_id.in_(ids),
                                                                      Hold.released_at.is_(None)))}
-    items = [{"engagement": e.id, "supplier": names.get(e.supplier_id), "tier": e.tier, "type": e.engagement_type,
+    items = [{"claim": e.id, "creditor": names.get(e.creditor_id), "tier": e.tier, "type": e.claim_type,
               "statuses": states.get(e.id, {}), "on_hold": e.id in held} for e in engs]
     return {"items": items, "next_cursor": ids[-1] if len(ids) == limit else None}
 
 
-def get_requirement(engine: Engine, tenant_id: int, engagement: int, requirement: str) -> dict:
+def get_requirement(engine: Engine, tenant_id: int, claim: int, requirement: str) -> dict:
     with engine.store.tenant(tenant_id) as s:
-        st, results = engine._verdicts(s, tenant_id, engagement, requirement)
+        st, results = engine._verdicts(s, tenant_id, claim, requirement)
     if st is None:
-        raise KeyError("no such engagement and requirement for this tenant")
-    return {"engagement": engagement, "requirement": requirement, "status": st.status, "document": st.document_id,
+        raise KeyError("no such claim and requirement for this tenant")
+    return {"claim": claim, "requirement": requirement, "status": st.status, "document": st.document_id,
             "reasons": st.reasons,
             "checks": [{"check": r.check_id, "verdict": r.verdict.value, "reason": r.reason,
                         "evidence": [{"page": e.page, "quote": e.quote} for e in r.evidence if e.quote],
@@ -135,7 +135,7 @@ def review_queue(engine: Engine, tenant_id: int, cursor: int = 0, limit: int = 2
     items = engine.queue(tenant_id)
     limit = max(1, min(limit, MAX_PAGE))
     page = items[cursor:cursor + limit]
-    return {"items": [{"kind": i.kind, "document": i.document_id, "engagement": i.engagement_id,
+    return {"items": [{"kind": i.kind, "document": i.document_id, "claim": i.claim_id,
                        "requirement": i.requirement_id, "check": i.check_id, "reason": i.reason,
                        "blocking": i.blocking} for i in page],
             "next_cursor": cursor + limit if cursor + limit < len(items) else None, "total": len(items)}
@@ -147,7 +147,7 @@ def open_tasks(store: Store, tenant_id: int, cursor: int = 0, limit: int = 25) -
         rows = s.scalars(select(Task).where(Task.status == "open", Task.id > cursor).order_by(Task.id)
                          .limit(limit)).all()
     return {"items": [{"task": t.id, "kind": t.kind, "title": t.title, "due": t.due_at.date().isoformat(),
-                       "engagement": t.engagement_id, "requirement": t.requirement_id} for t in rows],
+                       "claim": t.claim_id, "requirement": t.requirement_id} for t in rows],
             "next_cursor": rows[-1].id if len(rows) == limit else None}
 
 
@@ -204,7 +204,7 @@ def decide(engine: Engine, tenant_id: int, proposal: int, person: str, confirm: 
             return "declined"
     who, note = f"{person} (proposed by agent {agent})", args.get("reason", "")
     if kind == "check_verdict":
-        outcome = str(engine.review_check(tenant_id, args["engagement"], args["requirement"], args["check"],
+        outcome = str(engine.review_check(tenant_id, args["claim"], args["requirement"], args["check"],
                                           args["verdict"], who, note))
     elif kind == "field_reading":
         engine.correct_field(tenant_id, args["document"], args["field"], args["value"], who, note)
@@ -212,7 +212,7 @@ def decide(engine: Engine, tenant_id: int, proposal: int, person: str, confirm: 
     elif kind == "document_decision":
         action = args["action"]
         if action == "assign":
-            engine.assign(tenant_id, args["document"], args["supplier"], who, note)
+            engine.assign(tenant_id, args["document"], args["creditor"], who, note)
         elif action == "reject":
             engine.reject(tenant_id, args["document"], who, note)
         elif action == "clear":
@@ -238,11 +238,11 @@ def _summary(engine: Engine, tenant_id: int, kind: str, args: dict) -> str:
                 raise ValueError("a check verdict is PASS or FAIL")
             if args["check"] not in engine.pack.requirements[args["requirement"]].checks:
                 raise KeyError(f"requirement {args['requirement']} has no check {args['check']}")
-            st = s.get(RequirementState, {"engagement_id": args["engagement"], "requirement_id": args["requirement"],
+            st = s.get(RequirementState, {"claim_id": args["claim"], "requirement_id": args["requirement"],
                                           "tenant_id": tenant_id})
             if st is None or st.document_id is None:
-                raise KeyError("no document is being judged for this engagement and requirement")
-            return (f"set {args['check']} to {args['verdict']} for engagement {args['engagement']} "
+                raise KeyError("no document is being judged for this claim and requirement")
+            return (f"set {args['check']} to {args['verdict']} for claim {args['claim']} "
                     f"({args['requirement']}, document {st.document_id})")
         doc = s.get(Document, args.get("document"))
         if doc is None:
@@ -253,9 +253,9 @@ def _summary(engine: Engine, tenant_id: int, kind: str, args: dict) -> str:
             if args["action"] not in ("assign", "reject", "clear", "classify"):
                 raise ValueError("a document decision is assign, reject, clear or classify")
             if args["action"] == "assign":
-                sup = s.get(Supplier, args.get("supplier"))
+                sup = s.get(Creditor, args.get("creditor"))
                 if sup is None:
-                    raise KeyError(f"no supplier {args.get('supplier')} for this tenant")
+                    raise KeyError(f"no creditor {args.get('creditor')} for this tenant")
                 return f"assign document {doc.id} to {sup.legal_name}"
             return f"{args['action']} document {doc.id}" + (f" as {args['doc_type']}" if args.get("doc_type") else "")
     raise ValueError(f"unknown proposal kind {kind}")

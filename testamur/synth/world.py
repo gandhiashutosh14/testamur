@@ -1,14 +1,17 @@
-"""Generate a supplier world with its evidence files and ground truth.
+"""Generate a world of insolvency processes with their claim documents and ground truth.
 
 The world is adversarial on purpose. It includes:
-- expired, about-to-lapse and under-insured certificates;
-- certificates for the wrong entity, and group policies that legitimately cover subsidiaries;
-- decoy pages that state an old value under a different label;
-- endorsement pages that genuinely contradict page one;
-- bank letters from unverified channels, with broken check digits or a different account holder;
-- contracts missing clauses, with hard-negative wordings and with text aimed at automated readers;
+- authorities that have lapsed, are about to, or let the representative file but not vote;
+- documents issued by the wrong entity, and debenture trustees whose authority legitimately covers the holders;
+- decoy pages that state an old value under a different label, and amendment pages that genuinely contradict page one;
+- claims above the corporate debtor's books, amounts in words that disagree with the figures, defaults outside
+  limitation, forms dated before the process was announced, broken GSTINs, PANs that are not the GSTIN's;
+- charges held by someone else, created by another company, registered by an office that is no Registrar, or
+  securing less than the facility;
+- bank letters from unverified channels, with an IFSC of another bank, another account or another holder;
+- agreements missing clauses, with hard-negative wordings and with text aimed at automated readers;
 - duplicates, superseded versions, misfiled uploads, misleading filenames, documents of no known type;
-- near-identical supplier names inside a tenant, and the same name in another tenant.
+- near-identical creditor names inside a process, and the same name in another tenant.
 """
 from __future__ import annotations
 
@@ -18,22 +21,30 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from ..ids import format_iban, iban_valid, lei_valid
+from ..ids import gstin_valid, ifsc_valid, lei_valid
 from ..pack import Pack, load_pack
+from ..textnorm import format_inr, rupees_in_words
 from . import names as nm
 from .clauses import ABSENT, BOILERPLATE, INJECTIONS, PRESENT
 from .render import DocContent, render_pdf, to_photo_jpg, to_scan_pdf
 
 AS_OF = date(2026, 10, 1)
-SIZES = {"tiny": {"tenants": 2, "suppliers": 5}, "small": {"tenants": 2, "suppliers": 10},
-         "full": {"tenants": 3, "suppliers": 26}}
-TENANTS = ["Larkspur Retail Group", "Halden Health Partners", "Orrin Financial Services"]
-BUS = [["Northern Stores", "Southern Stores", "Head Office"],
-       ["City Hospitals", "Community Care", "Shared Services"],
-       ["Retail Banking", "Wealth Management", "Group Operations"]]
-PEOPLE = ["Anika Rao", "Tomas Brandt", "Grace Okafor", "Liam Duarte", "Mei Lin", "Oskar Varga", "Priya Nair",
-          "Samuel Achterberg", "Ines Moreau", "Kofi Mensah", "Hannah Kowalski", "Rafael Ortiz"]
-DATA_CATEGORIES = {"cloud_hosting", "payroll_services", "software_development"}
+SIZES = {"tiny": {"tenants": 2, "creditors": 5}, "small": {"tenants": 2, "creditors": 10},
+         "full": {"tenants": 3, "creditors": 26}}
+TENANTS = ["Saranya Insolvency Professionals LLP", "Prabodh Resolution Services Pvt Ltd",
+           "Nyayadeep Restructuring Advisors LLP"]
+MATTERS = [["Pench Valley Polymers Pvt Ltd", "Malwa Plateau Agro Foods Ltd", "Konkan Tidewater Marine Pvt Ltd"],
+           ["Satpura Foundry Works Ltd", "Indrayani Spinners Pvt Ltd", "Vidarbha Cold Chain Ltd"],
+           ["Chambal Ceramics Pvt Ltd", "Kalindi Auto Components Ltd", "Bhima River Paper Mills Ltd"]]
+SECURED_FACILITIES = {"working_capital", "term_loan", "equipment_finance", "vehicle_finance"}
+CRORE, LAKH = 10_000_000, 100_000
+SANCTIONED = {"critical": [100, 150, 250], "high": [25, 40, 60, 75], "standard": [5, 8, 10, 15, 20],
+              "low": [0.5, 1, 2, 3]}                       # crore
+VOTING_POWERS = ["To attend and vote at meetings of the committee of creditors",
+                 "To represent the creditor and vote in the committee of creditors",
+                 "To attend, speak and vote for the creditor at every meeting of creditors"]
+FILING_POWERS = ["To sign and submit the proof of claim and to receive notices",
+                 "To file the claim and correspond with the resolution professional"]
 
 
 class Tenant(BaseModel):
@@ -41,43 +52,49 @@ class Tenant(BaseModel):
     name: str
 
 
-class BusinessUnit(BaseModel):
+class Matter(BaseModel):
     id: int
     tenant_id: int
-    name: str
+    name: str                                 # the corporate debtor
+    debtor_cin: str
+    commencement: date
+    announced: date
+    claims_due: date
 
 
-class Supplier(BaseModel):
+class Creditor(BaseModel):
     id: int
     tenant_id: int
     legal_name: str
     address: str
-    company_number: str
-    vat_number: str
+    city: str
+    cin: str
+    pan: str
+    gstin: str
     lei: str | None = None
     bank: str
-    iban: str
-    bic: str
-    category: str
-    parent_id: int | None = None
-    is_parent: bool = False
+    account_number: str
+    ifsc: str
+    category: str                             # the facility type it lends under
+    trustee_id: int | None = None
+    is_trustee: bool = False
 
 
-class Engagement(BaseModel):
+class Claim(BaseModel):
     id: int
     tenant_id: int
-    business_unit_id: int
-    supplier_id: int
+    matter_id: int
+    creditor_id: int
     tier: str
-    engagement_type: str
-    service_category: str
-    start_date: date
-    end_date: date
+    claim_type: str
+    facility_type: str
+    book_balance: int
+    sanctioned: int
 
 
 class Attestation(BaseModel):
     tenant_id: int
-    supplier_id: int
+    creditor_id: int
     requirement_id: str
     verified_by: str
     verified_on: date
@@ -86,8 +103,8 @@ class Attestation(BaseModel):
 
 class UploadTruth(BaseModel):
     doc_type: str                         # a pack doc type, or "unknown"
-    owner_supplier_id: int | None         # whose document it is (the insured party for insurance)
-    scenario_supplier_id: int | None      # the supplier this evidence was collected for
+    owner_creditor_id: int | None         # whose document it is (the trustee, for a trustee's authority)
+    scenario_creditor_id: int | None      # the creditor this evidence was collected for
     covers: list[int] = Field(default_factory=list)
     expect: str = "match"                 # match | abstain | unknown: what a careful engine should do with it
     fields: dict[str, str] = Field(default_factory=dict)
@@ -103,12 +120,12 @@ class UploadTruth(BaseModel):
 class Upload(BaseModel):
     id: int
     tenant_id: int
-    business_unit_id: int
+    matter_id: int
     filename: str
     file: str
     channel: str
     uploaded_at: datetime
-    claimed_supplier_id: int | None = None
+    declared_creditor_id: int | None = None
     truth: UploadTruth
 
 
@@ -118,24 +135,34 @@ class World(BaseModel):
     as_of: date
     pack: str
     tenants: list[Tenant]
-    business_units: list[BusinessUnit]
-    suppliers: list[Supplier]
-    engagements: list[Engagement]
+    matters: list[Matter]
+    creditors: list[Creditor]
+    claims: list[Claim]
     attestations: list[Attestation]
     uploads: list[Upload]
 
-    def supplier(self, sid: int) -> Supplier:
-        return next(s for s in self.suppliers if s.id == sid)
+    def creditor(self, sid: int) -> Creditor:
+        return next(s for s in self.creditors if s.id == sid)
+
+    def matter(self, mid: int) -> Matter:
+        return next(m for m in self.matters if m.id == mid)
+
+
+def _ordinal(n: int) -> str:
+    return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
 
 
 def _fmt_date(d: date, rng: random.Random) -> str:
-    return rng.choice([d.strftime("%d %B %Y"), d.strftime("%d/%m/%Y"), d.isoformat(), d.strftime("%B %d, %Y")])
+    return rng.choice([d.strftime("%d.%m.%Y"), d.strftime("%d/%m/%Y"), d.strftime("%d-%m-%Y"), d.strftime("%d-%b-%Y"),
+                       f"{_ordinal(d.day)} {d.strftime('%B, %Y')}", d.strftime("%d %B %Y")])
 
 
 def _fmt_money(amount: int, rng: random.Random) -> str:
-    choices = [f"EUR {amount:,}", f"€{amount:,}", f"{amount:,} EUR".replace(",", ".")]
-    if amount % 1_000_000 == 0:
-        choices.append(f"EUR {amount // 1_000_000}m")
+    choices = [format_inr(amount) + "/-", "INR " + format_inr(amount)[4:], f"Rs. {amount:,}", f"INR {amount:,}"]
+    if amount % CRORE == 0:
+        choices.append(f"Rs. {amount // CRORE} crore")
+    elif amount % LAKH == 0:
+        choices.append(f"Rs. {amount // LAKH} lakh")
     return rng.choice(choices)
 
 
@@ -145,38 +172,42 @@ class _Builder:
         self.seed, self.size, self.out, self.pack = seed, size, out, pack
         self.digital_only = digital_only
         self.tenants: list[Tenant] = []
-        self.bus: list[BusinessUnit] = []
-        self.suppliers: list[Supplier] = []
-        self.engagements: list[Engagement] = []
+        self.matters: list[Matter] = []
+        self.creditors: list[Creditor] = []
+        self.claims: list[Claim] = []
         self.attestations: list[Attestation] = []
         self.uploads: list[Upload] = []
-        self._ids = {"bu": 0, "supplier": 0, "engagement": 0, "upload": 0}
-        self._group_docs: dict[int, int] = {}
+        self._ids = {"matter": 0, "creditor": 0, "claim": 0, "upload": 0}
+        self._trustee_docs: dict[int, int] = {}
 
     def _next(self, kind: str) -> int:
         self._ids[kind] += 1
         return self._ids[kind]
 
     # ------------------------------------------------------------------ registry
-    def _new_supplier(self, tenant_id: int, legal_name: str, category: str, **kw) -> Supplier:
+    def _new_creditor(self, tenant_id: int, legal_name: str, category: str, **kw) -> Creditor:
         rng = self.rng
-        bank = rng.choice(nm.BANKS)
-        s = Supplier(id=self._next("supplier"), tenant_id=tenant_id, legal_name=legal_name, address=nm.address(rng),
-                     company_number=nm.company_number(rng), vat_number=nm.vat_number(rng),
-                     lei=nm.lei(rng) if rng.random() < 0.6 else None, bank=bank, iban=nm.iban(rng, bank),
-                     bic=nm.bic(bank), category=category, **kw)
-        self.suppliers.append(s)
+        city = nm.place(rng)
+        bank = rng.choice(list(self.pack.bank_codes))
+        pan = nm.pan(rng, legal_name)
+        s = Creditor(id=self._next("creditor"), tenant_id=tenant_id, legal_name=legal_name,
+                     address=nm.address(rng, city), city=city[0], cin=nm.cin(rng, legal_name, city[1]), pan=pan,
+                     gstin=nm.gstin(city[2], pan), lei=nm.lei(rng) if rng.random() < 0.6 else None, bank=bank,
+                     account_number=nm.account_number(rng), ifsc=nm.ifsc(rng, self.pack.bank_codes[bank]),
+                     category=category, **kw)
+        self.creditors.append(s)
         return s
 
-    def _engage(self, s: Supplier, bu_id: int) -> Engagement:
+    def _claim(self, s: Creditor, matter_id: int) -> Claim:
         rng = self.rng
-        start = AS_OF + timedelta(days=rng.randint(-420, 45))
         tier = rng.choices(["critical", "high", "standard", "low"], [0.15, 0.3, 0.4, 0.15])[0]
-        etype = "data_processing" if (s.category in DATA_CATEGORIES and rng.random() < 0.8) else "services"
-        e = Engagement(id=self._next("engagement"), tenant_id=s.tenant_id, business_unit_id=bu_id, supplier_id=s.id,
-                       tier=tier, engagement_type=etype, service_category=s.category, start_date=start,
-                       end_date=start + timedelta(days=rng.randint(300, 1100)))
-        self.engagements.append(e)
+        sanctioned = int(rng.choice(SANCTIONED[tier]) * CRORE)
+        secured = s.category in SECURED_FACILITIES and rng.random() < 0.85
+        book = round(sanctioned * rng.uniform(0.55, 1.15), -3)
+        e = Claim(id=self._next("claim"), tenant_id=s.tenant_id, matter_id=matter_id, creditor_id=s.id, tier=tier,
+                  claim_type="secured" if secured else "unsecured", facility_type=s.category, book_balance=int(book),
+                  sanctioned=sanctioned)
+        self.claims.append(e)
         return e
 
     def build_registry(self) -> None:
@@ -185,87 +216,87 @@ class _Builder:
         for t in range(cfg["tenants"]):
             tenant = Tenant(id=t + 1, name=TENANTS[t])
             self.tenants.append(tenant)
-            bus = [BusinessUnit(id=self._next("bu"), tenant_id=tenant.id, name=n) for n in BUS[t]]
-            self.bus.extend(bus)
+            matters = []
+            for name in MATTERS[t]:
+                commencement = AS_OF - timedelta(days=rng.randint(45, 240))
+                city = nm.place(rng)
+                matters.append(Matter(id=self._next("matter"), tenant_id=tenant.id, name=name,
+                                      debtor_cin=nm.cin(rng, name, city[1]), commencement=commencement,
+                                      announced=commencement + timedelta(days=rng.randint(1, 3)),
+                                      claims_due=commencement + timedelta(days=14)))
+            self.matters.extend(matters)
             used: set[str] = set()
-            made = [self._new_supplier(tenant.id, nm.legal_name(rng, c, used), c)
-                    for c in (rng.choice(list(nm.INDUSTRY)) for _ in range(cfg["suppliers"]))]
-            # two corporate groups: a parent holding company and one or two subsidiaries carrying its brand
-            for sub in rng.sample(made, 2):
-                first = sub.legal_name.split(" ")[0]
-                if any(x.legal_name == f"{first} Holdings plc" for x in self.suppliers if x.tenant_id == tenant.id):
-                    continue
-                parent = self._new_supplier(tenant.id, f"{first} Holdings plc", sub.category, is_parent=True)
-                sub.parent_id = parent.id
-                extra = next((m for m in made if m.parent_id is None and not m.is_parent and m is not sub
-                              and m.category == sub.category), None)
+            made = [self._new_creditor(tenant.id, nm.legal_name(rng, c, used), c)
+                    for c in (rng.choice(list(nm.INDUSTRY)) for _ in range(cfg["creditors"]))]
+            # debenture trustees: each acts for one or two of the creditors (the holders) under section 21(6A)(a)
+            roots = rng.sample(nm.TRUSTEE_ROOTS, 2)
+            for holder, root in zip(rng.sample(made, 2), roots, strict=True):
+                trustee = self._new_creditor(tenant.id, f"{root} Trusteeship Services Ltd", holder.category,
+                                             is_trustee=True)
+                holder.trustee_id = trustee.id
+                extra = next((m for m in made if m.trustee_id is None and m is not holder
+                              and m.category == holder.category), None)
                 if extra is not None and rng.random() < 0.5:
-                    extra.parent_id = parent.id
-                    renamed = f"{first} {extra.legal_name.split(' ', 1)[1]}"
-                    if all(renamed != x.legal_name for x in self.suppliers if x.tenant_id == tenant.id):
-                        extra.legal_name = renamed
+                    extra.trustee_id = trustee.id
             # near-identical names: a different company a careless matcher would confuse
             twins = []
-            for orig in rng.sample([m for m in made if not m.is_parent], 2):
-                twins.append((orig, self._new_supplier(tenant.id, nm.near_duplicate(orig.legal_name, rng), orig.category)))
-            # the same legal name as a supplier of the first tenant: never to be matched across tenants
+            for orig in rng.sample(made, 2):
+                twins.append((orig, self._new_creditor(tenant.id, nm.near_duplicate(orig.legal_name, rng),
+                                                       orig.category)))
+            # the same legal name as a creditor of the first tenant: never to be matched across tenants
             if t > 0:
-                donor = rng.choice([s for s in self.suppliers if s.tenant_id == 1 and not s.is_parent])
-                self._new_supplier(tenant.id, donor.legal_name, donor.category)
-            # engagements
-            for s in [x for x in self.suppliers if x.tenant_id == tenant.id]:
-                if s.is_parent and rng.random() < 0.5:
-                    continue
-                first_bu = rng.choice(bus)
-                self._engage(s, first_bu.id)
-                if rng.random() < 0.25:
-                    self._engage(s, rng.choice([b for b in bus if b.id != first_bu.id]).id)
-            # one twin pair shares a business unit (the hard case), the other is split across units
+                donor = rng.choice([s for s in self.creditors if s.tenant_id == 1 and not s.is_trustee])
+                self._new_creditor(tenant.id, donor.legal_name, donor.category)
+            # claims: one per creditor; a trustee acts for others and claims nothing itself
+            for s in [x for x in self.creditors if x.tenant_id == tenant.id and not x.is_trustee]:
+                self._claim(s, rng.choice(matters).id)
+            # one twin pair claims in the same process (the hard case), the other in different ones
             (a, b), (c, d) = twins
-            eb = next(e for e in self.engagements if e.supplier_id == b.id)
-            eb.business_unit_id = next(e for e in self.engagements if e.supplier_id == a.id).business_unit_id
-            ed = next(e for e in self.engagements if e.supplier_id == d.id)
-            ec_bu = next(e for e in self.engagements if e.supplier_id == c.id).business_unit_id
-            if ed.business_unit_id == ec_bu:
-                ed.business_unit_id = next(x.id for x in bus if x.id != ec_bu)
+            eb = next(e for e in self.claims if e.creditor_id == b.id)
+            eb.matter_id = next(e for e in self.claims if e.creditor_id == a.id).matter_id
+            ed = next(e for e in self.claims if e.creditor_id == d.id)
+            ec = next(e for e in self.claims if e.creditor_id == c.id).matter_id
+            if ed.matter_id == ec:
+                ed.matter_id = next(m.id for m in matters if m.id != ec)
 
     # ------------------------------------------------------------------ documents
-    def _engagements_of(self, s: Supplier) -> list[Engagement]:
-        return [e for e in self.engagements if e.supplier_id == s.id]
+    def _claim_of(self, s: Creditor) -> Claim:
+        return next(e for e in self.claims if e.creditor_id == s.id)
 
-    def _requirements_for(self, s: Supplier) -> list[str]:
-        reqs = []
-        for rid, spec in self.pack.requirements.items():
-            if any(spec.applies_to.matches(e.tier, e.engagement_type) for e in self._engagements_of(s)):
-                reqs.append(rid)
-        return reqs
+    def _matter_of(self, s: Creditor) -> Matter:
+        mid = self._claim_of(s).matter_id
+        return next(m for m in self.matters if m.id == mid)
 
-    def _filename(self, alias: str, s: Supplier | None, fmt: str) -> str:
+    def _requirements_for(self, s: Creditor) -> list[str]:
+        e = self._claim_of(s)
+        return [rid for rid, spec in self.pack.requirements.items() if spec.applies_to.matches(e.tier, e.claim_type)]
+
+    def _filename(self, alias: str, s: Creditor | None, fmt: str) -> str:
         rng = self.rng
-        token = (s.legal_name.split(" ")[0] if s else "supplier").lower()
-        stamp = f"2026{rng.randint(1, 9):02d}{rng.randint(1, 28):02d}_{rng.randint(80000, 175959):06d}"
+        token = (s.legal_name.split(" ")[0] if s else "creditor").lower()
+        stamp = f"2026{rng.randint(1, 9):02d}{rng.randint(1, 28):02d}"
         ext = ".jpg" if fmt == "photo" else ".pdf"
-        base = rng.choice([f"scan_{rng.randint(1, 9999):04d}", f"IMG_{stamp}", f"Document ({rng.randint(1, 9)})",
-                           f"{alias}_final", f"{alias} v{rng.randint(2, 5)}", f"{token}_{alias}", "attachment",
-                           f"{token} docs"])
+        base = rng.choice([f"SCN{rng.randint(1, 99999):05d}", f"IMG-{stamp}-WA{rng.randint(1, 9999):04d}",
+                           f"Document ({rng.randint(1, 9)})", f"{alias}_final", f"{alias} v{rng.randint(2, 5)}",
+                           f"{token}_{alias}", "attachment", f"{token} docs"])
         return base + ext
 
-    def _write(self, upload_id: int, content: DocContent, fmt: str, raw: bytes | None = None) -> tuple[str, bytes]:
-        pdf = render_pdf(content, self.rng) if raw is None else raw
+    def _write(self, upload_id: int, content: DocContent, fmt: str) -> str:
+        pdf = render_pdf(content, self.rng)
         data = {"digital": lambda: pdf, "scan": lambda: to_scan_pdf(pdf, self.rng),
                 "photo": lambda: to_photo_jpg(pdf, self.rng)}[fmt]()
         rel = f"files/{upload_id:05d}{'.jpg' if fmt == 'photo' else '.pdf'}"
         (self.out / rel).parent.mkdir(parents=True, exist_ok=True)
         (self.out / rel).write_bytes(data)
-        return rel, data
+        return rel
 
-    def _add_upload(self, s: Supplier | None, tenant_id: int, doc_type: str, content: DocContent,
+    def _add_upload(self, s: Creditor | None, tenant_id: int, doc_type: str, content: DocContent,
                     truth: UploadTruth, when: datetime, channel: str | None = None,
-                    bu_id: int | None = None, claimed: int | None = None, single_page: bool = True) -> Upload:
+                    matter_id: int | None = None, declared: int | None = None, single_page: bool = True) -> Upload:
         rng = self.rng
         fmt = truth.format
         if fmt == "auto":
-            if doc_type == "master_agreement":
+            if doc_type == "facility_agreement":
                 fmt = "scan" if rng.random() < 0.15 else "digital"
             else:
                 fmt = rng.choices(["digital", "scan", "photo"], [0.5, 0.35, 0.15 if single_page else 0.0])[0]
@@ -273,223 +304,271 @@ class _Builder:
             fmt = "digital"
         truth.format = fmt
         uid = self._next("upload")
-        rel, _ = self._write(uid, content, fmt)
-        engs = self._engagements_of(s) if s else []
-        if bu_id is None:
-            bu_id = rng.choice(engs).business_unit_id if engs else \
-                rng.choice([b.id for b in self.bus if b.tenant_id == tenant_id])
+        rel = self._write(uid, content, fmt)
+        if matter_id is None:
+            matter_id = self._claim_of(s).matter_id if s is not None and not s.is_trustee else \
+                rng.choice([m.id for m in self.matters if m.tenant_id == tenant_id])
         if channel is None:
-            channel = rng.choices(["staff_upload", "supplier_portal", "email_ingest"], [0.55, 0.35, 0.1])[0]
-        if channel == "supplier_portal" and claimed is None and s is not None:
-            claimed = s.id
+            channel = rng.choices(["staff_upload", "creditor_portal", "email_ingest"], [0.55, 0.35, 0.1])[0]
+        if channel == "creditor_portal" and declared is None and s is not None:
+            declared = s.id
         aliases = self.pack.doc_types[doc_type].filename_aliases if doc_type in self.pack.doc_types else ["file"]
         if rng.random() < 0.1 and doc_type in self.pack.doc_types:   # a filename that suggests another type
             other = rng.choice([d for d in self.pack.doc_types if d != doc_type])
             aliases = self.pack.doc_types[other].filename_aliases
-        up = Upload(id=uid, tenant_id=tenant_id, business_unit_id=bu_id, filename=self._filename(rng.choice(aliases), s, fmt),
-                    file=rel, channel=channel, uploaded_at=when, claimed_supplier_id=claimed, truth=truth)
+        up = Upload(id=uid, tenant_id=tenant_id, matter_id=matter_id,
+                    filename=self._filename(rng.choice(aliases), s, fmt), file=rel, channel=channel,
+                    uploaded_at=when, declared_creditor_id=declared, truth=truth)
         self.uploads.append(up)
         return up
 
-    def _when(self, s: Supplier, early: bool = False) -> datetime:
+    def _when(self, s: Creditor, early: bool = False, late_share: float = 0.15) -> datetime:
+        """Documents arrive after the process is announced: most by the last date for claims, some later."""
         rng = self.rng
-        start = min(e.start_date for e in self._engagements_of(s))
-        d = start - timedelta(days=rng.randint(60, 400) if early else rng.randint(1, 60))
-        if not early and rng.random() < 0.15:
-            d = start + timedelta(days=rng.randint(1, 120))
+        m = self._matter_of(s)
+        d = m.announced + timedelta(days=rng.randint(0, 4) if early else rng.randint(1, 13))
+        if not early and rng.random() < late_share:
+            d = m.claims_due + timedelta(days=rng.randint(1, 45))
         d = min(d, AS_OF - timedelta(days=1))
         return datetime.combine(d, time(rng.randint(8, 18), rng.randint(0, 59)))
 
-    # insurance ---------------------------------------------------------------
-    def _insurance(self, s: Supplier, variant: str, tenant: Tenant, older: bool = False) -> Upload | None:
+    @staticmethod
+    def _not_before(when: datetime, dated: date) -> datetime:
+        """A document cannot arrive before the date it bears: a letter dated in August is uploaded in August."""
+        return max(when, datetime.combine(dated + timedelta(days=1), when.time()))
+
+    def world_creditor(self, sid: int | None) -> Creditor:
+        return next(x for x in self.creditors if x.id == sid)
+
+    def _stranger_name(self, s: Creditor) -> str:
+        """A company name that is no creditor of this tenant: evidence issued by someone else."""
+        from ..textnorm import name_similarity
+        taken = [x.legal_name for x in self.creditors if x.tenant_id == s.tenant_id]
+        for _ in range(200):
+            cand = f"{self.rng.choice(nm.FIRST)} {self.rng.choice(nm.INDUSTRY[s.category])} Trading Pvt Ltd"
+            if all(name_similarity(cand, t) < 85 for t in taken):
+                return cand
+        raise RuntimeError("no stranger name available")
+
+    # authority ---------------------------------------------------------------
+    def _authority(self, s: Creditor, variant: str, older: bool = False) -> Upload | None:
         rng = self.rng
-        engs = self._engagements_of(s)
-        need = max(self.pack.tier_minimum_liability[e.tier] for e in engs)
-        insured = s
+        issuer = s
         covers: list[int] = []
-        if variant == "group":
-            parent = self.world_supplier(s.parent_id)
-            if parent.id in self._group_docs:
+        if variant == "trustee":
+            trustee = self.world_creditor(s.trustee_id)
+            if trustee.id in self._trustee_docs:
                 return None
-            insured = parent
-            covers = [x.id for x in self.suppliers if x.parent_id == parent.id]
-            need = max([self.pack.tier_minimum_liability[e.tier] for x in covers
-                        for e in self.engagements if e.supplier_id == x] + [need])
-        limit = need * rng.choice([1, 2, 3]) if variant != "low_limit" else max(
-            500_000, need // rng.choice([2, 4, 5]))
+            issuer = trustee
+            covers = [x.id for x in self.creditors if x.trustee_id == trustee.id]
         effective = AS_OF - timedelta(days=rng.randint(30, 300))
-        expiry = effective + timedelta(days=365)
+        valid_until = effective + timedelta(days=365)
         issue = effective - timedelta(days=rng.randint(0, 10))
         if older:
             effective -= timedelta(days=365)
-            expiry -= timedelta(days=365)
+            valid_until -= timedelta(days=365)
             issue -= timedelta(days=365)
         elif variant == "expired":
-            expiry = AS_OF - timedelta(days=rng.randint(5, 200))
-            effective = expiry - timedelta(days=365)
+            valid_until = AS_OF - timedelta(days=rng.randint(5, 200))
+            effective = valid_until - timedelta(days=365)
             issue = effective
         elif variant == "renewal_due":
-            expiry = AS_OF + timedelta(days=rng.randint(2, 25))
-            effective = expiry - timedelta(days=365)
+            valid_until = AS_OF + timedelta(days=rng.randint(2, 25))
+            effective = valid_until - timedelta(days=365)
             issue = effective
         elif variant == "old_issue":
             effective = AS_OF - timedelta(days=rng.randint(500, 700))
             issue = effective
-            expiry = effective + timedelta(days=1095)
-        insured_name = insured.legal_name
-        if variant == "wrong_insured":
-            insured_name = self._stranger_name(s)
-        p1 = [("title", rng.choice(["CERTIFICATE OF INSURANCE", "EVIDENCE OF INSURANCE", "CONFIRMATION OF COVER"])),
-              ("kv", "Insurer", rng.choice(nm.INSURERS)),
-              ("kv", "Policy number", f"GL-{issue.year}-{rng.randint(100000, 999999)}"),
-              ("kv", rng.choice(["Named insured", "Insured", "Policyholder"]), insured_name),
-              ("kv", "Registered address", insured.address),
-              ("kv", "General liability limit", _fmt_money(limit, rng) + " any one occurrence"),
-              ("kv", "Effective date", _fmt_date(effective, rng)),
-              ("kv", "Expiry date", _fmt_date(expiry, rng)),
-              ("kv", "Date of issue", _fmt_date(issue, rng)),
-              ("kv", "Certificate holder", tenant.name)]
+            valid_until = effective + timedelta(days=1095)
+        name = issuer.legal_name if variant != "wrong_creditor" else self._stranger_name(s)
+        powers = rng.choice(FILING_POWERS if variant == "no_voting" else VOTING_POWERS)
+        person, title = rng.choice(nm.PEOPLE), rng.choice(nm.TITLES)
+        p1 = [("title", rng.choice(["LETTER OF AUTHORITY", "AUTHORITY LETTER", "CERTIFICATE OF AUTHORISATION"])),
+              ("kv", "Financial creditor", name),
+              ("kv", "Registered office", issuer.address),
+              ("kv", "Authorised representative", f"{person}, {title}"),
+              ("kv", "Powers", powers),
+              ("kv", "Effective from", _fmt_date(effective, rng)),
+              ("kv", "Valid until", _fmt_date(valid_until, rng)),
+              ("kv", "Date of issue", _fmt_date(issue, rng))]
         if covers:
-            p1.append(("kv", "Subsidiaries covered", "; ".join(self.world_supplier(c).legal_name for c in covers)))
-        p1.append(("para", "This certificate is issued as a matter of information only. It confers no rights on the "
-                           "certificate holder and does not amend, extend or alter the cover of the policy."))
+            p1.append(("para", "The Trustee acts for the debenture holders listed below under section 21(6A)(a) of the "
+                               "Insolvency and Bankruptcy Code, 2016."))
+            p1.append(("kv", "Debenture holders represented",
+                       "; ".join(self.world_creditor(c).legal_name for c in covers)))
+        p1.append(("para", "This authority remains in force until the date stated above unless the creditor revokes it "
+                           "earlier in writing."))
         injection = variant == "injection"
         if injection:
             p1.append(("small", rng.choice(INJECTIONS)))
         pages = [p1]
         ambiguous: list[str] = []
         if variant == "decoy_page":
-            pages.append([("title", "SCHEDULE OF PRIOR COVER"),
-                          ("kv", "Prior period expiry date", _fmt_date(expiry - timedelta(days=365), rng)),
-                          ("kv", "Prior period limit", _fmt_money(max(500_000, limit // 4), rng))])
+            pages.append([("title", "SCHEDULE OF EARLIER AUTHORISATIONS"),
+                          ("kv", "Earlier authority valid until", _fmt_date(valid_until - timedelta(days=365), rng)),
+                          ("kv", "Earlier representative", rng.choice(nm.PEOPLE))])
         elif variant == "conflicting_page":
-            pages.append([("title", "ENDORSEMENT"),
-                          ("kv", "Expiry date", _fmt_date(expiry - timedelta(days=rng.randint(60, 200)), rng)),
-                          ("para", "This endorsement amends the period of insurance stated on the schedule.")])
-            ambiguous = ["expiry_date"]
-        truth = UploadTruth(doc_type="insurance_certificate", owner_supplier_id=insured.id, scenario_supplier_id=s.id,
-                            covers=covers, fields={"insured_name": insured_name, "gl_limit": str(limit),
-                                                   "expiry_date": expiry.isoformat(), "issue_date": issue.isoformat(),
+            pages.append([("title", "AMENDMENT TO THE LETTER OF AUTHORITY"),
+                          ("kv", "Valid until", _fmt_date(valid_until - timedelta(days=rng.randint(60, 200)), rng)),
+                          ("para", "This amendment shortens the period of the authority stated on page one.")])
+            ambiguous = ["valid_until"]
+        truth = UploadTruth(doc_type="authority_letter", owner_creditor_id=issuer.id, scenario_creditor_id=s.id,
+                            covers=covers, fields={"creditor_name": name, "powers": powers,
+                                                   "valid_until": valid_until.isoformat(),
+                                                   "issue_date": issue.isoformat(),
                                                    "effective_date": effective.isoformat()},
                             ambiguous=ambiguous, injection=injection, format="auto", variant=variant)
-        if variant == "wrong_insured":
-            truth.owner_supplier_id = None
+        if variant == "wrong_creditor":
+            truth.owner_creditor_id = None
             truth.expect = "abstain"
-        claimed = None
+        declared = None
         channel = None
-        if variant == "group" and rng.random() < 0.5:
-            channel, claimed = "supplier_portal", s.id
-        up = self._add_upload(s, s.tenant_id, "insurance_certificate", DocContent(pages), truth,
-                              self._when(s, early=older), channel=channel, claimed=claimed,
-                              single_page=len(pages) == 1)
-        if variant == "group":
-            self._group_docs[insured.id] = up.id
+        if variant == "trustee" and rng.random() < 0.5:
+            channel, declared = "creditor_portal", s.id
+        when = self._not_before(self._when(s, early=older), issue)
+        up = self._add_upload(s, s.tenant_id, "authority_letter", DocContent(pages), truth, when,
+                              channel=channel, declared=declared, single_page=len(pages) == 1)
+        if variant == "trustee":
+            self._trustee_docs[issuer.id] = up.id
         return up
 
-    def world_supplier(self, sid: int | None) -> Supplier:
-        return next(x for x in self.suppliers if x.id == sid)
-
-    def _stranger_name(self, s: Supplier) -> str:
-        """A company name that is not any supplier of this tenant: evidence issued to someone else."""
-        from ..textnorm import name_similarity
-        taken = [x.legal_name for x in self.suppliers if x.tenant_id == s.tenant_id]
-        for _ in range(200):
-            cand = f"{self.rng.choice(nm.FIRST)} {self.rng.choice(nm.INDUSTRY[s.category])} Trading Ltd"
-            if all(name_similarity(cand, t) < 85 for t in taken):
-                return cand
-        raise RuntimeError("no stranger name available")
-
-    # security certificate ----------------------------------------------------
-    def _security(self, s: Supplier, variant: str, older: bool = False) -> Upload:
+    # charge certificate ------------------------------------------------------
+    def _charge(self, s: Creditor, variant: str, older: bool = False) -> Upload:
         rng = self.rng
-        issue = AS_OF - timedelta(days=rng.randint(30, 900))
-        expiry = issue + timedelta(days=1095)
-        if older:
-            issue -= timedelta(days=1095)
-            expiry -= timedelta(days=1095)
-        elif variant == "expired":
-            expiry = AS_OF - timedelta(days=rng.randint(10, 300))
-            issue = expiry - timedelta(days=1095)
-        org = s.legal_name if variant != "wrong_org" else self._stranger_name(s)
-        body = rng.choice(self.pack.accredited_bodies) if variant != "unaccredited" else rng.choice(nm.UNACCREDITED)
-        terms = self.pack.service_terms[s.category]
-        if variant == "scope_mismatch":
-            other = rng.choice([c for c in self.pack.service_terms if c != s.category])
-            scope = f"Provision of {self.pack.service_terms[other][0]} services"
+        e, m = self._claim_of(s), self._matter_of(s)
+        creation = m.commencement - timedelta(days=rng.randint(400, 1500))
+        registration = creation + timedelta(days=rng.randint(3, 28))
+        if older:                                    # the charge as first registered, before a modification
+            creation -= timedelta(days=rng.randint(200, 400))
+            registration = creation + timedelta(days=rng.randint(3, 28))
+        holder = s.legal_name if variant != "wrong_holder" else self._stranger_name(s)
+        company = m.name
+        if variant == "wrong_debtor":
+            company = rng.choice([n for row in MATTERS for n in row if n != m.name])
+        registrar = rng.choice(self.pack.registrar_offices) if variant != "unrecognised" else rng.choice(nm.UNRECOGNISED)
+        terms = self.pack.asset_terms[e.facility_type]
+        if variant == "assets_mismatch":
+            other = rng.choice([c for c in self.pack.asset_terms
+                                if not any(t in x or x in t for t in self.pack.asset_terms[c] for x in terms)])
+            assets = f"Hypothecation of {self.pack.asset_terms[other][0]}"
         else:
-            scope = f"Provision of {rng.choice(terms)} services to business customers"
-        page = [("title", "CERTIFICATE OF REGISTRATION"),
-                ("para", "This is to certify that the information security management system of the organisation "
-                         "below has been assessed and found to conform to the standard stated."),
-                ("kv", "Organisation", org), ("kv", "Certificate number", f"ISMS-{rng.randint(100000, 999999)}"),
-                ("kv", "Standard", "ISO/IEC 27001:2022"), ("kv", "Scope", scope),
-                ("kv", "Certification body", body), ("kv", "Date of issue", _fmt_date(issue, rng)),
-                ("kv", "Valid until", _fmt_date(expiry, rng))]
+            assets = f"Hypothecation of {rng.choice(terms)}, present and future"
+        secured = e.sanctioned if variant != "under_secured" else round(e.sanctioned * rng.uniform(0.3, 0.8), -5)
+        page = [("title", "CERTIFICATE OF REGISTRATION OF CHARGE"),
+                ("para", "This is to certify that the charge described below, created by the company, has been "
+                         "registered under section 77 of the Companies Act, 2013."),
+                ("kv", "Charge ID", f"{rng.randint(10**8, 10**9 - 1)}"),
+                ("kv", "Company", company),
+                ("kv", "CIN of the company", m.debtor_cin),
+                ("kv", "Charge holder", holder),
+                ("kv", "Amount secured", _fmt_money(int(secured), rng)),
+                ("kv", "Assets charged", assets),
+                ("kv", "Date of creation", _fmt_date(creation, rng)),
+                ("kv", "Date of registration", _fmt_date(registration, rng)),
+                ("kv", "Registered by", registrar)]
         injection = variant == "injection"
         if injection:
             page.append(("small", rng.choice(INJECTIONS)))
-        truth = UploadTruth(doc_type="security_certificate", owner_supplier_id=s.id if variant != "wrong_org" else None,
-                            scenario_supplier_id=s.id,
-                            fields={"organisation": org, "certification_body": body, "scope": scope,
-                                    "expiry_date": expiry.isoformat(), "issue_date": issue.isoformat()},
+        truth = UploadTruth(doc_type="charge_certificate", scenario_creditor_id=s.id,
+                            owner_creditor_id=s.id if variant != "wrong_holder" else None,
+                            fields={"charge_holder": holder, "company": company, "registrar": registrar,
+                                    "assets": assets, "amount_secured": str(int(secured)),
+                                    "registration_date": registration.isoformat(),
+                                    "creation_date": creation.isoformat()},
                             injection=injection, format="auto", variant=variant,
-                            expect="abstain" if variant == "wrong_org" else "match")
-        return self._add_upload(s, s.tenant_id, "security_certificate", DocContent([page]), truth,
+                            expect="abstain" if variant == "wrong_holder" else "match")
+        return self._add_upload(s, s.tenant_id, "charge_certificate", DocContent([page]), truth,
                                 self._when(s, early=older))
 
-    # bank letter -------------------------------------------------------------
-    def _bank(self, s: Supplier, variant: str, older: bool = False) -> Upload:
+    # bank mandate ------------------------------------------------------------
+    def _bank(self, s: Creditor, variant: str, older: bool = False) -> Upload:
         rng = self.rng
         letter = AS_OF - timedelta(days=rng.randint(5, 150))
         if older or variant == "old_letter":
             letter = AS_OF - timedelta(days=rng.randint(200, 400))
-        iban = s.iban
-        if variant == "changed_iban":                  # valid, but not the account on file
-            iban = nm.iban(rng, rng.choice([b for b in nm.BANKS if b != s.bank]))
-        if variant == "bad_iban":
-            i = max(rng.randint(6, len(iban) - 1), 8)      # a digit of the account number, not the bank code
-            iban = iban[:i] + str((int(iban[i]) + rng.randint(1, 8)) % 10) + iban[i + 1:]
+        bank, account, ifsc = s.bank, s.account_number, s.ifsc
+        if variant == "changed_account":                 # well formed, but not the account on file
+            bank = rng.choice([b for b in self.pack.bank_codes if b != s.bank])
+            account, ifsc = nm.account_number(rng), nm.ifsc(rng, self.pack.bank_codes[bank])
+        if variant == "bad_ifsc":                        # the branch code of another bank under this bank's name
+            other = rng.choice([b for b in self.pack.bank_codes if b != s.bank])
+            ifsc = self.pack.bank_codes[other] + ifsc[4:]
         holder = s.legal_name if variant != "holder_mismatch" else \
-            s.legal_name.split(" ")[0] + rng.choice([" Trading Ltd", " Payments Ltd", " Services UK Ltd"])
+            nm.split_form(s.legal_name)[0].split(" ")[0] + rng.choice([" Trading Pvt Ltd", " Payments Pvt Ltd",
+                                                                      " Services India Ltd"])
+        grouped = " ".join(account[i:i + 4] for i in range(0, len(account), 4)) if rng.random() < 0.3 else account
         page = [("title", rng.choice(["BANK ACCOUNT CONFIRMATION", "CONFIRMATION OF BANK DETAILS"])),
-                ("kv", "Bank", s.bank), ("kv", "Date", _fmt_date(letter, rng)),
-                ("para", "We confirm that the account below is held with us in the name shown."),
-                ("kv", "Account holder", holder), ("kv", "IBAN", format_iban(iban)),
-                ("kv", "BIC", s.bic),
-                ("para", "This letter is provided at the request of our customer and without liability on the part of the bank.")]
-        channel = rng.choices(["staff_verified", "supplier_portal", "email_ingest"], [0.6, 0.3, 0.1])[0]
-        truth = UploadTruth(doc_type="bank_letter", owner_supplier_id=s.id, scenario_supplier_id=s.id,
-                            fields={"account_holder": holder, "iban": iban, "letter_date": letter.isoformat(),
-                                    "iban_valid": str(iban_valid(iban)), "iban_on_file": str(iban == s.iban)},
+                ("kv", "Bank", bank), ("kv", "Branch", s.city), ("kv", "Date", _fmt_date(letter, rng)),
+                ("para", "We confirm that the account below is maintained with us in the name shown."),
+                ("kv", "Account holder", holder), ("kv", "Account number", grouped), ("kv", "IFSC", ifsc),
+                ("para", "This letter is issued at the request of our customer and without any liability on the part "
+                         "of the bank.")]
+        channel = rng.choices(["staff_verified", "creditor_portal", "email_ingest"], [0.6, 0.3, 0.1])[0]
+        ifsc_ok = ifsc_valid(ifsc) and ifsc[:4] == self.pack.bank_codes[bank]
+        truth = UploadTruth(doc_type="bank_mandate", owner_creditor_id=s.id, scenario_creditor_id=s.id,
+                            fields={"account_holder": holder, "account_number": account, "ifsc": ifsc,
+                                    "letter_date": letter.isoformat(), "ifsc_valid": str(ifsc_ok),
+                                    "account_on_file": str(account == s.account_number)},
                             format="auto", variant=variant)
-        return self._add_upload(s, s.tenant_id, "bank_letter", DocContent([page]), truth, self._when(s, early=older),
-                                channel=channel)
+        when = self._not_before(self._when(s, early=older), letter)
+        return self._add_upload(s, s.tenant_id, "bank_mandate", DocContent([page]), truth, when, channel=channel)
 
-    # tax registration --------------------------------------------------------
-    def _tax(self, s: Supplier, variant: str) -> Upload:
+    # proof of claim ----------------------------------------------------------
+    def _claim_form(self, s: Creditor, variant: str) -> Upload:
         rng = self.rng
-        name = s.legal_name if variant != "wrong_name" else s.legal_name.split(" ")[0] + " Former Trading Ltd"
-        vat = s.vat_number if variant != "bad_vat" else s.vat_number[:6]
-        lei = s.lei
+        e, m = self._claim_of(s), self._matter_of(s)
+        name = s.legal_name if variant != "wrong_name" else nm.split_form(s.legal_name)[0].split(" ")[0] + \
+            " Former Trading Pvt Ltd"
+        gstin, pan, lei = s.gstin, s.pan, s.lei
+        if variant == "bad_gstin":                    # a typo in the check character
+            gstin = gstin[:-1] + rng.choice([c for c in "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" if c != gstin[-1]])
+        if variant == "pan_mismatch":                 # the PAN of another entity
+            pan = pan[:5] + f"{(int(pan[5:9]) + rng.randint(1, 5000)) % 10000:04d}" + pan[9]
         if lei and variant == "bad_lei":
             lei = lei[:-2] + f"{(int(lei[-2:]) + rng.randint(1, 50)) % 100:02d}"
-        signed = AS_OF - timedelta(days=rng.randint(10, 300))
-        page = [("title", rng.choice(["SUPPLIER TAX REGISTRATION FORM", "VAT REGISTRATION DETAILS"])),
-                ("kv", "Legal name", name), ("kv", "Registered office", s.address),
-                ("kv", "Company number", s.company_number), ("kv", "VAT number", vat)]
+        amount = round(e.book_balance * rng.uniform(0.97, 1.015), -3)
+        if variant == "over_books":
+            amount = round(e.book_balance * rng.uniform(1.08, 1.4), -3)
+        amount = int(amount)
+        words_amount = amount
+        if variant == "words_mismatch":
+            words_amount = amount + rng.choice([-1, 1]) * rng.choice([LAKH, 10 * LAKH, CRORE])
+            words_amount = words_amount if words_amount > 0 else amount + CRORE
+        default = m.commencement - timedelta(days=rng.randint(60, 3 * 365 - 30))
+        if variant == "time_barred":
+            default = m.commencement - timedelta(days=rng.randint(3 * 365 + 20, 5 * 365))
+        when = self._when(s)
+        claim_date = max(m.announced, when.date() - timedelta(days=rng.randint(0, 4)))
+        if variant == "early_dated":
+            claim_date = m.announced - timedelta(days=rng.randint(10, 60))
+        p1 = [("title", "FORM C"),
+              ("para", "PROOF OF CLAIM BY FINANCIAL CREDITORS, under regulation 8 of the Insolvency and Bankruptcy "
+                       "Board of India (Insolvency Resolution Process for Corporate Persons) Regulations, 2016"),
+              ("kv", "In the matter of", m.name),
+              ("kv", "Name of the financial creditor", name),
+              ("kv", "Registered office", s.address),
+              ("kv", "CIN", s.cin), ("kv", "PAN", pan), ("kv", "GSTIN", gstin)]
         if lei:
-            page.append(("kv", "LEI", lei))
-        page += [("kv", "Date signed", _fmt_date(signed, rng)),
-                 ("para", "I confirm that the information above is correct and complete.")]
-        truth = UploadTruth(doc_type="tax_registration", owner_supplier_id=s.id, scenario_supplier_id=s.id,
-                            fields={"legal_name": name, "vat_number": vat, "lei": lei or "",
-                                    "lei_valid": str(lei_valid(lei)) if lei else ""},
+            p1.append(("kv", "LEI", lei))
+        p1 += [("kv", "Total amount of claim", _fmt_money(amount, rng)),
+               ("kv", "Amount in words", rupees_in_words(words_amount)),
+               ("kv", "Date of default", _fmt_date(default, rng)),
+               ("kv", "Date of claim", _fmt_date(claim_date, rng)),
+               ("para", "I confirm that the particulars above are true and that the documents relied on are attached."),
+               ("kv", "Signed by", f"{rng.choice(nm.PEOPLE)}, Authorised Signatory")]
+        truth = UploadTruth(doc_type="claim_form", owner_creditor_id=s.id, scenario_creditor_id=s.id,
+                            fields={"creditor_name": name, "gstin": gstin, "pan": pan, "lei": lei or "",
+                                    "gstin_valid": str(gstin_valid(gstin)),
+                                    "lei_valid": str(lei_valid(lei)) if lei else "",
+                                    "amount_claimed": str(amount), "amount_in_words": str(words_amount),
+                                    "default_date": default.isoformat(), "claim_date": claim_date.isoformat()},
                             format="auto", variant=variant)
-        return self._add_upload(s, s.tenant_id, "tax_registration", DocContent([page]), truth, self._when(s))
+        return self._add_upload(s, s.tenant_id, "claim_form", DocContent([p1]), truth, when)
 
-    # master agreement --------------------------------------------------------
-    def _agreement(self, s: Supplier, tenant: Tenant, variant: str) -> Upload:
+    # facility agreement ------------------------------------------------------
+    def _facility(self, s: Creditor, variant: str) -> Upload:
         rng = self.rng
+        e, m = self._claim_of(s), self._matter_of(s)
         clause_ids = list(PRESENT)
         present = {c: rng.random() < 0.82 for c in clause_ids}
         paras = []
@@ -503,84 +582,89 @@ class _Builder:
         injection = variant == "injection"
         if injection:
             paras.insert(rng.randint(1, len(paras) - 1), rng.choice(INJECTIONS))
-        amount = _fmt_money(rng.choice([1_000_000, 2_000_000, 5_000_000]), rng)
-        effective = AS_OF - timedelta(days=rng.randint(30, 500))
+        amount = _fmt_money(e.sanctioned, rng)
+        effective = m.commencement - timedelta(days=rng.randint(400, 1500))
         signed = variant != "unsigned"
-        p1 = [("title", "MASTER SERVICES AGREEMENT"),
-              ("para", f"This Agreement is made between {tenant.name} (the Customer) and {s.legal_name} "
-                       f"(company number {s.company_number}) (the Supplier)."),
-              ("kv", "Supplier", s.legal_name), ("kv", "Effective date", _fmt_date(effective, rng)), ("gap",)]
+        p1 = [("title", rng.choice(["FACILITY AGREEMENT", "LOAN AGREEMENT", "TERM LOAN AGREEMENT"])),
+              ("para", f"This Agreement is made at {s.city} between {s.legal_name}, a company with CIN {s.cin} (the "
+                       f"Lender), and {m.name}, a company with CIN {m.debtor_cin} (the Borrower)."),
+              ("kv", "Lender", s.legal_name), ("kv", "Borrower", m.name), ("kv", "Facility amount", amount),
+              ("kv", "Date of agreement", _fmt_date(effective, rng)), ("gap",)]
         for i, text in enumerate(paras, start=1):
             p1.append(("para", f"{i}. " + text.format(amount=amount)))
-        sup_person, cus_person = rng.sample(PEOPLE, 2)
-        p1 += [("gap",), ("kv", "Signed for the Supplier", f"{sup_person}, Director, {_fmt_date(effective, rng)}"),
-               ("kv", "Signed for the Customer",
-                f"{cus_person}, Head of Procurement, {_fmt_date(effective, rng)}" if signed else "")]
-        truth = UploadTruth(doc_type="master_agreement", owner_supplier_id=s.id, scenario_supplier_id=s.id,
-                            fields={"supplier_party": s.legal_name}, injection=injection,
-                            clauses=present, signed=signed, format="auto", variant=variant)
-        return self._add_upload(s, s.tenant_id, "master_agreement", DocContent([p1]), truth, self._when(s),
+        lender_person, borrower_person = rng.sample(nm.PEOPLE, 2)
+        p1 += [("gap",), ("kv", "Signed for the Lender", f"{lender_person}, Authorised Signatory, "
+                                                         f"{_fmt_date(effective, rng)}"),
+               ("kv", "Signed for the Borrower",
+                f"{borrower_person}, Director, {_fmt_date(effective, rng)}" if signed else "")]
+        truth = UploadTruth(doc_type="facility_agreement", owner_creditor_id=s.id, scenario_creditor_id=s.id,
+                            fields={"lender": s.legal_name}, injection=injection, clauses=present, signed=signed,
+                            format="auto", variant=variant)
+        return self._add_upload(s, s.tenant_id, "facility_agreement", DocContent([p1]), truth, self._when(s),
                                 channel=rng.choice(["staff_upload", "staff_upload", "email_ingest"]), single_page=False)
 
     def _unknown(self, tenant: Tenant) -> Upload:
         rng = self.rng
         if rng.random() < 0.5:
-            page = [("title", "PRODUCT OVERVIEW"),
-                    ("para", "Our team brings decades of experience to every project. We pride ourselves on service, "
+            page = [("title", "COMPANY PROFILE"),
+                    ("para", "Our team brings decades of experience to every client. We pride ourselves on service, "
                              "reliability and value, and we look forward to working with you."),
-                    ("para", "Contact our sales team to arrange a demonstration.")]
+                    ("para", "Contact our relationship team to arrange a meeting.")]
         else:
-            page = [("title", "MINUTES OF SUPPLIER REVIEW MEETING"),
-                    ("kv", "Attendees", ", ".join(rng.sample(PEOPLE, 3))),
-                    ("para", "The group reviewed delivery performance for the quarter and agreed two actions.")]
-        truth = UploadTruth(doc_type="unknown", owner_supplier_id=None, scenario_supplier_id=None, expect="unknown",
+            page = [("title", "MINUTES OF THE MEETING OF THE COMMITTEE OF CREDITORS"),
+                    ("kv", "Attendees", ", ".join(rng.sample(nm.PEOPLE, 3))),
+                    ("para", "The committee noted the updated list of creditors and agreed to meet again in two weeks.")]
+        truth = UploadTruth(doc_type="unknown", owner_creditor_id=None, scenario_creditor_id=None, expect="unknown",
                             format=rng.choice(["digital", "scan"]))
-        when = datetime.combine(AS_OF - timedelta(days=rng.randint(5, 200)), time(10, 0))
+        when = datetime.combine(AS_OF - timedelta(days=rng.randint(5, 40)), time(10, 0))
         return self._add_upload(None, tenant.id, "unknown", DocContent([page]), truth, when, channel="email_ingest")
 
     VARIANTS = {
-        "insurance": (["normal", "expired", "renewal_due", "low_limit", "wrong_insured", "decoy_page",
+        "authority": (["normal", "expired", "renewal_due", "no_voting", "wrong_creditor", "decoy_page",
                        "conflicting_page", "old_issue", "injection"],
                       [0.44, 0.08, 0.08, 0.08, 0.06, 0.08, 0.06, 0.06, 0.06]),
-        "security_certification": (["normal", "expired", "wrong_org", "unaccredited", "scope_mismatch", "injection"],
-                                   [0.58, 0.1, 0.06, 0.1, 0.1, 0.06]),
-        "bank_details": (["normal", "bad_iban", "holder_mismatch", "changed_iban", "old_letter"],
+        "security_interest": (["normal", "wrong_holder", "wrong_debtor", "unrecognised", "assets_mismatch",
+                               "under_secured", "injection"],
+                              [0.52, 0.06, 0.08, 0.1, 0.1, 0.08, 0.06]),
+        "bank_details": (["normal", "bad_ifsc", "holder_mismatch", "changed_account", "old_letter"],
                          [0.64, 0.09, 0.09, 0.09, 0.09]),
-        "tax_registration": (["normal", "wrong_name", "bad_vat", "bad_lei"], [0.7, 0.1, 0.1, 0.1]),
-        "master_agreement": (["normal", "unsigned", "injection"], [0.82, 0.1, 0.08]),
+        "proof_of_claim": (["normal", "wrong_name", "bad_gstin", "pan_mismatch", "bad_lei", "over_books",
+                            "words_mismatch", "time_barred", "early_dated"],
+                           [0.44, 0.07, 0.07, 0.07, 0.07, 0.08, 0.07, 0.07, 0.06]),
+        "evidence_of_debt": (["normal", "unsigned", "injection"], [0.82, 0.1, 0.08]),
     }
 
     def build_documents(self) -> None:
         rng = self.rng
         for tenant in self.tenants:
-            for s in [x for x in self.suppliers if x.tenant_id == tenant.id and self._engagements_of(x)]:
+            for s in [x for x in self.creditors if x.tenant_id == tenant.id and not x.is_trustee]:
                 for rid in self._requirements_for(s):
                     if rid == "bank_details" and rng.random() < 0.06:
                         self.attestations.append(Attestation(
-                            tenant_id=tenant.id, supplier_id=s.id, requirement_id=rid,
-                            verified_by=rng.choice(PEOPLE), verified_on=AS_OF - timedelta(days=rng.randint(5, 60)),
+                            tenant_id=tenant.id, creditor_id=s.id, requirement_id=rid,
+                            verified_by=rng.choice(nm.PEOPLE), verified_on=AS_OF - timedelta(days=rng.randint(5, 60)),
                             note="Account details confirmed by call-back to the number on file."))
                         continue
                     if rng.random() < 0.08:
                         continue                                       # missing
                     variants, weights = self.VARIANTS[rid]
                     variant = rng.choices(variants, weights)[0]
-                    if rid == "insurance":
-                        if s.parent_id and rng.random() < 0.5:
-                            variant = "group"
-                        if variant != "group" and rng.random() < 0.1:
-                            self._insurance(s, "normal", tenant, older=True)
-                        self._insurance(s, variant, tenant)
-                    elif rid == "security_certification":
+                    if rid == "authority":
+                        if s.trustee_id and rng.random() < 0.5:
+                            variant = "trustee"
+                        if variant != "trustee" and rng.random() < 0.1:
+                            self._authority(s, "normal", older=True)
+                        self._authority(s, variant)
+                    elif rid == "security_interest":
                         if rng.random() < 0.1:
-                            self._security(s, "normal", older=True)
-                        self._security(s, variant)
+                            self._charge(s, "normal", older=True)
+                        self._charge(s, variant)
                     elif rid == "bank_details":
                         self._bank(s, variant)
-                    elif rid == "tax_registration":
-                        self._tax(s, variant)
-                    elif rid == "master_agreement":
-                        self._agreement(s, tenant, variant)
+                    elif rid == "proof_of_claim":
+                        self._claim_form(s, variant)
+                    elif rid == "evidence_of_debt":
+                        self._facility(s, variant)
             for _ in range(max(1, len(self.uploads) // 40)):
                 self._unknown(tenant)
         self._noise()
@@ -595,35 +679,42 @@ class _Builder:
             (self.out / rel).write_bytes((self.out / u.file).read_bytes())
             truth = u.truth.model_copy(deep=True)
             truth.duplicate_of = u.id
-            self.uploads.append(Upload(id=uid, tenant_id=u.tenant_id, business_unit_id=u.business_unit_id,
+            self.uploads.append(Upload(id=uid, tenant_id=u.tenant_id, matter_id=u.matter_id,
                                        filename=f"Copy of {u.filename}", file=rel, channel="email_ingest",
                                        uploaded_at=u.uploaded_at + timedelta(days=rng.randint(1, 20)),
-                                       claimed_supplier_id=None, truth=truth))
-        # misfiled: uploaded to a business unit where the supplier has no engagement
-        for u in rng.sample([u for u in originals if u.truth.expect == "match" and u.truth.duplicate_of is None],
-                            k=max(1, len(originals) // 25)):
-            owner = u.truth.owner_supplier_id
-            engaged = {e.business_unit_id for e in self.engagements if e.supplier_id == owner}
-            others = [b.id for b in self.bus if b.tenant_id == u.tenant_id and b.id not in engaged]
-            if not others or u.claimed_supplier_id is not None:
+                                       declared_creditor_id=None, truth=truth))
+        # misfiled: uploaded to a process in which the creditor has no claim; at least one carries only a name
+        pool = [u for u in originals if u.truth.expect == "match" and u.truth.duplicate_of is None
+                and u.declared_creditor_id is None]
+        picked = rng.sample(pool, k=min(len(pool), max(1, len(originals) // 25)))
+        named_only = [u for u in pool if u.truth.doc_type in ("authority_letter", "charge_certificate")
+                      and not u.truth.covers]
+        if named_only and not any(u in named_only for u in picked):
+            picked.append(rng.choice(named_only))
+        for u in picked:
+            owner = u.truth.owner_creditor_id
+            acting_for = {owner} | {c.id for c in self.creditors if c.trustee_id == owner}
+            in_scope = {e.matter_id for e in self.claims if e.creditor_id in acting_for}   # a trustee: its holders'
+            others = [m.id for m in self.matters if m.tenant_id == u.tenant_id and m.id not in in_scope]
+            if not others or u.declared_creditor_id is not None:
                 continue
-            u.business_unit_id = rng.choice(others)
+            u.matter_id = rng.choice(others)
             u.truth.variant += "+misfiled"
             # identifiers on the page let a careful engine place it anyway; a name alone does not
-            if u.truth.doc_type not in ("bank_letter", "tax_registration", "master_agreement"):
+            if u.truth.doc_type not in ("bank_mandate", "claim_form", "facility_agreement"):
                 u.truth.expect = "abstain"
-        # a document sent to the wrong tenant: it names a supplier that tenant does not have
+        # a document sent to the wrong tenant: it names a creditor that tenant does not have
         if len(self.tenants) > 1:
-            u = rng.choice([x for x in originals if x.tenant_id == 1 and x.truth.doc_type == "tax_registration"])
+            u = rng.choice([x for x in originals if x.tenant_id == 1 and x.truth.doc_type == "claim_form"])
             uid = self._next("upload")
             rel = f"files/{uid:05d}{Path(u.file).suffix}"
             (self.out / rel).write_bytes((self.out / u.file).read_bytes())
             truth = u.truth.model_copy(deep=True)
-            truth.owner_supplier_id, truth.scenario_supplier_id, truth.expect = None, None, "abstain"
+            truth.owner_creditor_id, truth.scenario_creditor_id, truth.expect = None, None, "abstain"
             truth.variant = "wrong_tenant"
             t2 = self.tenants[1]
             self.uploads.append(Upload(id=uid, tenant_id=t2.id,
-                                       business_unit_id=next(b.id for b in self.bus if b.tenant_id == t2.id),
+                                       matter_id=next(m.id for m in self.matters if m.tenant_id == t2.id),
                                        filename=u.filename, file=rel, channel="email_ingest",
                                        uploaded_at=u.uploaded_at, truth=truth))
         self.uploads.sort(key=lambda x: (x.uploaded_at, x.id))
@@ -636,8 +727,8 @@ def build_world(seed: int = 7, size: str = "small", out: str | Path = "data/worl
     b = _Builder(seed, size, out, pack, digital_only)
     b.build_registry()
     b.build_documents()
-    world = World(seed=seed, size=size, as_of=AS_OF, pack=pack.digest, tenants=b.tenants, business_units=b.bus,
-                  suppliers=b.suppliers, engagements=b.engagements, attestations=b.attestations, uploads=b.uploads)
+    world = World(seed=seed, size=size, as_of=AS_OF, pack=pack.digest, tenants=b.tenants, matters=b.matters,
+                  creditors=b.creditors, claims=b.claims, attestations=b.attestations, uploads=b.uploads)
     (out / "world.json").write_text(world.model_dump_json(indent=1), encoding="utf-8")
     return world
 
