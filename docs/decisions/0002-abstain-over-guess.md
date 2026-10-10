@@ -1,7 +1,7 @@
 # 0002: Abstain rather than guess, everywhere
 
 ## Context
-The buyer relies on a SATISFIED status as evidence. A wrong SATISFIED is invisible until an incident or an audit; a
+The committee of creditors relies on a SATISFIED status. A wrong SATISFIED is invisible until an incident or an audit; a
 wrong "not sure" costs a few minutes of a reviewer's time. The two errors are not symmetric, so the engine should not
 treat them as if they were.
 

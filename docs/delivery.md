@@ -1,6 +1,6 @@
 # How a change ships
 
-A wrong verdict here has consequences: a buyer relies on SATISFIED as evidence. So a change does not merge because
+A wrong verdict here has consequences: the committee of creditors relies on SATISFIED. So a change does not merge because
 it looks right; it merges because it has passed checks built to catch the ways it could be wrong, including the
 ways an agent that wrote it could be wrong.
 

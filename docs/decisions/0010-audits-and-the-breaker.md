@@ -8,7 +8,7 @@ unbiased and if it changes what the engine does.
 
 ## Decision
 - **Random audits.** A share of the engine's conclusive verdicts (PASS and FAIL) is drawn for people to check: 10%
-  for critical checks, 5% for major, 2% for minor (the pack's `assurance` section). The draw is a hash of a seed and
+  for critical checks, 5% for major, 2% for minor (the pack's `audit` section). The draw is a hash of a seed and
   the verdict's identity, independent of what the verdict says, so the estimate is unbiased, and reproducible.
 - **One question per check:** when the engine says PASS, how often would a person overturn it? Exact one-sided
   Clopper-Pearson bounds at 95%. Only audits and confirmations count; reviews of abstentions are excluded (the hard

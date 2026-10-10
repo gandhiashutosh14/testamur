@@ -2,16 +2,16 @@
 
 ## Context
 Content addressing stores each file once and lets every later upload of the same bytes reuse its extraction and
-judgements. The same file can legitimately reach two tenants (a creditor sends its certificate to two customers).
+judgements. The same file can legitimately reach two tenants (a creditor sends the same authority to two insolvency firms).
 
 ## Decision
 The blob store, the extraction cache and the model-call ledger are keyed by tenant as well as content.
 
 ## Consequences
-- Two tenants holding the same certificate pay for its OCR twice. That is the price.
+- Two tenants holding the same document pay for its OCR twice. That is the price.
 - One tenant can never learn, from timing or from a cache hit, that another tenant holds a file; and a judgement made
   in one tenant's context (its creditors, its claims) can never leak into another's.
 
 ## Alternatives considered
 - *Global content store with per-tenant references.* Cheaper at scale; reconsider for public documents (standards,
-  published certificates) through an explicit, opt-in shared tier rather than by default.
+  published registers) through an explicit, opt-in shared tier rather than by default.

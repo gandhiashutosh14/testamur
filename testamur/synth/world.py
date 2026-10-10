@@ -332,6 +332,11 @@ class _Builder:
         d = min(d, AS_OF - timedelta(days=1))
         return datetime.combine(d, time(rng.randint(8, 18), rng.randint(0, 59)))
 
+    @staticmethod
+    def _not_before(when: datetime, dated: date) -> datetime:
+        """A document cannot arrive before the date it bears: a letter dated in August is uploaded in August."""
+        return max(when, datetime.combine(dated + timedelta(days=1), when.time()))
+
     def world_creditor(self, sid: int | None) -> Creditor:
         return next(x for x in self.creditors if x.id == sid)
 
@@ -420,7 +425,8 @@ class _Builder:
         channel = None
         if variant == "trustee" and rng.random() < 0.5:
             channel, declared = "creditor_portal", s.id
-        up = self._add_upload(s, s.tenant_id, "authority_letter", DocContent(pages), truth, self._when(s, early=older),
+        when = self._not_before(self._when(s, early=older), issue)
+        up = self._add_upload(s, s.tenant_id, "authority_letter", DocContent(pages), truth, when,
                               channel=channel, declared=declared, single_page=len(pages) == 1)
         if variant == "trustee":
             self._trustee_docs[issuer.id] = up.id
@@ -504,8 +510,8 @@ class _Builder:
                                     "letter_date": letter.isoformat(), "ifsc_valid": str(ifsc_ok),
                                     "account_on_file": str(account == s.account_number)},
                             format="auto", variant=variant)
-        return self._add_upload(s, s.tenant_id, "bank_mandate", DocContent([page]), truth, self._when(s, early=older),
-                                channel=channel)
+        when = self._not_before(self._when(s, early=older), letter)
+        return self._add_upload(s, s.tenant_id, "bank_mandate", DocContent([page]), truth, when, channel=channel)
 
     # proof of claim ----------------------------------------------------------
     def _claim_form(self, s: Creditor, variant: str) -> Upload:

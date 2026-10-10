@@ -1,8 +1,8 @@
 # 0011: Findings become work through a transactional outbox
 
 ## Context
-A status nobody acts on is a dashboard. When a certificate lapses, someone must chase the creditor, the buyer's
-purchasing system may need to stop new orders, and the buyer's own systems want to know. Each of those is a side
+A status nobody acts on is a dashboard. When an authority lapses, someone must chase the creditor, the claim's
+votes and payouts must be held, and the firm's own systems want to know. Each of those is a side
 effect, and side effects are where pipelines go wrong: a crash after the status changed but before the reminder was
 written loses the reminder; a retry after the reminder was written sends it twice; a webhook that timed out may or
 may not have been received.
