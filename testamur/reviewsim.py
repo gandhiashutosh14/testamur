@@ -100,7 +100,7 @@ class Oracle:
         t = u.truth
         if item.kind == "document_type":
             if t.doc_type == "unknown":
-                self.engine.reject(tenant_id, item.document_id, REVIEWER, "not creditor evidence")
+                self.engine.reject(tenant_id, item.document_id, REVIEWER, "not evidence for any claim")
                 return "reject"
             self.engine.classify_document(tenant_id, item.document_id, t.doc_type, REVIEWER)
             return "classify"

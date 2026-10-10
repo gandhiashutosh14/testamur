@@ -28,7 +28,7 @@ def _model(model_path: str | None, model_url: str | None, model_name: str | None
 
 @app.command()
 def world(seed: int = 7, size: str = "small", out: str = "data/world"):
-    """Generate a synthetic creditor world with documents and ground truth."""
+    """Generate a synthetic world of insolvency processes, with documents and ground truth."""
     from .synth.world import build_world
     w = build_world(seed=seed, size=size, out=out)
     typer.echo(f"{len(w.tenants)} tenants, {len(w.creditors)} creditors, {len(w.claims)} claims, "
