@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import io
 import logging
+import math
 import os
 import time
 from typing import Protocol
@@ -19,6 +20,7 @@ from pypdf import PdfReader
 from .model import Extraction, Line, Page
 
 MIN_TEXT_CHARS = 25          # a page with less extractable text than this is treated as an image
+RETRY_BELOW = 0.8            # a line read with less confidence than this is read again without the orientation step
 
 
 class OcrEngine(Protocol):
@@ -46,7 +48,9 @@ class RapidOcr:
         params = {"Global.log_level": "warning", **variants[variant]}
         if threads:
             params["EngineConfig.onnxruntime.intra_op_num_threads"] = threads
+        self._params = params
         self._engine = RapidOCR(params=params)
+        self._upright = None                 # the same engine without the per-line orientation step, when needed
         for name in list(logging.root.manager.loggerDict):
             if "rapidocr" in name.lower():
                 logging.getLogger(name).setLevel(logging.WARNING)
@@ -55,14 +59,69 @@ class RapidOcr:
         self.version = version("rapidocr")
 
     def lines(self, image: Image.Image, page: int) -> list[Line]:
-        result = self._engine(np.asarray(image.convert("RGB")))
-        boxes = []
-        for box, text, score in zip(result.boxes if result.boxes is not None else [], result.txts or [],
-                                    result.scores or [], strict=False):
-            xs = [p[0] for p in box]
-            ys = [p[1] for p in box]
-            boxes.append((min(xs), min(ys), max(xs), max(ys), text, float(score)))
-        return _assemble_lines(boxes, page)
+        rgb = image.convert("RGB")
+        result = self._engine(np.asarray(rgb))
+        polys = [[(float(x), float(y)) for x, y in box] for box in (result.boxes if result.boxes is not None else [])]
+        boxes = [(min(x for x, _ in poly), min(y for _, y in poly), max(x for x, _ in poly), max(y for _, y in poly),
+                  text, float(score), poly)
+                 for poly, text, score in zip(polys, result.txts or [], result.scores or [], strict=False)]
+        if self._params.get("Global.use_cls", True):
+            pixels = np.asarray(rgb)
+            boxes = _reread_unsure(boxes, lambda b: self._read_upright(pixels, b[6]))
+        return _assemble_lines(_straighten(polys, boxes, rgb.width, rgb.height), page)
+
+    def _read_upright(self, pixels: np.ndarray, poly: list[tuple[float, float]]) -> tuple[str, float] | None:
+        """Read one line again, from its own box turned straight, without the orientation step. The box is cut out
+        along its own slant (as the recogniser itself does), so a skewed page's neighbouring lines stay out of it."""
+        import cv2
+        if self._upright is None:
+            from rapidocr import RapidOCR
+            self._upright = RapidOCR(params={**self._params, "Global.use_cls": False})
+        pts = np.array(poly, dtype=np.float32)
+        w = int(round(max(np.linalg.norm(pts[0] - pts[1]), np.linalg.norm(pts[3] - pts[2]))))
+        h = int(round(max(np.linalg.norm(pts[0] - pts[3]), np.linalg.norm(pts[1] - pts[2]))))
+        if w < 2 or h < 2:
+            return None
+        dst = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype=np.float32)
+        line = cv2.warpPerspective(pixels, cv2.getPerspectiveTransform(pts, dst), (w, h), flags=cv2.INTER_CUBIC,
+                                   borderMode=cv2.BORDER_REPLICATE)
+        res = self._upright(cv2.copyMakeBorder(line, 12, 12, 12, 12, cv2.BORDER_REPLICATE))
+        if res.boxes is None or not res.txts:
+            return None
+        parts = sorted(zip(res.boxes, res.txts, res.scores, strict=False), key=lambda t: min(p[0] for p in t[0]))
+        return " ".join(t for _, t, _ in parts), min(float(s) for _, _, s in parts)
+
+
+def _reread_unsure(boxes: list[tuple], read) -> list[tuple]:
+    """The orientation step now and then turns an upright line upside down, and the recogniser then returns garbage
+    with low confidence: "Aut s d s u st s fr s ss es." for a perfectly legible line of a scan. A line read with less
+    confidence than RETRY_BELOW is read again without that step, and the more confident reading is kept."""
+    out = []
+    for b in boxes:
+        if b[5] < RETRY_BELOW:
+            again = read(b)
+            if again is not None and again[1] > b[5]:
+                b = (*b[:4], again[0], again[1], *b[6:])
+        out.append(b)
+    return out
+
+
+def _straighten(polys: list[list[tuple[float, float]]], boxes: list[tuple], width: int, height: int) -> list[tuple]:
+    """A scan rotated by two degrees drifts a long line by more than a line's height across the page, so rows grouped
+    by vertical overlap would merge neighbouring lines. The page's skew is the median slope of the wider boxes' top
+    edges; rows are grouped on each box's bounds with the page turned straight (the text is already read)."""
+    slopes = [math.atan2(p[1][1] - p[0][1], p[1][0] - p[0][0]) for p in polys if p[1][0] - p[0][0] > 80]
+    if not slopes:
+        return boxes
+    theta = sorted(slopes)[len(slopes) // 2]
+    c, s = math.cos(-theta), math.sin(-theta)
+    cx, cy = width / 2, height / 2
+    out = []
+    for poly, b in zip(polys, boxes, strict=True):
+        pts = [((x - cx) * c - (y - cy) * s + cx, (x - cx) * s + (y - cy) * c + cy) for x, y in poly]
+        out.append((min(x for x, _ in pts), min(y for _, y in pts), max(x for x, _ in pts), max(y for _, y in pts),
+                    b[4], b[5]))
+    return out
 
 
 def _assemble_lines(boxes: list[tuple], page: int) -> list[Line]:
@@ -124,7 +183,7 @@ class Extractor:
 
     @property
     def version(self) -> str:
-        return f"1+{self.ocr.name}-{self.ocr.version}"
+        return f"2+{self.ocr.name}-{self.ocr.version}"
 
     def extract(self, data: bytes, mime: str, before_ocr=None) -> Extraction:
         """`before_ocr(pages)` is called with the number of pages about to go through OCR, before any does: the
