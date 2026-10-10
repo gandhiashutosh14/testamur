@@ -81,6 +81,10 @@ def render() -> str:
         for x in lt["scaling"]:
             out.append(f"| {x['workers']} | {x['seconds']:.0f} s | {x['uploads_per_minute']:.0f} | {x['ocr_pages']} | "
                        f"{'yes' if x['statuses_identical_to_first'] else 'no'} |")
+        machine = lt["meta"].get("machine")
+        if machine:
+            out += ["", f"On {machine} with {lt['meta']['cpu_count']} CPUs; the workers share them, so OCR, which uses "
+                    "every core it is given, scales little past two."]
         b, c = lt.get("budget"), lt.get("crash")
         if b:
             out += ["", f"With a cap of {b['ocr_pages_per_day']} OCR pages a day for one tenant, "
@@ -92,7 +96,8 @@ def render() -> str:
                         f"{c['dead']} lost; final statuses identical: "
                         f"{'yes' if c['statuses_identical_to_uninterrupted'] else 'no'}.")
     if sh:
-        parts = [f"`{r['candidate']}`: field accuracy {r['canonical_accuracy']:.2f} -> {r['candidate_accuracy']:.2f}, "
+        parts = [f"`{r['candidate']}`: field accuracy {100 * r['canonical_accuracy']:.1f}% -> "
+                 f"{100 * r['candidate_accuracy']:.1f}%, "
                  f"{r['canonical_seconds_per_page']:.2f} -> {r['candidate_seconds_per_page']:.2f} s per page, switch "
                  f"{'allowed' if r['cutover_allowed'] else 'refused'}" for r in sh["results"]]
         out += ["", "Candidate OCR configurations run beside the canonical one, observe-only: " + "; ".join(parts) + "."]
@@ -162,8 +167,8 @@ def render() -> str:
                 f"({', '.join(f'{k} {v}' for k, v in sorted(act['deliveries'].items()))}) to a receiver that was down "
                 f"{act['outage']:.0%} of the time, each processed once "
                 f"({sum(r['duplicates_ignored'] for r in act['receivers'].values())} repeats ignored). At most one open "
-                f"task per requirement and one open hold per claim throughout; a dispatcher killed mid-event left "
-                "nothing half done."]
+                "task per requirement and one open hold per claim throughout" +
+                ("; a dispatcher killed mid-event left nothing half done." if act.get("crash") else ".")]
     g = _load("assistant-golden-full-seed11.json")
     if g:
         bt = g["by_type"]

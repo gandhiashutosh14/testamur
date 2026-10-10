@@ -1,0 +1,1151 @@
+{
+  "meta": {
+    "commit": "6b2b49d",
+    "command": "testamur calibrate --seeds 21-30 --size full --validate-world data/world_full11 --validate-db data/harness_full11.db --report reports/calibration-matching.md"
+  },
+  "calibration": [
+    {
+      "alpha": 0.01,
+      "delta": 0.05,
+      "n": 1594,
+      "threshold": 81.0,
+      "table": [
+        {
+          "threshold": 100.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 99.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 99.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 98.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 98.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 97.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 97.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 96.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 96.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 95.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 95.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 94.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 94.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 93.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 93.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 92.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 92.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.1028087124957524e-07,
+          "safe": true
+        },
+        {
+          "threshold": 91.5,
+          "accepted": 1452,
+          "wrong": 1,
+          "p_value": 1.8859142931882364e-06,
+          "safe": true
+        },
+        {
+          "threshold": 91.0,
+          "accepted": 1452,
+          "wrong": 1,
+          "p_value": 1.8859142931882364e-06,
+          "safe": true
+        },
+        {
+          "threshold": 90.5,
+          "accepted": 1452,
+          "wrong": 1,
+          "p_value": 1.8859142931882364e-06,
+          "safe": true
+        },
+        {
+          "threshold": 90.0,
+          "accepted": 1452,
+          "wrong": 1,
+          "p_value": 1.8859142931882364e-06,
+          "safe": true
+        },
+        {
+          "threshold": 89.5,
+          "accepted": 1453,
+          "wrong": 2,
+          "p_value": 1.617169227877101e-05,
+          "safe": true
+        },
+        {
+          "threshold": 89.0,
+          "accepted": 1453,
+          "wrong": 2,
+          "p_value": 1.617169227877101e-05,
+          "safe": true
+        },
+        {
+          "threshold": 88.5,
+          "accepted": 1453,
+          "wrong": 2,
+          "p_value": 1.617169227877101e-05,
+          "safe": true
+        },
+        {
+          "threshold": 88.0,
+          "accepted": 1454,
+          "wrong": 3,
+          "p_value": 9.274731030245749e-05,
+          "safe": true
+        },
+        {
+          "threshold": 87.5,
+          "accepted": 1455,
+          "wrong": 4,
+          "p_value": 0.0004004033918070338,
+          "safe": true
+        },
+        {
+          "threshold": 87.0,
+          "accepted": 1455,
+          "wrong": 4,
+          "p_value": 0.0004004033918070338,
+          "safe": true
+        },
+        {
+          "threshold": 86.5,
+          "accepted": 1455,
+          "wrong": 4,
+          "p_value": 0.0004004033918070338,
+          "safe": true
+        },
+        {
+          "threshold": 86.0,
+          "accepted": 1457,
+          "wrong": 6,
+          "p_value": 0.0040322267745240975,
+          "safe": true
+        },
+        {
+          "threshold": 85.5,
+          "accepted": 1457,
+          "wrong": 6,
+          "p_value": 0.0040322267745240975,
+          "safe": true
+        },
+        {
+          "threshold": 85.0,
+          "accepted": 1458,
+          "wrong": 7,
+          "p_value": 0.010089987921058932,
+          "safe": true
+        },
+        {
+          "threshold": 84.5,
+          "accepted": 1458,
+          "wrong": 7,
+          "p_value": 0.010089987921058932,
+          "safe": true
+        },
+        {
+          "threshold": 84.0,
+          "accepted": 1458,
+          "wrong": 7,
+          "p_value": 0.010089987921058932,
+          "safe": true
+        },
+        {
+          "threshold": 83.5,
+          "accepted": 1458,
+          "wrong": 7,
+          "p_value": 0.010089987921058932,
+          "safe": true
+        },
+        {
+          "threshold": 83.0,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 0.022228456279080426,
+          "safe": true
+        },
+        {
+          "threshold": 82.5,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 0.022228456279080426,
+          "safe": true
+        },
+        {
+          "threshold": 82.0,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 0.022228456279080426,
+          "safe": true
+        },
+        {
+          "threshold": 81.5,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 0.022228456279080426,
+          "safe": true
+        },
+        {
+          "threshold": 81.0,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 0.022228456279080426,
+          "safe": true
+        },
+        {
+          "threshold": 80.5,
+          "accepted": 1461,
+          "wrong": 10,
+          "p_value": 0.07842782125411732,
+          "safe": false
+        }
+      ]
+    },
+    {
+      "alpha": 0.02,
+      "delta": 0.05,
+      "n": 1594,
+      "threshold": 74.0,
+      "table": [
+        {
+          "threshold": 100.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 99.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 99.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 98.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 98.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 97.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 97.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 96.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 96.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 95.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 95.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 94.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 94.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 93.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 93.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 92.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 92.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 1.0336289244029568e-14,
+          "safe": true
+        },
+        {
+          "threshold": 91.5,
+          "accepted": 1452,
+          "wrong": 1,
+          "p_value": 3.4658210669286376e-13,
+          "safe": true
+        },
+        {
+          "threshold": 91.0,
+          "accepted": 1452,
+          "wrong": 1,
+          "p_value": 3.4658210669286376e-13,
+          "safe": true
+        },
+        {
+          "threshold": 90.5,
+          "accepted": 1452,
+          "wrong": 1,
+          "p_value": 3.4658210669286376e-13,
+          "safe": true
+        },
+        {
+          "threshold": 90.0,
+          "accepted": 1452,
+          "wrong": 1,
+          "p_value": 3.4658210669286376e-13,
+          "safe": true
+        },
+        {
+          "threshold": 89.5,
+          "accepted": 1453,
+          "wrong": 2,
+          "p_value": 5.812292180115775e-12,
+          "safe": true
+        },
+        {
+          "threshold": 89.0,
+          "accepted": 1453,
+          "wrong": 2,
+          "p_value": 5.812292180115775e-12,
+          "safe": true
+        },
+        {
+          "threshold": 88.5,
+          "accepted": 1453,
+          "wrong": 2,
+          "p_value": 5.812292180115775e-12,
+          "safe": true
+        },
+        {
+          "threshold": 88.0,
+          "accepted": 1454,
+          "wrong": 3,
+          "p_value": 6.500556045824036e-11,
+          "safe": true
+        },
+        {
+          "threshold": 87.5,
+          "accepted": 1455,
+          "wrong": 4,
+          "p_value": 5.454978555122945e-10,
+          "safe": true
+        },
+        {
+          "threshold": 87.0,
+          "accepted": 1455,
+          "wrong": 4,
+          "p_value": 5.454978555122945e-10,
+          "safe": true
+        },
+        {
+          "threshold": 86.5,
+          "accepted": 1455,
+          "wrong": 4,
+          "p_value": 5.454978555122945e-10,
+          "safe": true
+        },
+        {
+          "threshold": 86.0,
+          "accepted": 1457,
+          "wrong": 6,
+          "p_value": 2.0517447274136004e-08,
+          "safe": true
+        },
+        {
+          "threshold": 85.5,
+          "accepted": 1457,
+          "wrong": 6,
+          "p_value": 2.0517447274136004e-08,
+          "safe": true
+        },
+        {
+          "threshold": 85.0,
+          "accepted": 1458,
+          "wrong": 7,
+          "p_value": 9.854543603082298e-08,
+          "safe": true
+        },
+        {
+          "threshold": 84.5,
+          "accepted": 1458,
+          "wrong": 7,
+          "p_value": 9.854543603082298e-08,
+          "safe": true
+        },
+        {
+          "threshold": 84.0,
+          "accepted": 1458,
+          "wrong": 7,
+          "p_value": 9.854543603082298e-08,
+          "safe": true
+        },
+        {
+          "threshold": 83.5,
+          "accepted": 1458,
+          "wrong": 7,
+          "p_value": 9.854543603082298e-08,
+          "safe": true
+        },
+        {
+          "threshold": 83.0,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 4.1443935990044436e-07,
+          "safe": true
+        },
+        {
+          "threshold": 82.5,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 4.1443935990044436e-07,
+          "safe": true
+        },
+        {
+          "threshold": 82.0,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 4.1443935990044436e-07,
+          "safe": true
+        },
+        {
+          "threshold": 81.5,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 4.1443935990044436e-07,
+          "safe": true
+        },
+        {
+          "threshold": 81.0,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 4.1443935990044436e-07,
+          "safe": true
+        },
+        {
+          "threshold": 80.5,
+          "accepted": 1461,
+          "wrong": 10,
+          "p_value": 5.2253566108633476e-06,
+          "safe": true
+        },
+        {
+          "threshold": 80.0,
+          "accepted": 1463,
+          "wrong": 12,
+          "p_value": 4.5099187436756853e-05,
+          "safe": true
+        },
+        {
+          "threshold": 79.5,
+          "accepted": 1463,
+          "wrong": 12,
+          "p_value": 4.5099187436756853e-05,
+          "safe": true
+        },
+        {
+          "threshold": 79.0,
+          "accepted": 1464,
+          "wrong": 13,
+          "p_value": 0.00011730565515380579,
+          "safe": true
+        },
+        {
+          "threshold": 78.5,
+          "accepted": 1464,
+          "wrong": 13,
+          "p_value": 0.00011730565515380579,
+          "safe": true
+        },
+        {
+          "threshold": 78.0,
+          "accepted": 1465,
+          "wrong": 14,
+          "p_value": 0.0002837173540757266,
+          "safe": true
+        },
+        {
+          "threshold": 77.5,
+          "accepted": 1465,
+          "wrong": 14,
+          "p_value": 0.0002837173540757266,
+          "safe": true
+        },
+        {
+          "threshold": 77.0,
+          "accepted": 1465,
+          "wrong": 14,
+          "p_value": 0.0002837173540757266,
+          "safe": true
+        },
+        {
+          "threshold": 76.5,
+          "accepted": 1465,
+          "wrong": 14,
+          "p_value": 0.0002837173540757266,
+          "safe": true
+        },
+        {
+          "threshold": 76.0,
+          "accepted": 1467,
+          "wrong": 16,
+          "p_value": 0.0013619221548412368,
+          "safe": true
+        },
+        {
+          "threshold": 75.5,
+          "accepted": 1469,
+          "wrong": 18,
+          "p_value": 0.005167070658525928,
+          "safe": true
+        },
+        {
+          "threshold": 75.0,
+          "accepted": 1470,
+          "wrong": 19,
+          "p_value": 0.00929803368040956,
+          "safe": true
+        },
+        {
+          "threshold": 74.5,
+          "accepted": 1472,
+          "wrong": 21,
+          "p_value": 0.02609243717784067,
+          "safe": true
+        },
+        {
+          "threshold": 74.0,
+          "accepted": 1473,
+          "wrong": 22,
+          "p_value": 0.040910966535729495,
+          "safe": true
+        },
+        {
+          "threshold": 73.5,
+          "accepted": 1474,
+          "wrong": 23,
+          "p_value": 0.06158064546255178,
+          "safe": false
+        }
+      ]
+    },
+    {
+      "alpha": 0.05,
+      "delta": 0.05,
+      "n": 1594,
+      "threshold": 70.0,
+      "table": [
+        {
+          "threshold": 100.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 99.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 99.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 98.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 98.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 97.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 97.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 96.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 96.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 95.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 95.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 94.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 94.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 93.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 93.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 92.5,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 92.0,
+          "accepted": 1451,
+          "wrong": 0,
+          "p_value": 3.1004649807394824e-36,
+          "safe": true
+        },
+        {
+          "threshold": 91.5,
+          "accepted": 1452,
+          "wrong": 1,
+          "p_value": 2.632131586281976e-34,
+          "safe": true
+        },
+        {
+          "threshold": 91.0,
+          "accepted": 1452,
+          "wrong": 1,
+          "p_value": 2.632131586281976e-34,
+          "safe": true
+        },
+        {
+          "threshold": 90.5,
+          "accepted": 1452,
+          "wrong": 1,
+          "p_value": 2.632131586281976e-34,
+          "safe": true
+        },
+        {
+          "threshold": 90.0,
+          "accepted": 1452,
+          "wrong": 1,
+          "p_value": 2.632131586281976e-34,
+          "safe": true
+        },
+        {
+          "threshold": 89.5,
+          "accepted": 1453,
+          "wrong": 2,
+          "p_value": 1.1167411079153783e-32,
+          "safe": true
+        },
+        {
+          "threshold": 89.0,
+          "accepted": 1453,
+          "wrong": 2,
+          "p_value": 1.1167411079153783e-32,
+          "safe": true
+        },
+        {
+          "threshold": 88.5,
+          "accepted": 1453,
+          "wrong": 2,
+          "p_value": 1.1167411079153783e-32,
+          "safe": true
+        },
+        {
+          "threshold": 88.0,
+          "accepted": 1454,
+          "wrong": 3,
+          "p_value": 3.1571974598208364e-31,
+          "safe": true
+        },
+        {
+          "threshold": 87.5,
+          "accepted": 1455,
+          "wrong": 4,
+          "p_value": 6.691282441127725e-30,
+          "safe": true
+        },
+        {
+          "threshold": 87.0,
+          "accepted": 1455,
+          "wrong": 4,
+          "p_value": 6.691282441127725e-30,
+          "safe": true
+        },
+        {
+          "threshold": 86.5,
+          "accepted": 1455,
+          "wrong": 4,
+          "p_value": 6.691282441127725e-30,
+          "safe": true
+        },
+        {
+          "threshold": 86.0,
+          "accepted": 1457,
+          "wrong": 6,
+          "p_value": 1.6007409037744678e-27,
+          "safe": true
+        },
+        {
+          "threshold": 85.5,
+          "accepted": 1457,
+          "wrong": 6,
+          "p_value": 1.6007409037744678e-27,
+          "safe": true
+        },
+        {
+          "threshold": 85.0,
+          "accepted": 1458,
+          "wrong": 7,
+          "p_value": 1.935939069512085e-26,
+          "safe": true
+        },
+        {
+          "threshold": 84.5,
+          "accepted": 1458,
+          "wrong": 7,
+          "p_value": 1.935939069512085e-26,
+          "safe": true
+        },
+        {
+          "threshold": 84.0,
+          "accepted": 1458,
+          "wrong": 7,
+          "p_value": 1.935939069512085e-26,
+          "safe": true
+        },
+        {
+          "threshold": 83.5,
+          "accepted": 1458,
+          "wrong": 7,
+          "p_value": 1.935939069512085e-26,
+          "safe": true
+        },
+        {
+          "threshold": 83.0,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 2.0477371450349878e-25,
+          "safe": true
+        },
+        {
+          "threshold": 82.5,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 2.0477371450349878e-25,
+          "safe": true
+        },
+        {
+          "threshold": 82.0,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 2.0477371450349878e-25,
+          "safe": true
+        },
+        {
+          "threshold": 81.5,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 2.0477371450349878e-25,
+          "safe": true
+        },
+        {
+          "threshold": 81.0,
+          "accepted": 1459,
+          "wrong": 8,
+          "p_value": 2.0477371450349878e-25,
+          "safe": true
+        },
+        {
+          "threshold": 80.5,
+          "accepted": 1461,
+          "wrong": 10,
+          "p_value": 1.6270305683419454e-23,
+          "safe": true
+        },
+        {
+          "threshold": 80.0,
+          "accepted": 1463,
+          "wrong": 12,
+          "p_value": 8.798819994698503e-22,
+          "safe": true
+        },
+        {
+          "threshold": 79.5,
+          "accepted": 1463,
+          "wrong": 12,
+          "p_value": 8.798819994698503e-22,
+          "safe": true
+        },
+        {
+          "threshold": 79.0,
+          "accepted": 1464,
+          "wrong": 13,
+          "p_value": 5.714815495012391e-21,
+          "safe": true
+        },
+        {
+          "threshold": 78.5,
+          "accepted": 1464,
+          "wrong": 13,
+          "p_value": 5.714815495012391e-21,
+          "safe": true
+        },
+        {
+          "threshold": 78.0,
+          "accepted": 1465,
+          "wrong": 14,
+          "p_value": 3.445176984252456e-20,
+          "safe": true
+        },
+        {
+          "threshold": 77.5,
+          "accepted": 1465,
+          "wrong": 14,
+          "p_value": 3.445176984252456e-20,
+          "safe": true
+        },
+        {
+          "threshold": 77.0,
+          "accepted": 1465,
+          "wrong": 14,
+          "p_value": 3.445176984252456e-20,
+          "safe": true
+        },
+        {
+          "threshold": 76.5,
+          "accepted": 1465,
+          "wrong": 14,
+          "p_value": 3.445176984252456e-20,
+          "safe": true
+        },
+        {
+          "threshold": 76.0,
+          "accepted": 1467,
+          "wrong": 16,
+          "p_value": 1.021253043590024e-18,
+          "safe": true
+        },
+        {
+          "threshold": 75.5,
+          "accepted": 1469,
+          "wrong": 18,
+          "p_value": 2.3705003272160043e-17,
+          "safe": true
+        },
+        {
+          "threshold": 75.0,
+          "accepted": 1470,
+          "wrong": 19,
+          "p_value": 1.0508554686389403e-16,
+          "safe": true
+        },
+        {
+          "threshold": 74.5,
+          "accepted": 1472,
+          "wrong": 21,
+          "p_value": 1.772992186473237e-15,
+          "safe": true
+        },
+        {
+          "threshold": 74.0,
+          "accepted": 1473,
+          "wrong": 22,
+          "p_value": 6.7802715400857876e-15,
+          "safe": true
+        },
+        {
+          "threshold": 73.5,
+          "accepted": 1474,
+          "wrong": 23,
+          "p_value": 2.4792727246846715e-14,
+          "safe": true
+        },
+        {
+          "threshold": 73.0,
+          "accepted": 1475,
+          "wrong": 24,
+          "p_value": 8.684879723672098e-14,
+          "safe": true
+        },
+        {
+          "threshold": 72.5,
+          "accepted": 1475,
+          "wrong": 24,
+          "p_value": 8.684879723672098e-14,
+          "safe": true
+        },
+        {
+          "threshold": 72.0,
+          "accepted": 1478,
+          "wrong": 27,
+          "p_value": 2.9346187939865654e-12,
+          "safe": true
+        },
+        {
+          "threshold": 71.5,
+          "accepted": 1478,
+          "wrong": 27,
+          "p_value": 2.9346187939865654e-12,
+          "safe": true
+        },
+        {
+          "threshold": 71.0,
+          "accepted": 1481,
+          "wrong": 30,
+          "p_value": 7.123574559963633e-11,
+          "safe": true
+        },
+        {
+          "threshold": 70.5,
+          "accepted": 1484,
+          "wrong": 33,
+          "p_value": 1.2834673787052562e-09,
+          "safe": true
+        },
+        {
+          "threshold": 70.0,
+          "accepted": 1486,
+          "wrong": 35,
+          "p_value": 7.575936668534985e-09,
+          "safe": true
+        }
+      ]
+    }
+  ],
+  "validation": {
+    "label": "world_full11",
+    "rows": 150,
+    "results": [
+      {
+        "threshold": 92.0,
+        "n": 150,
+        "accepted": 137,
+        "wrong": 0,
+        "accepted_share": 0.9133
+      },
+      {
+        "threshold": 81.0,
+        "n": 150,
+        "accepted": 139,
+        "wrong": 2,
+        "accepted_share": 0.9267
+      },
+      {
+        "threshold": 74.0,
+        "n": 150,
+        "accepted": 142,
+        "wrong": 5,
+        "accepted_share": 0.9467
+      },
+      {
+        "threshold": 70.0,
+        "n": 150,
+        "accepted": 142,
+        "wrong": 5,
+        "accepted_share": 0.9467
+      }
+    ]
+  }
+}

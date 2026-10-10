@@ -1,0 +1,555 @@
+{
+  "meta": {
+    "commit": "6b2b49d",
+    "command": "testamur actionsim --world data/world_full11 --db data/actionsim.db --days 60 --report reports/action-sim-full-seed11.md --cassette reports/cassettes/full-seed11.jsonl",
+    "seed": 11,
+    "size": "full"
+  },
+  "days": 60,
+  "response_rate": 0.15,
+  "outage": 0.2,
+  "ack_loss": 0.1,
+  "seed": 1,
+  "totals": {
+    "task_opened": 109,
+    "events": 468,
+    "superseded": 9,
+    "hold_placed": 46,
+    "creditor_reminded": 18,
+    "reminders_sent": 18,
+    "delivered": 509,
+    "retry_scheduled": 180,
+    "task_closed": 15,
+    "hold_released": 2,
+    "task_updated": 8
+  },
+  "renewals_uploaded": 15,
+  "crash": {
+    "day": 0,
+    "tenant": 1,
+    "error": "dispatcher died mid-event"
+  },
+  "timeline": [
+    {
+      "day": 1,
+      "date": "2026-10-02",
+      "open_chase": 10,
+      "open_follow_up": 93,
+      "holds": 46,
+      "expired": 3
+    },
+    {
+      "day": 2,
+      "date": "2026-10-03",
+      "open_chase": 7,
+      "open_follow_up": 93,
+      "holds": 46,
+      "expired": 2
+    },
+    {
+      "day": 3,
+      "date": "2026-10-04",
+      "open_chase": 6,
+      "open_follow_up": 93,
+      "holds": 46,
+      "expired": 2
+    },
+    {
+      "day": 4,
+      "date": "2026-10-05",
+      "open_chase": 5,
+      "open_follow_up": 93,
+      "holds": 46,
+      "expired": 2
+    },
+    {
+      "day": 5,
+      "date": "2026-10-06",
+      "open_chase": 5,
+      "open_follow_up": 93,
+      "holds": 46,
+      "expired": 2
+    },
+    {
+      "day": 6,
+      "date": "2026-10-07",
+      "open_chase": 4,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 7,
+      "date": "2026-10-08",
+      "open_chase": 4,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 8,
+      "date": "2026-10-09",
+      "open_chase": 4,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 2
+    },
+    {
+      "day": 9,
+      "date": "2026-10-10",
+      "open_chase": 3,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 3
+    },
+    {
+      "day": 10,
+      "date": "2026-10-11",
+      "open_chase": 3,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 3
+    },
+    {
+      "day": 11,
+      "date": "2026-10-12",
+      "open_chase": 3,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 3
+    },
+    {
+      "day": 12,
+      "date": "2026-10-13",
+      "open_chase": 3,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 3
+    },
+    {
+      "day": 13,
+      "date": "2026-10-14",
+      "open_chase": 3,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 3
+    },
+    {
+      "day": 14,
+      "date": "2026-10-15",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 15,
+      "date": "2026-10-16",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 16,
+      "date": "2026-10-17",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 17,
+      "date": "2026-10-18",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 18,
+      "date": "2026-10-19",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 19,
+      "date": "2026-10-20",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 20,
+      "date": "2026-10-21",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 21,
+      "date": "2026-10-22",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 22,
+      "date": "2026-10-23",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 23,
+      "date": "2026-10-24",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 24,
+      "date": "2026-10-25",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 25,
+      "date": "2026-10-26",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 26,
+      "date": "2026-10-27",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 27,
+      "date": "2026-10-28",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 28,
+      "date": "2026-10-29",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 29,
+      "date": "2026-10-30",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 30,
+      "date": "2026-10-31",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 31,
+      "date": "2026-11-01",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 32,
+      "date": "2026-11-02",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 1
+    },
+    {
+      "day": 33,
+      "date": "2026-11-03",
+      "open_chase": 0,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 34,
+      "date": "2026-11-04",
+      "open_chase": 0,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 35,
+      "date": "2026-11-05",
+      "open_chase": 0,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 36,
+      "date": "2026-11-06",
+      "open_chase": 0,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 37,
+      "date": "2026-11-07",
+      "open_chase": 0,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 38,
+      "date": "2026-11-08",
+      "open_chase": 0,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 39,
+      "date": "2026-11-09",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 40,
+      "date": "2026-11-10",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 41,
+      "date": "2026-11-11",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 42,
+      "date": "2026-11-12",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 43,
+      "date": "2026-11-13",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 44,
+      "date": "2026-11-14",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 45,
+      "date": "2026-11-15",
+      "open_chase": 2,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 46,
+      "date": "2026-11-16",
+      "open_chase": 2,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 47,
+      "date": "2026-11-17",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 48,
+      "date": "2026-11-18",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 49,
+      "date": "2026-11-19",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 50,
+      "date": "2026-11-20",
+      "open_chase": 2,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 51,
+      "date": "2026-11-21",
+      "open_chase": 2,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 52,
+      "date": "2026-11-22",
+      "open_chase": 2,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 53,
+      "date": "2026-11-23",
+      "open_chase": 2,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 54,
+      "date": "2026-11-24",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 55,
+      "date": "2026-11-25",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 56,
+      "date": "2026-11-26",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 57,
+      "date": "2026-11-27",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 58,
+      "date": "2026-11-28",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 59,
+      "date": "2026-11-29",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    },
+    {
+      "day": 60,
+      "date": "2026-11-30",
+      "open_chase": 1,
+      "open_follow_up": 93,
+      "holds": 45,
+      "expired": 0
+    }
+  ],
+  "receivers": {
+    "1": {
+      "processed": 163,
+      "unique": 163,
+      "duplicates_ignored": 20,
+      "refused_while_down": 55,
+      "rejected_signature": 0
+    },
+    "2": {
+      "processed": 169,
+      "unique": 169,
+      "duplicates_ignored": 5,
+      "refused_while_down": 42,
+      "rejected_signature": 0
+    },
+    "3": {
+      "processed": 177,
+      "unique": 177,
+      "duplicates_ignored": 19,
+      "refused_while_down": 39,
+      "rejected_signature": 0
+    }
+  },
+  "tasks": {
+    "follow_up:open": 93,
+    "chase_creditor:done": 15,
+    "chase_creditor:open": 1
+  },
+  "days_to_close_chase_median": 4.0,
+  "reminders_written": 18,
+  "deliveries": {
+    "delivered": 509
+  },
+  "delivery_attempts": 689,
+  "invariants": {
+    "events_equal_status_changes": true,
+    "events": 469,
+    "undispatched_events": 0,
+    "max_open_tasks_per_requirement": 1,
+    "max_open_holds_per_claim": 1
+  }
+}

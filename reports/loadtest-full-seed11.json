@@ -1,0 +1,116 @@
+{
+  "scaling": [
+    {
+      "workers": 1,
+      "uploads": 412,
+      "seconds": 294.7,
+      "uploads_per_minute": 83.9,
+      "ocr_pages_per_minute": 35.6,
+      "jobs": 412,
+      "done": 412,
+      "dead": 0,
+      "retried": 0,
+      "deferrals": 0,
+      "ocr_pages": 175,
+      "ocr_seconds": 282.3,
+      "latency_p50": 169.0,
+      "latency_p95": 283.8,
+      "exit_codes": [
+        0
+      ],
+      "statuses_identical_to_first": true
+    },
+    {
+      "workers": 2,
+      "uploads": 412,
+      "seconds": 240.0,
+      "uploads_per_minute": 103.0,
+      "ocr_pages_per_minute": 43.7,
+      "jobs": 412,
+      "done": 412,
+      "dead": 0,
+      "retried": 0,
+      "deferrals": 1,
+      "ocr_pages": 175,
+      "ocr_seconds": 455.6,
+      "latency_p50": 137.9,
+      "latency_p95": 228.4,
+      "exit_codes": [
+        0,
+        0
+      ],
+      "statuses_identical_to_first": true
+    },
+    {
+      "workers": 4,
+      "uploads": 412,
+      "seconds": 224.9,
+      "uploads_per_minute": 109.9,
+      "ocr_pages_per_minute": 46.7,
+      "jobs": 412,
+      "done": 412,
+      "dead": 0,
+      "retried": 0,
+      "deferrals": 4,
+      "ocr_pages": 175,
+      "ocr_seconds": 859.7,
+      "latency_p50": 125.3,
+      "latency_p95": 215.0,
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "statuses_identical_to_first": true
+    }
+  ],
+  "budget": {
+    "tenant": 1,
+    "ocr_pages_per_day": 40,
+    "uploads": 412,
+    "jobs_waiting_after_first_day": 16,
+    "extra_days": 1,
+    "max_pages_any_day": 40,
+    "largest_document_pages": 2,
+    "within_bound": true,
+    "statuses_identical_to_unbudgeted": true,
+    "jobs": 412,
+    "done": 412,
+    "dead": 0,
+    "retried": 0,
+    "deferrals": 17,
+    "ocr_pages": 175,
+    "ocr_seconds": 463.9,
+    "latency_p50": 139.6,
+    "latency_p95": 223.5
+  },
+  "crash": {
+    "exit_codes_first_pass": [
+      17,
+      0
+    ],
+    "exit_codes_second_pass": [
+      0,
+      0
+    ],
+    "statuses_identical_to_uninterrupted": true,
+    "jobs": 412,
+    "done": 412,
+    "dead": 0,
+    "retried": 1,
+    "deferrals": 0,
+    "ocr_pages": 175,
+    "ocr_seconds": 269.2,
+    "latency_p50": 160.1,
+    "latency_p95": 267.2
+  },
+  "meta": {
+    "commit": "6b2b49d",
+    "world_seed": 11,
+    "world_size": "full",
+    "cpu_count": 4,
+    "lease_seconds": 20.0,
+    "machine": "a GitHub-hosted runner"
+  }
+}

@@ -1,0 +1,505 @@
+{
+  "meta": {
+    "generated": "2026-10-10 13:50 UTC",
+    "commit": "6b2b49d",
+    "command": "testamur harness --world data/world_full11 --db data/harness_full11.db --report reports/harness-full-seed11.md --model-path models/Qwen3-4B-Instruct-2507-Q4_K_M.gguf --cassette reports/cassettes/full-seed11.jsonl",
+    "world_seed": 11,
+    "world_size": "full",
+    "as_of": "2026-10-01",
+    "pack": "ec1a0adbe9ad",
+    "engine": "0.3.0+pack.ec1a0adbe9ad",
+    "model": "llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+    "model_mode": "live",
+    "ocr": "2+rapidocr-3.10.0",
+    "uploads": 412,
+    "python": "3.11.17"
+  },
+  "metrics": {
+    "classification": {
+      "documents": 382,
+      "correct": 382,
+      "accuracy": 1.0,
+      "confusion": {
+        "authority_letter -> authority_letter": 88,
+        "bank_mandate -> bank_mandate": 78,
+        "charge_certificate -> charge_certificate": 45,
+        "claim_form -> claim_form": 85,
+        "facility_agreement -> facility_agreement": 68,
+        "unknown -> unknown": 18
+      }
+    },
+    "matching": {
+      "matched_correctly": 351,
+      "abstained_as_expected": 13,
+      "wrong_match_examples": []
+    },
+    "checks": {
+      "per_check": {
+        "auth_covers_voting": {
+          "tier": "field",
+          "severity": "major",
+          "n": 76,
+          "agree": 76,
+          "false_pass": 0,
+          "truth_negative": 3,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.562
+        },
+        "auth_creditor_matches": {
+          "tier": "field",
+          "severity": "critical",
+          "n": 76,
+          "agree": 76,
+          "false_pass": 0,
+          "truth_negative": 0,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": null
+        },
+        "auth_current": {
+          "tier": "field",
+          "severity": "critical",
+          "n": 76,
+          "agree": 76,
+          "false_pass": 0,
+          "truth_negative": 9,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.299
+        },
+        "auth_issued_recently": {
+          "tier": "field",
+          "severity": "minor",
+          "n": 76,
+          "agree": 76,
+          "false_pass": 0,
+          "truth_negative": 8,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.324
+        },
+        "auth_renewal_due": {
+          "tier": "field",
+          "severity": "minor",
+          "n": 76,
+          "agree": 76,
+          "false_pass": 0,
+          "truth_negative": 7,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.354
+        },
+        "bank_account_on_file": {
+          "tier": "field",
+          "severity": "critical",
+          "n": 78,
+          "agree": 78,
+          "false_pass": 0,
+          "truth_negative": 7,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.354
+        },
+        "bank_channel_verified": {
+          "tier": "metadata",
+          "severity": "critical",
+          "n": 78,
+          "agree": 78,
+          "false_pass": 0,
+          "truth_negative": 31,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.11
+        },
+        "bank_holder_matches": {
+          "tier": "field",
+          "severity": "critical",
+          "n": 78,
+          "agree": 78,
+          "false_pass": 0,
+          "truth_negative": 10,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.278
+        },
+        "bank_ifsc_valid": {
+          "tier": "field",
+          "severity": "critical",
+          "n": 78,
+          "agree": 78,
+          "false_pass": 0,
+          "truth_negative": 9,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.299
+        },
+        "bank_letter_recent": {
+          "tier": "field",
+          "severity": "minor",
+          "n": 78,
+          "agree": 78,
+          "false_pass": 0,
+          "truth_negative": 7,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.354
+        },
+        "charge_amount_covers": {
+          "tier": "field",
+          "severity": "major",
+          "n": 36,
+          "agree": 36,
+          "false_pass": 0,
+          "truth_negative": 2,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.658
+        },
+        "charge_covers_assets": {
+          "tier": "field",
+          "severity": "major",
+          "n": 36,
+          "agree": 36,
+          "false_pass": 0,
+          "truth_negative": 5,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.434
+        },
+        "charge_holder_matches": {
+          "tier": "field",
+          "severity": "critical",
+          "n": 36,
+          "agree": 36,
+          "false_pass": 0,
+          "truth_negative": 0,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": null
+        },
+        "charge_on_debtor": {
+          "tier": "field",
+          "severity": "critical",
+          "n": 36,
+          "agree": 36,
+          "false_pass": 0,
+          "truth_negative": 3,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.562
+        },
+        "charge_registrar_recognised": {
+          "tier": "field",
+          "severity": "major",
+          "n": 36,
+          "agree": 36,
+          "false_pass": 0,
+          "truth_negative": 3,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.562
+        },
+        "claim_dated_after_announcement": {
+          "tier": "field",
+          "severity": "minor",
+          "n": 84,
+          "agree": 84,
+          "false_pass": 0,
+          "truth_negative": 6,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.39
+        },
+        "claim_gstin_valid": {
+          "tier": "field",
+          "severity": "major",
+          "n": 84,
+          "agree": 84,
+          "false_pass": 0,
+          "truth_negative": 6,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.39
+        },
+        "claim_lei_valid": {
+          "tier": "field",
+          "severity": "major",
+          "n": 84,
+          "agree": 84,
+          "false_pass": 0,
+          "truth_negative": 5,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.434
+        },
+        "claim_name_matches": {
+          "tier": "field",
+          "severity": "critical",
+          "n": 84,
+          "agree": 84,
+          "false_pass": 0,
+          "truth_negative": 5,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.434
+        },
+        "claim_not_time_barred": {
+          "tier": "field",
+          "severity": "critical",
+          "n": 84,
+          "agree": 84,
+          "false_pass": 0,
+          "truth_negative": 5,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.434
+        },
+        "claim_pan_in_gstin": {
+          "tier": "field",
+          "severity": "major",
+          "n": 84,
+          "agree": 84,
+          "false_pass": 0,
+          "truth_negative": 4,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.49
+        },
+        "claim_within_books": {
+          "tier": "field",
+          "severity": "major",
+          "n": 84,
+          "agree": 83,
+          "false_pass": 0,
+          "truth_negative": 13,
+          "abstained": 1,
+          "false_fail": 0,
+          "false_pass_upper95": 0.228
+        },
+        "claim_words_match": {
+          "tier": "field",
+          "severity": "major",
+          "n": 84,
+          "agree": 83,
+          "false_pass": 0,
+          "truth_negative": 5,
+          "abstained": 1,
+          "false_fail": 0,
+          "false_pass_upper95": 0.434
+        },
+        "clause_assignment": {
+          "tier": "model",
+          "severity": "minor",
+          "n": 68,
+          "agree": 58,
+          "false_pass": 0,
+          "truth_negative": 26,
+          "abstained": 10,
+          "false_fail": 0,
+          "false_pass_upper95": 0.129
+        },
+        "clause_disbursement": {
+          "tier": "model",
+          "severity": "critical",
+          "n": 68,
+          "agree": 65,
+          "false_pass": 0,
+          "truth_negative": 20,
+          "abstained": 3,
+          "false_fail": 0,
+          "false_pass_upper95": 0.161
+        },
+        "clause_interest": {
+          "tier": "model",
+          "severity": "major",
+          "n": 68,
+          "agree": 62,
+          "false_pass": 1,
+          "truth_negative": 19,
+          "abstained": 5,
+          "false_fail": 0,
+          "false_pass_upper95": 0.246
+        },
+        "clause_security": {
+          "tier": "model",
+          "severity": "critical",
+          "n": 68,
+          "agree": 64,
+          "false_pass": 0,
+          "truth_negative": 11,
+          "abstained": 4,
+          "false_fail": 0,
+          "false_pass_upper95": 0.259
+        },
+        "facility_signed": {
+          "tier": "field",
+          "severity": "critical",
+          "n": 68,
+          "agree": 68,
+          "false_pass": 0,
+          "truth_negative": 8,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.324
+        },
+        "received_by_due_date": {
+          "tier": "metadata",
+          "severity": "minor",
+          "n": 84,
+          "agree": 84,
+          "false_pass": 0,
+          "truth_negative": 22,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": 0.149
+        }
+      },
+      "by_tier": {
+        "field": {
+          "n": 1612,
+          "agree": 1610,
+          "false_pass": 0,
+          "truth_negative": 130,
+          "abstained": 2,
+          "false_fail": 0
+        },
+        "metadata": {
+          "n": 162,
+          "agree": 162,
+          "false_pass": 0,
+          "truth_negative": 53,
+          "abstained": 0,
+          "false_fail": 0
+        },
+        "model": {
+          "n": 272,
+          "agree": 249,
+          "false_pass": 1,
+          "truth_negative": 76,
+          "abstained": 22,
+          "false_fail": 0
+        }
+      },
+      "false_pass_examples": [
+        {
+          "claim": 68,
+          "requirement": "evidence_of_debt",
+          "check": "clause_interest",
+          "truth": "FAIL",
+          "reason": "the clause is present, with a verified quote",
+          "upload": 297
+        }
+      ],
+      "critical_false_pass": 0
+    },
+    "status": {
+      "requirement_instances": 430,
+      "exact": 415,
+      "deferred_to_review": 14,
+      "abstention_as_finding": 1,
+      "exact_rate": 0.9651,
+      "deferral_rate": 0.0326,
+      "confusion": {
+        "COVERED_BY_TRUSTEE -> COVERED_BY_TRUSTEE": 3,
+        "EXPIRED -> EXPIRED": 4,
+        "MISSING -> MISSING": 26,
+        "MISSING -> NEEDS_REVIEW": 1,
+        "NEEDS_REVIEW -> NEEDS_REVIEW": 24,
+        "NOT_REQUIRED -> NOT_REQUIRED": 49,
+        "NOT_SATISFIED -> NEEDS_REVIEW": 6,
+        "NOT_SATISFIED -> NOT_SATISFIED": 74,
+        "SATISFIED -> NEEDS_REVIEW": 4,
+        "SATISFIED -> SATISFIED": 141,
+        "SATISFIED -> SATISFIED_WITH_FINDINGS": 1,
+        "SATISFIED_WITH_FINDINGS -> NEEDS_REVIEW": 3,
+        "SATISFIED_WITH_FINDINGS -> SATISFIED_WITH_FINDINGS": 89,
+        "VERIFIED_OUT_OF_BAND -> VERIFIED_OUT_OF_BAND": 5
+      },
+      "false_vouching_examples": []
+    },
+    "security": {
+      "injected_documents": 18,
+      "detected": 18,
+      "model_pass_on_hostile_documents": 0
+    },
+    "cost": {
+      "ocr_pages": 175.0,
+      "model_calls": 365.0,
+      "model_tokens": 179148.0,
+      "model_seconds": 1748.1615443720007,
+      "first_pass_seconds": 2040.5,
+      "reindex": {
+        "seconds": 5.9,
+        "new_ocr_pages": 0.0,
+        "new_model_calls": 0.0
+      },
+      "documents": 382
+    }
+  },
+  "gates": [
+    {
+      "gate": "status false vouching",
+      "value": 0,
+      "op": "<=",
+      "limit": 0,
+      "ok": true
+    },
+    {
+      "gate": "critical check false passes",
+      "value": 0,
+      "op": "<=",
+      "limit": 0,
+      "ok": true
+    },
+    {
+      "gate": "documents matched to the wrong creditor",
+      "value": 0,
+      "op": "<=",
+      "limit": 0,
+      "ok": true
+    },
+    {
+      "gate": "classification accuracy",
+      "value": 1.0,
+      "op": ">=",
+      "limit": 0.95,
+      "ok": true
+    },
+    {
+      "gate": "status deferral rate",
+      "value": 0.0326,
+      "op": "<=",
+      "limit": 0.25,
+      "ok": true
+    },
+    {
+      "gate": "injected documents detected",
+      "value": 1.0,
+      "op": ">=",
+      "limit": 1.0,
+      "ok": true
+    },
+    {
+      "gate": "model PASS on hostile documents",
+      "value": 0,
+      "op": "<=",
+      "limit": 0,
+      "ok": true
+    },
+    {
+      "gate": "OCR pages paid again on re-index",
+      "value": 0.0,
+      "op": "<=",
+      "limit": 0,
+      "ok": true
+    },
+    {
+      "gate": "model calls paid again on re-index",
+      "value": 0.0,
+      "op": "<=",
+      "limit": 0,
+      "ok": true
+    }
+  ]
+}

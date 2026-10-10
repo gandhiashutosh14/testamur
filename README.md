@@ -23,7 +23,55 @@ person, turn findings into work, and never say PASS without evidence.*
 <!-- RESULTS -->
 ## Results
 
-Measured on generated, adversarial insolvency worlds with ground truth: fictional lenders, trustees and corporate debtors; scans and phone photos; near-twin names; decoy pages; authorities that contradict themselves; claims above the books; defaults outside limitation; changed bank accounts; text aimed at automated readers. Each number below is written from a committed report by [`scripts/results.py`](scripts/results.py) (a test keeps the two in step), and each report states the commit and the command that produced it.
+Measured on generated, adversarial insolvency worlds with ground truth: fictional lenders, trustees and corporate debtors; scans and phone photos; near-twin names; decoy pages; authorities that contradict themselves; claims above the books; defaults outside limitation; changed bank accounts; text aimed at automated readers. Each number below is written from a committed report by [`scripts/results.py`](scripts/results.py) (a test keeps the two in step), and each report states the commit and the command that produced it. The main world is seed 11: 3 insolvency firms, 86 claims, 412 uploads.
+
+### Getting it right ([report](reports/harness-full-seed11.md), commit `6b2b49d`)
+
+| Measure | Result |
+|---|---|
+| Requirement statuses exactly right | 415 of 430 (96.5%) |
+| Handed to a person instead (NEEDS_REVIEW) | 14 (3.3%) |
+| Vouching kept, a non-critical doubt shown as a finding | 1 |
+| **Vouching when the truth says otherwise** | **0** |
+| Raising an alarm when the truth is fine | 0 |
+| Field and metadata judgements agreeing with the truth | 1,772 of 1,774 |
+| Agreement-clause judgements, local model on CPU: agree / abstain / false PASS | 249 / 22 / 1 of 272 |
+| Documents classified right | 382 of 382 |
+| Documents attached to the wrong creditor | 0 |
+| Planted instructions detected; model PASS on such documents | 18 of 18; 0 |
+| Re-index of every document: new OCR pages, new model calls | 0, 0 |
+
+### Volume and cost ([load test](reports/loadtest-full-seed11.md), [shadow OCR trial](reports/shadow-ocr-full-seed11.md), commit `6b2b49d`)
+
+| Worker processes | Wall time | Uploads per minute | OCR pages paid | Statuses identical to one worker |
+|---|---|---|---|---|
+| 1 | 295 s | 84 | 175 | yes |
+| 2 | 240 s | 103 | 175 | yes |
+| 4 | 225 s | 110 | 175 | yes |
+
+On a GitHub-hosted runner with 4 CPUs; the workers share them, so OCR, which uses every core it is given, scales little past two.
+
+With a cap of 40 OCR pages a day for one tenant, 16 jobs waited for the next day and none was dropped; the most paid on any day was 40; final statuses identical: yes. A worker killed mid-job: 412 of 412 jobs done, 1 taken over, 0 lost; final statuses identical: yes.
+
+Candidate OCR configurations run beside the canonical one, observe-only: `fast`: field accuracy 99.7% -> 99.7%, 1.83 -> 0.96 s per page, switch allowed; `en-v4`: field accuracy 99.7% -> 85.4%, 1.81 -> 1.44 s per page, switch refused.
+
+### When it is not sure ([review simulation](reports/review-sim-full-seed11.md), commit `6b2b49d`)
+
+A simulated reviewer who knows the truth worked the whole review queue: 124 decisions (7 assign, 75 check, 18 clear, 24 reject). Afterwards 430 of 430 statuses were exactly right, and a full re-index changed 0.
+
+A planted fault (the limitation period read as five years instead of three) made the engine vouch wrongly 5 times. At the default audit rate (10% of critical verdicts) the sample drew none of the false PASS verdicts, which the report shows is the expected outcome at that rate (tenant 1: 19%, tenant 2: 27% chance of drawing one). At 50% ([report](reports/review-sim-full-seed11-audit50.md)) the sample still drew none of them, in any affected tenant: an outcome with a 3% chance at that rate, reported as it fell. The breaker did not trip, and false vouching stayed at 5: a breaker that has not tripped is not a pass, and the audit rate trades review effort against time to detection.
+
+### Thresholds with a guarantee ([calibration](reports/calibration-matching.md), commit `6b2b49d`)
+
+Learn then Test on 1,594 labelled documents certifies name-matching thresholds down to 81 at a 1% wrong-attachment rate, down to 74 at a 2% wrong-attachment rate, down to 70 at a 5% wrong-attachment rate (each with 95% confidence). On the scanned world the hand-set 92 accepts 137 of 150 documents matched by name, with 0 wrong.
+
+### From finding to action ([simulation](reports/action-sim-full-seed11.md), commit `6b2b49d`)
+
+60 simulated days: 469 status changes, each reported once and dispatched; tasks chase_creditor:done 15, chase_creditor:open 1, follow_up:open 93; a creditor chase closed a median 4.0 days after it opened; 18 reminders (one a week at most); holds placed 46, released 2; 509 webhook messages (delivered 509) to a receiver that was down 20% of the time, each processed once (44 repeats ignored). At most one open task per requirement and one open hold per claim throughout; a dispatcher killed mid-event left nothing half done.
+
+### The assistant ([golden set](reports/assistant-golden-full-seed11.md), commit `6b2b49d`)
+
+269 of 269 questions answered right: field lookups with citations (157 of 157, including 9 the engine had not settled, answered as such), near-twin names, shared first words asked back, another tenant's creditors, unanswerable questions, hostile documents and lists of lapsing authorities. Wrong values, wrong versions or wrong creditors: 0. Citations outside the tenant: 0.
 
 ### Delivery
 

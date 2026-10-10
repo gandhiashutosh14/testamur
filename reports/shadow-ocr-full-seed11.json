@@ -1,0 +1,78 @@
+{
+  "meta": {
+    "commit": "6b2b49d",
+    "command": "testamur shadow --world data/world_full11 --report reports/shadow-ocr-full-seed11.md"
+  },
+  "results": [
+    {
+      "candidate": "fast",
+      "documents": 64,
+      "pages": 66,
+      "fields": 329,
+      "canonical_accuracy": 0.997,
+      "candidate_accuracy": 0.997,
+      "fields_lost": 0,
+      "fields_gained": 0,
+      "canonical_seconds_per_page": 1.83,
+      "candidate_seconds_per_page": 0.965,
+      "gate": {
+        "accuracy drop (points)": {
+          "value": 0.0,
+          "op": "<=",
+          "limit": 0.5,
+          "ok": true
+        },
+        "share of fields lost": {
+          "value": 0.0,
+          "op": "<=",
+          "limit": 0.01,
+          "ok": true
+        },
+        "speed-up": {
+          "value": 1.9,
+          "op": ">=",
+          "limit": 1.2,
+          "ok": true
+        }
+      },
+      "cutover_allowed": true,
+      "world_seed": 11,
+      "sample": 0.4
+    },
+    {
+      "candidate": "en-v4",
+      "documents": 64,
+      "pages": 66,
+      "fields": 329,
+      "canonical_accuracy": 0.997,
+      "candidate_accuracy": 0.8541,
+      "fields_lost": 47,
+      "fields_gained": 0,
+      "canonical_seconds_per_page": 1.812,
+      "candidate_seconds_per_page": 1.444,
+      "gate": {
+        "accuracy drop (points)": {
+          "value": 14.29,
+          "op": "<=",
+          "limit": 0.5,
+          "ok": false
+        },
+        "share of fields lost": {
+          "value": 0.1429,
+          "op": "<=",
+          "limit": 0.01,
+          "ok": false
+        },
+        "speed-up": {
+          "value": 1.25,
+          "op": ">=",
+          "limit": 1.2,
+          "ok": true
+        }
+      },
+      "cutover_allowed": false,
+      "world_seed": 11,
+      "sample": 0.4
+    }
+  ]
+}
