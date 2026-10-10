@@ -125,15 +125,18 @@ def evaluate(world: World, store: Store, engine: Engine, questions: list[dict]) 
     assistant = Assistant(engine)
     upload_of = _upload_map(world, store)
     owner_of = {u.id: u.truth.owner_creditor_id for u in world.uploads}
+    unread = _unread(store, upload_of)
     rows, by_type = [], defaultdict(Counter)
     for q in questions:
+        if q["type"] in ("field", "hostile") and (q["upload"], q["field"]) in unread:
+            q = {**q, "unreadable": True}         # the engine could not read the value: nothing settled to state
         a = assistant.ask(q["tenant"], q["question"])
         cited = [upload_of.get((q["tenant"], c.document_id)) for c in a.citations]
         ok, why = _grade(q, a, cited, owner_of)
         c = by_type[q["type"]]
         c["n"] += 1
         c["right"] += ok
-        if q["type"] in ("field", "hostile") and (q["unmatched"] or q["contradicted"]):
+        if q["type"] in ("field", "hostile") and (q["unmatched"] or q["contradicted"] or q.get("unreadable")):
             c["unsettled"] += 1
         elif q["type"] in ("field", "hostile"):
             c["cited_current"] += bool(cited) and all(u == q["upload"] for u in cited)
@@ -153,9 +156,10 @@ def evaluate(world: World, store: Store, engine: Engine, questions: list[dict]) 
 
 def _grade(q: dict, a, cited: list, owner_of: dict) -> tuple[bool, str]:
     t = q["type"]
-    if t in ("field", "hostile") and (q["unmatched"] or q["contradicted"]):
-        # the engine could not settle this one: the right answer says so, or answers from the evidence accepted so
-        # far with a warning that something newer is waiting; it never states an unsettled value as fact
+    if t in ("field", "hostile") and (q["unmatched"] or q["contradicted"] or q.get("unreadable")):
+        # the engine could not settle this one (not matched, two values, or a value it could not read): the right
+        # answer says so, or answers from the evidence accepted so far with a warning that something newer is
+        # waiting; it never states an unsettled value as fact
         if a.kind == "pending":
             return True, ""
         if a.kind == "field" and any("waiting for review" in w for w in a.warnings) and not q["contradicted"]:
@@ -191,6 +195,22 @@ def _grade(q: dict, a, cited: list, owner_of: dict) -> tuple[bool, str]:
         got = sorted([d, n] for d, n in (a.value or []) if n not in q["unsure"])
         return got == q["expect"], f"listed {got}, truth {q['expect']}"
     return False, "unknown question type"
+
+
+def _unread(store: Store, upload_of: dict[tuple[int, int], int]) -> set[tuple[int, str]]:
+    """(world upload, field) pairs the engine could not read: a matched document whose page states the field in a
+    form the strict parsers refuse (an OCR slip in a grouping, a garbled date). Measured by the harness; here only
+    so the assistant is not graded on reading what the engine itself could not."""
+    out = set()
+    with store.system() as s:
+        for d in s.scalars(select(Document).where(Document.state == "matched")):
+            u = upload_of.get((d.tenant_id, d.id))
+            if u is None:
+                continue
+            for name in ("valid_until", "amount_claimed"):
+                if name not in (d.fields or {}) and name not in (d.conflicts or {}):
+                    out.add((u, name))
+    return out
 
 
 def _upload_map(world: World, store: Store) -> dict[tuple[int, int], int]:

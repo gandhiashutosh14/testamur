@@ -117,12 +117,24 @@ def render() -> str:
                 " chance of drawing one)."]
         if rs50:
             b = rs50["accuracy"]
-            tripped = [t for t in b["tenants"] if t["tripped_after"]]
-            out[-1] += (f" At 50% ([report](reports/review-sim-full-seed11-audit50.md)), the breaker tripped in "
-                        f"{len(tripped)} of {sum(1 for t in b['tenants'] if t['false_pass_verdicts'])} affected tenants "
-                        f"(after {', '.join(str(t['tripped_after']) for t in tripped)} audits), false vouching fell "
-                        f"from {b['before'].get('false_vouching', 0)} to {b['after_audit'].get('false_vouching', 0)}, "
-                        f"and after the confirmations {b['final'].get('exact', 0)} of {b['pairs']} statuses were right.")
+            affected = [t for t in b["tenants"] if t["false_pass_verdicts"]]
+            tripped = [t for t in affected if t["tripped_after"]]
+            link = "[report](reports/review-sim-full-seed11-audit50.md)"
+            if tripped:
+                out[-1] += (f" At 50% ({link}), the breaker tripped in {len(tripped)} of {len(affected)} affected "
+                            f"tenants (after {', '.join(str(t['tripped_after']) for t in tripped)} audits), false "
+                            f"vouching fell from {b['before'].get('false_vouching', 0)} to "
+                            f"{b['after_audit'].get('false_vouching', 0)}, and after the confirmations "
+                            f"{b['final'].get('exact', 0)} of {b['pairs']} statuses were right.")
+            else:
+                miss = 1.0
+                for t in affected:
+                    miss *= 1 - b["detection_probability"]["50%"][str(t["tenant"])]
+                out[-1] += (f" At 50% ({link}) the sample still drew none of them, in any affected tenant: an outcome "
+                            f"with a {miss:.0%} chance at that rate, reported as it fell. The breaker did not trip, "
+                            f"and false vouching stayed at {b['after_audit'].get('false_vouching', 0)}: a breaker that "
+                            "has not tripped is not a pass, and the audit rate trades review effort against time to "
+                            "detection.")
     cal = _load("calibration-matching.json")
     if cal:
         rows = [f"down to {c['threshold']:g} at a {c['alpha']:.0%} wrong-attachment rate" for c in cal["calibration"]

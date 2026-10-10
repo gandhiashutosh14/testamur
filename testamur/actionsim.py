@@ -5,7 +5,7 @@ Each simulated day: the as-of date moves on and every status is recomputed (an a
 new upload); creditors with an open chase task answer with a renewed authority at a set daily rate; events are
 dispatched into tasks, reminders and holds; reminders are sent; webhook messages are delivered to a receiver that
 is down part of the time and sometimes loses its acknowledgement (so a message it did process is sent again). On
-day 2 the dispatcher is killed in the middle of an event, then restarted.
+the first dispatch the dispatcher is killed in the middle of an event, then restarted.
 
 Measured: the work created and closed, the reminders the cooldown suppressed, holds placed and released, webhook
 retries and the duplicates the receiver ignored, and the invariants the design promises: one event per status
@@ -71,6 +71,10 @@ def run(world_dir: str | Path, db: str | Path, days: int = 60, response_rate: fl
             totals["reminders_sent"] += send_reminders(store, t.id, now[0])
             totals.update(deliver(store, t.id, receivers[t.id], now[0]))
 
+    try:                                                          # the dispatcher dies inside an event, then restarts
+        dispatch(store, pack, world.tenants[0].id, now[0], fail_after=2)
+    except RuntimeError as exc:
+        crash = {"day": 0, "tenant": world.tenants[0].id, "error": str(exc)}
     work()
     for day in range(1, days + 1):
         now[0] += timedelta(days=1)
@@ -89,11 +93,6 @@ def run(world_dir: str | Path, db: str | Path, days: int = 60, response_rate: fl
                                     now[0], declared_creditor_id=e.creditor_id)
                 engine.process(t.id, uid)
                 renewals += 1
-        if day == 2:                                              # the dispatcher dies inside an event, then restarts
-            try:
-                dispatch(store, pack, world.tenants[0].id, now[0], fail_after=2)
-            except RuntimeError as exc:
-                crash = {"day": day, "tenant": world.tenants[0].id, "error": str(exc)}
         work()
         timeline.append({"day": day, "date": now[0].date().isoformat(), **_snapshot(store, world)})
     return {"days": days, "response_rate": response_rate, "outage": outage, "ack_loss": ack_loss, "seed": seed,
@@ -174,8 +173,10 @@ def render(r: dict, meta: dict) -> str:
             f"- At most one open hold per claim: {inv['max_open_holds_per_claim'] <= 1}.",
             "- Each webhook message processed once by the receiver: "
             + str(all(x["processed"] == x["unique"] for x in r["receivers"].values())) + ".",
-            f"- The dispatcher killed mid-event on day {r['crash']['day'] if r['crash'] else '-'} left no partial "
-            "work: the event was handled again from scratch on restart.", "",
+            ("- The dispatcher, killed in the middle of an event on the first dispatch, left no partial work: the "
+             "event was handled again from scratch on restart." if r["crash"] else
+             "- The dispatcher was not killed in this run: there was nothing to dispatch when it should have been."),
+            "",
             "## Over time", "", "| Day | Date | Open chases | Open follow-ups | Holds | Expired requirements |",
             "|---|---|---|---|---|---|"]
     for row in r["timeline"]:

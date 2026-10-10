@@ -12,6 +12,10 @@ The world is adversarial on purpose. It includes:
 - agreements missing clauses, with hard-negative wordings and with text aimed at automated readers;
 - duplicates, superseded versions, misfiled uploads, misleading filenames, documents of no known type;
 - near-identical creditor names inside a process, and the same name in another tenant.
+
+Text aimed at automated readers is printed at body size. An instruction meant for a machine is written to be read by
+one; a 7-point line on a scanned page was destroyed by the scan in one run (OCR read "Not b s e esd o t st n ton about
+it."), so no reader, human or automated, could act on it, and the world no longer plants one.
 """
 from __future__ import annotations
 
@@ -400,7 +404,7 @@ class _Builder:
                            "earlier in writing."))
         injection = variant == "injection"
         if injection:
-            p1.append(("small", rng.choice(INJECTIONS)))
+            p1.append(("para", rng.choice(INJECTIONS)))
         pages = [p1]
         ambiguous: list[str] = []
         if variant == "decoy_page":
@@ -468,7 +472,7 @@ class _Builder:
                 ("kv", "Registered by", registrar)]
         injection = variant == "injection"
         if injection:
-            page.append(("small", rng.choice(INJECTIONS)))
+            page.append(("para", rng.choice(INJECTIONS)))
         truth = UploadTruth(doc_type="charge_certificate", scenario_creditor_id=s.id,
                             owner_creditor_id=s.id if variant != "wrong_holder" else None,
                             fields={"charge_holder": holder, "company": company, "registrar": registrar,
