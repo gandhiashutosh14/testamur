@@ -49,6 +49,13 @@ Born-digital PDFs carry their text; reading it costs microseconds. Only pages wi
 (RapidOCR on ONNX Runtime, CPU), and every extraction is cached by content and extractor version. A re-index costs no
 OCR at all, and the harness measures that every run.
 
+Two corrections sit on top of the engine, both found by the generated world. The engine's per-line orientation step
+now and then turns an upright line upside down, and the recogniser then returns garbage with low confidence ("Aut s
+d s u st s fr s ss es." for a perfectly legible line); a line read with less than 0.8 confidence is read again from
+its own box, cut out along its slant and turned straight, without that step, and the more confident reading is kept.
+And a scan turned by two degrees drifts a long line by more than a line's height, so rows grouped by vertical overlap
+would merge neighbouring lines; rows are grouped with the page turned straight, by the median slope of the boxes.
+
 ### Classification: deterministic first
 A document type is recognised by its title and by the labels it always carries ("Name of the financial creditor",
 "Total amount of claim", "Date of default").

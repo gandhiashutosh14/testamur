@@ -90,7 +90,9 @@ flowchart LR
 
 1. **Store once.** Files are hashed per tenant; the same bytes uploaded again add an upload event, not a document.
 2. **Read cheaply.** Born-digital PDFs are read from their text layer; only image pages are OCR'd, once, and every
-   extraction is cached, so a re-index costs nothing.
+   extraction is cached, so a re-index costs nothing. A line the recogniser is unsure of is read again from its own
+   box turned straight, and a skewed scan's lines are grouped with the page turned straight, so neighbouring lines
+   never merge.
 3. **Classify by structure.** A proof of claim is recognised by its title and the labels it always carries, not by
    its filename. A model is asked only when the rules are ambiguous.
 4. **Read values strictly.** "Earlier authority valid until" is not the validity date. "Rs. 12,34,56,000/-",
