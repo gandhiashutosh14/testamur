@@ -228,6 +228,13 @@ def render() -> str:
                 row("Latency p50 / p95", lambda m: f"{m['p50_seconds']} s / {m['p95_seconds']} s"
                     if "p50_seconds" in m else "-"),
                 row("Tokens per case", lambda m: f"{m['tokens_per_case']:,}" if "tokens_per_case" in m else "-")]
+        for e in ho.get("earlier") or []:
+            single = e["summary"].get("single", {})
+            out += ["", f"An earlier {e['label']} on the same cases (commit `{e['commit']}`): one agent "
+                    f"{single.get('success', '?')} of {single.get('cases', '?')} right with "
+                    f"{single.get('false_pass', '?')} false PASS, the agents stopping by "
+                    + ", ".join(f"{k} {v}" for k, v in (single.get("stops") or {}).items())
+                    + (f". After it, {e['change']}." if e.get("change") else ".")]
         if faults:
             out += ["", f"Faults forced on purpose with a scripted model (a model timeout, an agent reaching outside "
                     f"its claim, approval of changed evidence, a decision delivered twice, a worker finishing after its "

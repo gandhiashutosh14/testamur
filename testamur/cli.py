@@ -648,7 +648,8 @@ def evaluate_report(results: list[str], cases: str = "evals/holdout/cases.yaml",
                        "summary": prior["summary"], "change": change[i] if i < len(change) else ""})
     rows = ev.faults(hs, work)
     meta = {"generated": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"), "commit": git_stamp(Path.cwd()),
-            "command": "testamur evaluate report " + " ".join(Path(p).name for p in results)}
+            "command": "testamur evaluate report " + " ".join(Path(p).name for p in results)
+            + "".join(f" --earlier {Path(p).name}" for p in earlier or [])}
     Path(report).write_text(ev.render(merged, meta, rows, before), encoding="utf-8", newline="\n")
     Path(data).write_text(json.dumps({**merged, "summary": ev.summarise(merged), "faults": rows,
                                       "earlier": before, "meta": meta}, indent=1), encoding="utf-8", newline="\n")

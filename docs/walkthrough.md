@@ -39,13 +39,15 @@ holders only: one of them, Shaurya Credit Private Limited, holds claim 1.
 authority for claim 1: COVERED_BY_TRUSTEE (document 47)
   [field   ] auth_creditor_matches        PASS    'Pratibhuti Trusteeship Services Ltd' matches 'Pratibhuti Trusteeship Services Ltd' (100)
              evidence p.1: Financial creditor: Pratibhuti Trusteeship Services Ltd
+  [field   ] auth_in_effect               PASS    in effect since 2025-12-05
+             evidence p.1: Effective from: 05/12/2025
   [field   ] auth_current                 PASS    2026-12-05 is on or after 2026-10-01
              evidence p.1: Valid until: 05.12.2026
   [field   ] auth_renewal_due             PASS    2026-12-05 is on or after 2026-10-31
              evidence p.1: Valid until: 05.12.2026
   [field   ] auth_issued_recently         PASS    dated 2025-11-27, 308 days ago
              evidence p.1: Date of issue: 27-Nov-2025
-  [field   ] auth_covers_voting           PASS    mentions 'vote'
+  [field   ] auth_covers_voting           PASS    grants it: 'To represent the creditor and vote in the committee of creditors'
              evidence p.1: Powers: To represent the creditor and vote in the committee of creditors
 ```
 
@@ -92,12 +94,15 @@ Vidarbha Cold Chain Ltd.
 
 **Reading.** A text layer, so no OCR at all. The title "FORM C" and the line "PROOF OF CLAIM BY FINANCIAL CREDITORS"
 match the type, all three key labels are there, and the filename helps a little: 1.1. The CIN, GSTIN and LEI on the
-form validate, and one creditor of this firm holds them: matched by identifier, the strongest kind of match.
+form validate, and one creditor of this firm holds them: matched by identifier, the strongest kind of match. The
+form names this process's corporate debtor, so it is evidence in this process and no other.
 
 ```
 proof_of_claim for claim 15: SATISFIED_WITH_FINDINGS (document 1)
   [metadata] received_by_due_date         PASS    received by the last date for claims
              evidence record: first received 2026-03-06
+  [field   ] claim_against_debtor         PASS    'Vidarbha Cold Chain Ltd' matches 'Vidarbha Cold Chain Ltd' (100)
+             evidence p.1: In the matter of: Vidarbha Cold Chain Ltd
   [field   ] claim_name_matches           PASS    'Aranya Motor Finance Services Ltd' matches 'Aranya Motor Finance Services Ltd' (100)
              evidence p.1: Name of the financial creditor: Aranya Motor Finance Services Ltd
   [field   ] claim_within_books           FAIL    Rs. 4,39,56,000 exceeds the books (Rs. 3,41,30,000)
@@ -135,11 +140,13 @@ Satpura Foundry Works Ltd. Page two is headed "AMENDMENT TO THE LETTER OF AUTHOR
 authority for claim 10: NEEDS_REVIEW (document 30)
   [field   ] auth_creditor_matches        PASS    'Bhavya Motor Finance Pvt Ltd' matches 'Bhavya Motor Finance Pvt Ltd' (100)
              evidence p.1: Financial creditor: Bhavya Motor Finance Pvt Ltd
+  [field   ] auth_in_effect               PASS    in effect since 2026-03-23
+             evidence p.1: Effective from: 23-03-2026
   [field   ] auth_current                 ABSTAIN the document states two different values: '23.03.2027' (page 1); '10-Jan-2027' (page 2)
   [field   ] auth_renewal_due             ABSTAIN the document states two different values: '23.03.2027' (page 1); '10-Jan-2027' (page 2)
   [field   ] auth_issued_recently         PASS    dated 2026-03-21, 194 days ago
              evidence p.1: Date of issue: 21-Mar-2026
-  [field   ] auth_covers_voting           PASS    mentions 'vote'
+  [field   ] auth_covers_voting           PASS    grants it: 'To attend and vote at meetings of the committee of creditors'
              evidence p.1: Powers: To attend and vote at meetings of the committee of creditors
 ```
 
