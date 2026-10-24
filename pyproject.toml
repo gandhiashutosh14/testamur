@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "testamur"
-version = "0.3.0"
+version = "0.4.0"
 description = "Verifying creditors' claims in India's corporate insolvency process: read messy claim documents, match them to the right creditor, check them at the cheapest tier that can decide, and never say PASS without evidence."
 readme = "README.md"
 license = { text = "MIT" }

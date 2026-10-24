@@ -452,6 +452,7 @@ class ModelCall(TenantScoped, Base):
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     tenant_id: Mapped[int] = mapped_column(_tenant_fk(), primary_key=True)
     model: Mapped[str] = mapped_column(String(120))
+    fingerprint: Mapped[str] = mapped_column(String(160), default="")    # the weights and runtime that answered
     response: Mapped[str] = mapped_column(Text)
     prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
     completion_tokens: Mapped[int] = mapped_column(Integer, default=0)

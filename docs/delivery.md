@@ -10,15 +10,17 @@ ways an agent that wrote it could be wrong.
 |---|---|---|
 | Lint | style and obvious mistakes | `ruff check` |
 | Tests | behaviour; a skipped test fails the run unless allow-listed with a reason; a full run that collects fewer tests than the floor fails | `pytest`, [`tests/conftest.py`](../tests/conftest.py) |
-| Mutation proof | that the safety tests can fail: 45 safety rules are broken on purpose, one at a time, and the suite must go red for each | [`scripts/prove_tests_fire.py`](../scripts/prove_tests_fire.py) |
-| Harness | the dangerous directions, on a generated world with ground truth: no false vouching, no critical false PASS, no wrong match, classification at least 95%, deferral at most 25%, every planted instruction detected, no model PASS on a hostile document, nothing paid twice on re-index | [`gates.yaml`](../gates.yaml) |
+| Mutation proof | that the safety tests can fail: each hand-picked safety rule (78 at v0.4) is broken on purpose, one at a time, and the suite must go red for each. A proof that those tests fire, not a mutation score for the codebase | [`scripts/prove_tests_fire.py`](../scripts/prove_tests_fire.py) |
+| Rule versions | that a check rule whose code changed has a new version, so people's decisions made under the old meaning stop applying | [`tests/test_rule_versions.py`](../tests/test_rule_versions.py) |
+| Harness | the dangerous directions, on a generated world with ground truth: no false vouching, no vote or payout permitted when the truth withholds it, no critical false PASS, no wrong match, classification at least 95%, deferral at most 25%, every planted instruction detected, no model PASS on a hostile document, nothing paid twice on re-index | [`gates.yaml`](../gates.yaml) |
 | Recorded model answers | the clause tier runs in CI from answers recorded on the CI platform; an answer that was not recorded fails the job instead of passing silently | `reports/cassettes/` |
 | Golden set | the assistant: right answers, no wrong value, version, entity or tenant | `testamur golden` |
 | The pipeline itself | actions pinned to commit hashes, no workflow input expanded into a shell, no credentials left on disk, valid workflow syntax | zizmor, actionlint |
 | One required check | `gate` runs always and passes only if every job above succeeded; a skipped job would otherwise report success to a required check | [`ci.yml`](../.github/workflows/ci.yml) |
 
 Branch protection should require `gate` and code-owner review; those are repository settings, not code, and are
-listed here so they are not forgotten.
+listed here so they are not forgotten. As of v0.4 they are not enforced on `main` (an external review checked): until
+they are, `gate` is the check a merge is held to by practice, not by the platform.
 
 ## Risk and review
 

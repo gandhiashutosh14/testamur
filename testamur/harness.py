@@ -163,6 +163,7 @@ def run(world_dir: str | Path, db_path: str | Path, model: ModelClient | None, *
             "command": command or " ".join(sys.argv), "world_seed": world.seed, "world_size": world.size,
             "as_of": world.as_of.isoformat(), "pack": pack.digest, "engine": engine.version,
             "model": getattr(model, "model_id", None) or "none", "model_mode": _model_mode(model),
+            "model_fingerprint": getattr(model, "fingerprint", None) if model is not None else None,
             "ocr": engine.extractor.version,
             "uploads": len(world.uploads), "python": sys.version.split()[0]}
     return Report(meta, metrics)
@@ -372,8 +373,10 @@ def render(r: Report) -> str:
            f"**{'PASSED' if r.passed else 'FAILED'}**: {sum(g['ok'] for g in r.gates)} of {len(r.gates)} gates. "
            f"Generated {meta['generated']} at commit `{meta['commit']}` with `{meta['command']}`.", "",
            f"Engine `{meta['engine']}`, OCR `{meta['ocr']}`, model `{meta['model']}`"
-           f"{' (answers replayed from a recording)' if meta.get('model_mode') == 'replay' else ''}, as-of date {meta['as_of']}, "
-           f"Python {meta['python']}. {meta['uploads']} uploads, {cl['documents']} distinct documents.", "",
+           + (f" (`{meta['model_fingerprint']}`)" if meta.get("model_fingerprint") else "")
+           + (" (answers replayed from a recording)" if meta.get("model_mode") == "replay" else "")
+           + f", as-of date {meta['as_of']}, Python {meta['python']}. {meta['uploads']} uploads, "
+           f"{cl['documents']} distinct documents.", "",
            "## Gates", "", "| Gate | Value | Limit | Result |", "|---|---|---|---|"]
     for g in r.gates:
         val = g["value"] if isinstance(g["value"], int) else round(float(g["value"]), 4)

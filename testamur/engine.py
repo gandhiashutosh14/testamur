@@ -22,6 +22,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from functools import lru_cache
 from pathlib import Path
 
 from sqlalchemy import delete, func, select, update
@@ -33,7 +34,7 @@ from .checks import TIME_RULES, CheckContext, evaluate
 from .extract import Extractor, sniff_mime
 from .match import covered, match
 from .model import CheckResult, Evidence, Extraction, FieldValue, Severity, Status, Tier, Verdict
-from .modeltier import CassetteMiss, ModelClient, Reply, call_key, judge, locate
+from .modeltier import CassetteMiss, ModelClient, Reply, call_key, fingerprint_of, judge, locate, quote_in
 from .pack import Pack, RequirementSpec
 from .status import decide
 from .store import (
@@ -63,6 +64,21 @@ from .store import (
 from .understand import Classification, Fields, classify, hostile_spans, identifiers, parse_value, read_fields
 
 NO_MODEL = "no model is configured for this check"      # retried every pass, so a model added later answers it
+
+# The code that turns evidence into verdicts and statuses. Its fingerprint is part of the engine version, which keys
+# cached verdicts and is bound into proposals: a change to any of it is a new engine, even with the same package
+# version (a person's decisions are bound to rule versions instead, and survive engine changes on purpose).
+_VERDICT_CODE = ("checks.py", "status.py", "engine.py", "understand.py", "match.py", "textnorm.py", "ids.py",
+                 "modeltier.py", "extract.py", "model.py", "pack.py")
+
+
+@lru_cache(maxsize=1)
+def code_digest() -> str:
+    h = hashlib.sha256()
+    for name in _VERDICT_CODE:
+        h.update(name.encode("utf-8"))
+        h.update((Path(__file__).parent / name).read_bytes().replace(b"\r\n", b"\n"))
+    return h.hexdigest()[:10]
 
 
 def _jsonable(value):
@@ -123,19 +139,24 @@ class _TenantCachedModel:
     def __init__(self, inner: ModelClient, session: Session, tenant_id: int, today: date):
         self.inner, self.session, self.tenant_id, self.today = inner, session, tenant_id, today
         self.model_id = inner.model_id
+        self.fingerprint = fingerprint_of(inner)
 
     def chat(self, messages: list[dict], max_tokens: int = 200) -> Reply:
         key = call_key(self.model_id, messages, max_tokens)
         row = self.session.get(ModelCall, {"key": key, "tenant_id": self.tenant_id})
-        if row is not None:
+        if row is not None and row.fingerprint == self.fingerprint:       # the same question to the same weights
             self.session.add(UsageRow(day=self.today, provider="model",
                                       units=row.prompt_tokens + row.completion_tokens, cached=True))
             return Reply(row.response, row.prompt_tokens, row.completion_tokens, 0.0, cached=True)
         estimate = len(json.dumps(messages)) / 4 + max_tokens          # checked before money is spent
         budget.check(self.session, self.tenant_id, "model", estimate, self.today)
         reply = self.inner.chat(messages, max_tokens)
-        self.session.add(ModelCall(key=key, model=self.model_id, response=reply.text, prompt_tokens=reply.prompt_tokens,
-                                   completion_tokens=reply.completion_tokens, seconds=reply.seconds))
+        if row is not None:                                               # other weights answered before: replaced
+            self.session.delete(row)
+            self.session.flush()
+        self.session.add(ModelCall(key=key, model=self.model_id, fingerprint=self.fingerprint, response=reply.text,
+                                   prompt_tokens=reply.prompt_tokens, completion_tokens=reply.completion_tokens,
+                                   seconds=reply.seconds))
         self.session.add(UsageRow(day=self.today, provider="model",
                                   units=reply.prompt_tokens + reply.completion_tokens, cached=reply.cached))
         self.session.flush()
@@ -150,7 +171,7 @@ class Engine:
         self.extractor = extractor or Extractor()
         self.model = model
         self.clock = clock                    # wall clock for budgets and usage; injectable for simulation
-        self.version = f"{__version__}+pack.{pack.digest}"
+        self.version = f"{__version__}+code.{code_digest()}+pack.{pack.digest}"
 
     # ------------------------------------------------------------------ intake
     def ingest(self, tenant_id: int, matter_id: int, filename: str, data: bytes, channel: str,
@@ -906,7 +927,11 @@ class Engine:
             return res(Verdict.ABSTAIN, f"model call failed: {type(exc).__name__}", transient=True)
         cost = {"model_calls": len(j.calls), "tokens": sum(c.prompt_tokens + c.completion_tokens for c in j.calls),
                 "cached_calls": sum(c.cached for c in j.calls)}
-        evidence = [Evidence(document_id=doc.id, quote=j.quote, source="model")] if j.quote else []
+        # the quote was verified against the located passages; it is cited on the page it is on (a quote that runs
+        # across a page break has no single page, and says so by having none)
+        page = next((p.number for p in ex.pages if quote_in(j.quote, "\n".join(line.text for line in p.lines))),
+                    None) if j.quote else None
+        evidence = [Evidence(document_id=doc.id, page=page, quote=j.quote, source="model")] if j.quote else []
         hint = spec.hint if j.verdict == "FAIL" else None
         return res(Verdict(j.verdict), j.reason, evidence=evidence, fix_hint=hint, cost=cost)
 

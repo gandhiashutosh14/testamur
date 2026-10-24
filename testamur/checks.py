@@ -416,6 +416,18 @@ def _both_signed(cid, rid, spec, ctx, p):
     return _result(cid, rid, spec, Verdict.FAIL, f"no signature found for: {', '.join(missing)}", ctx, evidence)
 
 
+# What each rule means, as a version. A person's decision about a check is bound to it (Pack.rule_digest), beside the
+# check's definition: change what a rule does and its version must move, so decisions made under the old meaning stop
+# applying. tests/test_rule_versions.py holds every rule's source fingerprint and fails when a rule's code changes
+# without its version moving. (Helpers every rule shares, like reading a value, are covered by the engine version.)
+RULE_VERSIONS = {
+    "received_by_due_date": 1, "channel_in": 1, "name_matches": 1, "money_at_least": 1, "money_within_record": 1,
+    "words_match_figures": 1, "date_not_before": 2, "in_effect": 1, "grants_power": 1, "date_covers": 1,
+    "within_days": 1, "in_allowlist": 1, "scope_mentions": 1, "gstin_checksum": 1, "pan_in_gstin": 1,
+    "ifsc_valid": 1, "matches_record": 1, "lei_checksum": 1, "both_signed": 1,
+    "clause_present": 1,             # the model tier's two-ordering judgement (modeltier.judge)
+}
+
 RULES = {
     "received_by_due_date": _received_by_due_date,
     "channel_in": _channel_in,

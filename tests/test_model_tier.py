@@ -2,6 +2,7 @@
 import json
 
 import pytest
+from sqlalchemy import select
 
 from testamur.modeltier import Cassette, CassetteMiss, Reply, judge, locate, quote_in
 
@@ -58,6 +59,57 @@ def test_locate_finds_the_clause_passage():
     lines[17] = "18. INTEREST. Interest accrues at 11.5 per cent per annum on the outstanding principal."
     picked = " ".join(locate(lines, "interest rate per cent per annum outstanding payable"))
     assert "INTEREST" in picked
+
+
+class Weights(Scripted):
+    """A scripted model with a fingerprint: the same name, other weights, is another model."""
+
+    def __init__(self, fingerprint, *answers):
+        super().__init__(*answers)
+        self.fingerprint = fingerprint
+
+
+def test_a_recording_made_by_other_weights_is_asked_again(tmp_path):
+    tape, msg = tmp_path / "c.jsonl", [{"role": "user", "content": "hello"}]
+    Cassette(tape, inner=Weights("gguf:aaaa", (1, REAL))).chat(msg)
+    same = Weights("gguf:aaaa", (2, ""))
+    assert Cassette(tape, inner=same).chat(msg).cached and same.calls == 0
+    other = Weights("gguf:bbbb", (2, ""))
+    reply = Cassette(tape, inner=other).chat(msg)                 # same file name, other weights: not reused
+    assert not reply.cached and other.calls == 1
+    assert Cassette(tape).fingerprint == "gguf:aaaa"              # replaying alone states what recorded it
+    assert json.loads(Cassette(tape).chat(msg).text)["statement"] == 2     # the newer recording replays
+
+
+def test_the_tenants_model_cache_answers_only_for_the_same_weights(env):
+    from testamur.engine import _TenantCachedModel
+    from testamur.store import ModelCall
+    world, store, engine = env
+    msg = [{"role": "user", "content": "which type?"}]
+    with store.tenant(1) as s:
+        first = Weights("gguf:aaaa", (1, REAL))
+        _TenantCachedModel(first, s, 1, world.as_of).chat(msg)
+        again = Weights("gguf:aaaa", (2, ""))
+        assert _TenantCachedModel(again, s, 1, world.as_of).chat(msg).cached and again.calls == 0
+        newer = Weights("gguf:bbbb", (2, ""))
+        assert not _TenantCachedModel(newer, s, 1, world.as_of).chat(msg).cached and newer.calls == 1
+        assert [r.fingerprint for r in s.query(ModelCall)] == ["gguf:bbbb"]
+
+
+def test_a_model_pass_cites_the_page_its_quote_is_on(env):
+    from testamur.model import Extraction, Line, Page
+    from testamur.store import Document
+    world, store, engine = env
+    engine.model = Weights("gguf:aaaa", (1, REAL), (2, REAL))
+    filler = [Line(text=f"{i}. The parties agree to the general terms set out in schedule {i}.", page=1)
+              for i in range(1, 9)]
+    ex = Extraction(pages=[Page(number=1, lines=filler),
+                           Page(number=2, lines=[Line(text="12. INTEREST. " + REAL, page=2)])],
+                    method="text_layer", engine_version="test")
+    with store.tenant(1) as s:
+        doc = s.scalars(select(Document).where(Document.hostile.is_(False))).first()
+        r = engine._model_check(s, 1, "clause_interest", "evidence_of_debt", doc, ex, {})
+    assert r.verdict == "PASS" and r.evidence[0].page == 2 and r.evidence[0].source == "model"
 
 
 def test_a_replay_only_cassette_fails_loudly_on_an_unrecorded_call(tmp_path):

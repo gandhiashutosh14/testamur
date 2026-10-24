@@ -42,7 +42,8 @@ class Reply:
 
 
 class ModelClient(Protocol):
-    model_id: str
+    model_id: str          # the name a call is keyed by
+    fingerprint: str       # what actually answers: the weights and runtime (a cached answer must come from the same)
 
     def chat(self, messages: list[dict], max_tokens: int = 200) -> Reply: ...
 
@@ -52,14 +53,34 @@ def call_key(model_id: str, messages: list[dict], max_tokens: int) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def fingerprint_of(model) -> str:
+    return getattr(model, "fingerprint", None) or model.model_id
+
+
 class LlamaCppClient:
-    """A local GGUF model through llama.cpp, on CPU. Deterministic at temperature 0 with a fixed seed."""
+    """A local GGUF model through llama.cpp, on CPU. Deterministic at temperature 0 with a fixed seed.
+
+    `fingerprint` names the exact weights (a SHA-256 of the GGUF file) and the runtime (llama-cpp-python's version,
+    the context size): the same file name with other weights, or another runtime, is another model."""
 
     def __init__(self, model_path: str, n_ctx: int = 4096, threads: int | None = None):
         self.model_path = model_path
         self.model_id = f"llama.cpp:{Path(model_path).name}"
         self._n_ctx, self._threads = n_ctx, threads or max(1, (os.cpu_count() or 2) - 2)
         self._llm = None
+        self._fingerprint: str | None = None
+
+    @property
+    def fingerprint(self) -> str:
+        if self._fingerprint is None:
+            from importlib.metadata import version
+            h = hashlib.sha256()
+            with open(self.model_path, "rb") as f:
+                for chunk in iter(lambda: f.read(8 << 20), b""):
+                    h.update(chunk)
+            self._fingerprint = f"gguf:{h.hexdigest()[:16]}|llama-cpp-python {version('llama-cpp-python')}|" \
+                                f"ctx {self._n_ctx}"
+        return self._fingerprint
 
     def chat(self, messages: list[dict], max_tokens: int = 200) -> Reply:
         if self._llm is None:
@@ -80,6 +101,8 @@ class OpenAICompatibleClient:
     def __init__(self, base_url: str, model: str, api_key: str | None = None, timeout: float = 120.0):
         self.base_url, self.model, self.api_key, self.timeout = base_url.rstrip("/"), model, api_key, timeout
         self.model_id = f"openai-compatible:{model}"
+        # a remote server's weights cannot be inspected from here: the endpoint and model name are what is known
+        self.fingerprint = f"endpoint:{self.base_url}|{model}"
 
     def chat(self, messages: list[dict], max_tokens: int = 200) -> Reply:
         body = json.dumps({"model": self.model, "messages": messages, "temperature": 0, "max_tokens": max_tokens,
@@ -101,12 +124,16 @@ class CassetteMiss(RuntimeError):
 
 
 class Cassette:
-    """Records model calls to a JSON-lines file and replays them. In CI it runs replay-only."""
+    """Records model calls to a JSON-lines file and replays them. In CI it runs replay-only.
+
+    Each record carries the fingerprint of the model that answered. Replaying with a live model, a record made by
+    other weights or another runtime is not reused: the question is asked again and the new answer recorded. Replaying
+    alone, the cassette's own fingerprint is the provenance reports state."""
 
     def __init__(self, path: str | Path, inner: ModelClient | None = None, model_id: str | None = None):
         self.path = Path(path)
         self.inner = inner
-        self.model_id = inner.model_id if inner else (model_id or self._recorded_model())
+        self.model_id = inner.model_id if inner else (model_id or self._recorded("model", "cassette:empty"))
         self._tape: dict[str, dict] = {}
         if self.path.exists():
             for line in self.path.read_text(encoding="utf-8").splitlines():
@@ -114,23 +141,28 @@ class Cassette:
                     rec = json.loads(line)
                     self._tape[rec["key"]] = rec
 
-    def _recorded_model(self) -> str:
+    def _recorded(self, field_name: str, default: str) -> str:
         if self.path.exists():
             first = self.path.read_text(encoding="utf-8").splitlines()[:1]
             if first:
-                return json.loads(first[0])["model"]
-        return "cassette:empty"
+                return json.loads(first[0]).get(field_name) or default
+        return default
+
+    @property
+    def fingerprint(self) -> str:
+        return fingerprint_of(self.inner) if self.inner else self._recorded("fingerprint", "not recorded")
 
     def chat(self, messages: list[dict], max_tokens: int = 200) -> Reply:
         key = call_key(self.model_id, messages, max_tokens)
-        if key in self._tape:
-            rec = self._tape[key]
+        rec = self._tape.get(key)
+        if rec is not None and (self.inner is None or rec.get("fingerprint") == fingerprint_of(self.inner)):
             return Reply(rec["text"], rec["prompt_tokens"], rec["completion_tokens"], 0.0, cached=True)
         if self.inner is None:
             raise CassetteMiss(f"no recorded answer for call {key[:12]} on {self.model_id}")
         reply = self.inner.chat(messages, max_tokens)
-        rec = {"key": key, "model": self.model_id, "text": reply.text, "prompt_tokens": reply.prompt_tokens,
-               "completion_tokens": reply.completion_tokens, "seconds": round(reply.seconds, 3)}
+        rec = {"key": key, "model": self.model_id, "fingerprint": fingerprint_of(self.inner), "text": reply.text,
+               "prompt_tokens": reply.prompt_tokens, "completion_tokens": reply.completion_tokens,
+               "seconds": round(reply.seconds, 3)}
         self._tape[key] = rec
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as f:

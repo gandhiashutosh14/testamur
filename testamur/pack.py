@@ -116,11 +116,12 @@ class ActionPolicy(BaseModel):
     """What a finding turns into (see actions.py). The first workflow automated is the chase for a creditor's lapsing
     authority: frequent, triggered by a rule (a date), and reversible (a reminder and a task). A withheld permission
     (`hold_permissions`) puts the claim on hold for that action until the evidence permits it."""
-    chase_requirements: list[str] = Field(default_factory=lambda: ["authority"])
+    # domain-neutral defaults: what to chase and what to hold is the pack's to say
+    chase_requirements: list[str] = Field(default_factory=list)
     chase_statuses: list[str] = Field(default_factory=lambda: ["MISSING", "EXPIRED", "NOT_SATISFIED"])
-    chase_findings: list[str] = Field(default_factory=lambda: ["auth_renewal_due"])
+    chase_findings: list[str] = Field(default_factory=list)
     follow_up_statuses: list[str] = Field(default_factory=lambda: ["MISSING", "EXPIRED", "NOT_SATISFIED"])
-    hold_permissions: list[str] = Field(default_factory=lambda: ["vote", "payout"])
+    hold_permissions: list[str] = Field(default_factory=list)
     notify_cooldown_days: int = 7
     task_due_days: dict[str, int] = Field(default_factory=lambda: {"critical": 2, "high": 3, "standard": 5,
                                                                    "low": 7})
@@ -129,13 +130,14 @@ class ActionPolicy(BaseModel):
 class Pack(BaseModel):
     name: str
     version: int
-    registrar_offices: list[str]
-    bank_codes: dict[str, str]
     doc_types: dict[str, DocTypeSpec]
     checks: dict[str, CheckSpec]
     requirements: dict[str, RequirementSpec]
-    asset_terms: dict[str, list[str]]
     injection_markers: list[str]
+    # tables some rules read; a pack whose checks do not use those rules leaves them out
+    registrar_offices: list[str] = Field(default_factory=list)
+    bank_codes: dict[str, str] = Field(default_factory=dict)
+    asset_terms: dict[str, list[str]] = Field(default_factory=dict)
     permissions: dict[str, PermissionSpec] = Field(default_factory=dict)
     audit: AuditPolicy = Field(default_factory=AuditPolicy)
     actions: ActionPolicy = Field(default_factory=ActionPolicy)
@@ -175,10 +177,13 @@ class Pack(BaseModel):
         return next(rid for rid, r in self.requirements.items() if check_id in r.checks)
 
     def rule_digest(self, check_id: str) -> str:
-        """What a check means: its definition (not its wording for people) and the pack tables its rule reads."""
+        """What a check means: its definition (not its wording for people), the pack tables its rule reads, and the
+        version of the rule's own meaning (checks.RULE_VERSIONS)."""
+        from .checks import RULE_VERSIONS
         spec = self.checks[check_id]
         tables = {t: getattr(self, t) for t in RULE_TABLES.get(spec.rule, ())}
-        raw = json.dumps({"check": spec.model_dump(mode="json", exclude=DESCRIPTIVE), "tables": tables}, sort_keys=True)
+        raw = json.dumps({"check": spec.model_dump(mode="json", exclude=DESCRIPTIVE), "tables": tables,
+                          "rule_version": RULE_VERSIONS.get(spec.rule)}, sort_keys=True)
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
 
 
@@ -190,7 +195,12 @@ def pack_digest(raw: bytes) -> str:
 
 @lru_cache(maxsize=8)
 def load_pack(name: str = "insolvency_claims") -> Pack:
-    raw = (PACKS / name / "pack.yaml").read_bytes()
+    return load_pack_file(PACKS / name / "pack.yaml")
+
+
+def load_pack_file(path: str | Path) -> Pack:
+    """A pack from any file: another domain is another file, read by the same engine."""
+    raw = Path(path).read_bytes()
     pack = Pack.model_validate(yaml.safe_load(raw))
     pack.digest = pack_digest(raw)
     return pack

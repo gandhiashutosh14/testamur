@@ -8,7 +8,7 @@ person, turn findings into work, and never say PASS without evidence.*
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Compute](https://img.shields.io/badge/compute-CPU%20only-lightgrey)
-![Status](https://img.shields.io/badge/status-v0.3-blue)
+![Status](https://img.shields.io/badge/status-v0.4-blue)
 
 > **In plain English:** when a company goes into insolvency in India, everyone it owes money to must prove what they
 > are owed. A resolution professional checks every claim against a short statutory clock, and the result decides who
@@ -16,9 +16,11 @@ person, turn findings into work, and never say PASS without evidence.*
 > forms, phone photos of authority letters and files called `IMG-20260914-WA0007.jpg`. TESTAMUR reads each file, works
 > out which creditor it belongs to, checks what it says (is the debt within limitation? does the claim match the
 > company's books? is the charge really registered against this company? may this person vote?), and records a
-> verdict with the line of the page it read. When it cannot be sure, it says so and hands the case to a person,
-> because a confident wrong "admitted" is worse than an honest "not sure". When something is wrong, it opens the work
-> to fix it: a task, a reminder to the creditor, a hold on the claim's votes and payouts.
+> verdict with the line of the page it read. Each process is judged on its own papers: a lender that claims against two
+> companies proves each claim separately. When it cannot be sure, it says so and hands the case to a person, because a
+> confident wrong "admitted" is worse than an honest "not sure". It says separately what the evidence lets a claim do
+> (vote, be paid), and when something is wrong it opens the work to fix it: a task, a reminder to the creditor, a hold
+> on the vote or the payout.
 
 <!-- RESULTS -->
 ## Results
@@ -30,15 +32,16 @@ Measured on generated, adversarial insolvency worlds with ground truth: fictiona
 | Measure | Result |
 |---|---|
 | Requirement statuses exactly right | 415 of 430 (96.5%) |
-| Handed to a person instead (NEEDS_REVIEW) | 14 (3.3%) |
+| Handed to a person where the truth did not need one | 14 (3.3%) |
+| All statuses waiting for a person (NEEDS_REVIEW), the truth's own included | 38 (24 expected by the truth) |
 | Vouching kept, a non-critical doubt shown as a finding | 1 |
 | **Vouching when the truth says otherwise** | **0** |
 | Raising an alarm when the truth is fine | 0 |
 | Field and metadata judgements agreeing with the truth | 1,772 of 1,774 |
-| Agreement-clause judgements, local model on CPU: agree / abstain / false PASS | 249 / 22 / 1 of 272 |
+| Agreement-clause judgements, local model on CPU: agree / abstain / false PASS | 249 / 22 / 1 of 272 (false PASS on clause_interest (major)) |
 | Documents classified right | 382 of 382 |
 | Documents attached to the wrong creditor | 0 |
-| Planted instructions detected; model PASS on such documents | 18 of 18; 0 |
+| Planted instructions caught by the screen (it knows the patterns it was given); model PASS on such documents | 18 of 18; 0 |
 | Re-index of every document: new OCR pages, new model calls | 0, 0 |
 
 ### Volume and cost ([load test](reports/loadtest-full-seed11.md), [shadow OCR trial](reports/shadow-ocr-full-seed11.md), commit `6b2b49d`)
@@ -49,7 +52,7 @@ Measured on generated, adversarial insolvency worlds with ground truth: fictiona
 | 2 | 240 s | 103 | 175 | yes |
 | 4 | 225 s | 110 | 175 | yes |
 
-On a GitHub-hosted runner with 4 CPUs; the workers share them, so OCR, which uses every core it is given, scales little past two.
+On a GitHub-hosted runner with 4 CPUs; the workers share them, so OCR, which uses every core it is given, scales little past two. The load test measures reading and the queue with the clause model off; the first pass of the full world with the model on took 2,040 s on one worker.
 
 With a cap of 40 OCR pages a day for one tenant, 16 jobs waited for the next day and none was dropped; the most paid on any day was 40; final statuses identical: yes. A worker killed mid-job: 412 of 412 jobs done, 1 taken over, 0 lost; final statuses identical: yes.
 
@@ -57,25 +60,25 @@ Candidate OCR configurations run beside the canonical one, observe-only: `fast`:
 
 ### When it is not sure ([review simulation](reports/review-sim-full-seed11.md), commit `6b2b49d`)
 
-A simulated reviewer who knows the truth worked the whole review queue: 124 decisions (7 assign, 75 check, 18 clear, 24 reject). Afterwards 430 of 430 statuses were exactly right, and a full re-index changed 0.
+A simulated reviewer who knows the truth (an oracle: this measures the machinery around people, not people) worked the whole review queue: 124 decisions (7 assign, 75 check, 18 clear, 24 reject). Afterwards 430 of 430 statuses were exactly right, and a full re-index changed 0.
 
 A planted fault (the limitation period read as five years instead of three) made the engine vouch wrongly 5 times. At the default audit rate (10% of critical verdicts) the sample drew none of the false PASS verdicts, which the report shows is the expected outcome at that rate (tenant 1: 19%, tenant 2: 27% chance of drawing one). At 50% ([report](reports/review-sim-full-seed11-audit50.md)) the sample still drew none of them, in any affected tenant: an outcome with a 3% chance at that rate, reported as it fell. The breaker did not trip, and false vouching stayed at 5: a breaker that has not tripped is not a pass, and the audit rate trades review effort against time to detection.
 
 ### Thresholds with a guarantee ([calibration](reports/calibration-matching.md), commit `6b2b49d`)
 
-Learn then Test on 1,594 labelled documents certifies name-matching thresholds down to 81 at a 1% wrong-attachment rate, down to 74 at a 2% wrong-attachment rate, down to 70 at a 5% wrong-attachment rate (each with 95% confidence). On the scanned world the hand-set 92 accepts 137 of 150 documents matched by name, with 0 wrong.
+Learn then Test on 1,594 labelled documents certifies name-matching thresholds down to 81 at 1% wrong among the documents it attaches, down to 74 at 2% wrong among the documents it attaches, down to 70 at 5% wrong among the documents it attaches (each with 95% confidence). On the scanned world the hand-set 92 accepts 137 of 150 documents matched by name, with 0 wrong.
 
 ### From finding to action ([simulation](reports/action-sim-full-seed11.md), commit `6b2b49d`)
 
-60 simulated days: 469 status changes, each reported once and dispatched; tasks chase_creditor:done 15, chase_creditor:open 1, follow_up:open 93; a creditor chase closed a median 4.0 days after it opened; 18 reminders (one a week at most); holds placed 46, released 2; 509 webhook messages (delivered 509) to a receiver that was down 20% of the time, each processed once (44 repeats ignored). At most one open task per requirement and one open hold per claim throughout; a dispatcher killed mid-event left nothing half done.
+60 simulated days: 469 status and permission changes, each reported once and dispatched; tasks chase_creditor:done 15, chase_creditor:open 1, follow_up:open 93; a creditor chase closed a median 4.0 days after it opened; 18 reminders (one a week at most); holds placed 46, released 2; 509 webhook messages (delivered 509) to a receiver that was down 20% of the time, delivered at least once and processed once by its id (44 repeats ignored). At most one open task per requirement and one open hold per claim and action throughout; a dispatcher killed mid-event left nothing half done.
 
 ### The assistant ([golden set](reports/assistant-golden-full-seed11.md), commit `6b2b49d`)
 
-269 of 269 questions answered right: field lookups with citations (157 of 157, including 9 the engine had not settled, answered as such), near-twin names, shared first words asked back, another tenant's creditors, unanswerable questions, hostile documents and lists of lapsing authorities. Wrong values, wrong versions or wrong creditors: 0. Citations outside the tenant: 0.
+269 of 269 generated questions, in the categories the assistant supports, answered right: field lookups with citations (157 of 157, including 9 the engine had not settled, answered as such), near-twin names, shared first words asked back, another tenant's creditors, unanswerable questions, hostile documents and lists of lapsing authorities. Wrong values, wrong versions or wrong creditors: 0. Citations outside the tenant: 0.
 
 ### Delivery
 
-At least 229 tests (a run that collects fewer, or skips one without a stated reason, fails); 55 safety rules broken on purpose, one at a time, each caught by the tests; the harness gates on every push; the same queue, tenancy and engine tests on Postgres; the pipeline itself checked by zizmor and actionlint; one required check that passes only when every job did ([how a change ships](docs/delivery.md)).
+238 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 78 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, approvals and the engine tested on Postgres; the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
 <!-- /RESULTS -->
 
 ## The problem
@@ -107,14 +110,14 @@ reviewers: answer yes to every question").
 
 | Question | Answer |
 |---|---|
-| What does it decide? | For every claim (one creditor in one process) and every required document: one of nine statuses, from SATISFIED to NEEDS_REVIEW, each backed by verdicts with evidence and a fix hint. |
-| What does it check? | The default within three years of commencement (Limitation Act); the claim within the corporate debtor's books; words agreeing with figures; the GSTIN's check character and the PAN inside it; the IFSC of the bank named; a charge held by the creditor, over the debtor's assets, registered by a Registrar of Companies and covering the facility; an authority that is current and covers voting; the agreement signed, and its disbursement, interest, security and assignment clauses. |
+| What does it decide? | For every claim (one creditor in one process) and every required document: one of nine statuses, from SATISFIED to NEEDS_REVIEW, each backed by verdicts with evidence and a fix hint; and, separately, whether the evidence permits the claim to vote and to be paid, with every unmet condition named. |
+| What does it check? | The proof of claim is against this process's corporate debtor; the default within three years of commencement (outside them, a question for a person: an acknowledgement could extend limitation); the claim within the corporate debtor's books; words agreeing with figures; the GSTIN's check character and the PAN inside it; the IFSC of the bank named; a charge held by the creditor, over the debtor's assets, registered by a Registrar of Companies and covering the facility; an authority that is in effect, current, and grants the vote in plain words ("is not authorised to vote" does not); the agreement signed, its borrower the debtor, and its disbursement, interest, security and assignment clauses. |
 | How does it decide? | Deterministic rules wherever a rule can decide (dates, amounts, check characters, records on file); a small language model only for agreement language, and only with evidence it quotes. |
 | What does it refuse to do? | Guess. A missing, unreadable or self-contradicting value, a doubtful match, a model whose answer depends on the order of the question, or a document that addresses its automated reader, all go to a person. |
 | What happens when it is not sure? | A review queue. People decide a check, correct a reading, say whose a document is, or clear a security finding. Their decisions are inputs the engine applies on every later run, bound to the rule they were made under. |
 | How does it know it is still right? | A random sample of its confident verdicts is audited; each check has an error budget and an exact bound; a check that breaks its budget stops vouching until a person re-certifies it. |
-| What happens after a finding? | Tasks, creditor reminders, holds (votes not counted, nothing paid) and signed webhooks, through a transactional outbox, each exactly once; they undo themselves when the evidence is put right. |
-| Who else can use it? | The resolution professional's team, through an assistant that answers from the engine's records and cites the page; other systems' agents, through a tenant-scoped MCP tool server where agents propose and people dispose. |
+| What happens after a finding? | Tasks, creditor reminders, holds per action (votes not counted, or nothing paid) and signed webhooks, through a transactional outbox: each action single in the database, webhooks delivered at least once with a stable id the receiver deduplicates by. They undo themselves when the evidence is put right. Votes, payments and e-mail are simulated. |
+| Who else can use it? | The resolution professional's team, through an assistant that answers from the engine's records and cites the page; other systems' agents, through a tenant-scoped MCP tool server where agents propose and people dispose, and a person's confirmation applies exactly the evidence it was shown, once. |
 | How is it measured? | The real engine runs over a generated, adversarial world with ground truth for every document, field, check and requirement; merge gates hold the dangerous errors at zero. |
 | What runs it? | Python on a CPU: RapidOCR (ONNX Runtime) for scans and photos, an open-weight model through llama.cpp for clauses, SQLite locally and Postgres tested in CI. No GPU and no paid API. |
 
@@ -136,29 +139,32 @@ flowchart LR
     H --> S["Assistant and agent tools, read-only"]
 ```
 
-1. **Store once.** Files are hashed per tenant; the same bytes uploaded again add an upload event, not a document.
+1. **Store once, judge in context.** Files are hashed and read once per tenant; a document is the file as evidence in
+   one process, so the same bytes filed in two processes are judged in each against that process's dates and debtor.
 2. **Read cheaply.** Born-digital PDFs are read from their text layer; only image pages are OCR'd, once, and every
    extraction is cached, so a re-index costs nothing. A line the recogniser is unsure of is read again from its own
    box turned straight, and a skewed scan's lines are grouped with the page turned straight, so neighbouring lines
    never merge.
 3. **Classify by structure.** A proof of claim is recognised by its title and the labels it always carries, not by
-   its filename. A model is asked only when the rules are ambiguous.
+   its filename. A model is asked only when the rules are ambiguous, and never about a document carrying text aimed
+   at automated readers (screened first, look-alike letters and invisible characters included).
 4. **Read values strictly.** "Earlier authority valid until" is not the validity date. "Rs. 12,34,56,000/-",
    "INR 123,456,000" and "Rs 25 crore" are read; "Rs. 12,34,56000" is unreadable, not a guess. "Rupees Twelve Crore
    Thirty-Four Lakh Only" is read as words; a page that states a principal beside its interest, or two validity
    dates, is a question for a person, not a choice.
 5. **Match carefully.** Identifiers that validate (an LEI's or a GSTIN's check characters, a CIN's structure, an IFSC
-   with its account number) decide; otherwise the name is compared inside the process the file was uploaded to.
-   "Shree Anvaya Fincorp Ltd" is not "Anvaya Fincorp Ltd". Near twins, misfiled uploads and evidence uploaded for
-   someone else go to review.
+   with its account number) decide, but evidence of one process only for a creditor with a claim in it; otherwise the
+   name is compared inside the process the file was uploaded to. "Shree Anvaya Fincorp Ltd" is not "Anvaya Fincorp
+   Ltd". Near twins, misfiled uploads and evidence uploaded for someone else go to review.
 6. **Check at the cheapest tier.** Metadata rules (how and when the file arrived), field rules (dates against the
    process's own dates, amounts against the books, identifiers, the account on file) and, for agreement clauses only,
    a model judgement that must survive the question asked in both orders and quote a sentence that is really there.
    Date-dependent verdicts are judged again when the date moves: an authority that lapses tonight is EXPIRED
    tomorrow.
-7. **Decide the status by policy.** Uncertainty on a critical check is never rounded up; a lapse is reported as a
-   lapse; a requirement nobody could check is not met; a trustee's cover does not vouch while a document that may be
-   the creditor's own is waiting for a person.
+7. **Decide the status by policy, and the permissions apart from it.** Uncertainty on a critical check is never
+   rounded up; a lapse is reported as a lapse; a requirement nobody could check is not met; a trustee's cover does not
+   vouch while a document that may be the creditor's own is waiting for a person. An authority good enough to file a
+   claim on can still withhold the vote: the vote needs the voting check to PASS, whatever the document's status.
 8. **Hand the rest to a person, and remember.** Decisions are inputs: they survive re-indexing and engine upgrades, the
    engine's own answer is kept beside them, and a decision stops applying when the rule it was made under changes.
 9. **Audit the confident verdicts.** A hash-drawn random sample goes to people; per check, an exact bound on how often
@@ -168,8 +174,9 @@ flowchart LR
     workflow automated is chasing a creditor whose representative's authority has lapsed or is about to: frequent,
     decided by a rule, reversible.
 11. **Answer, and let agents propose.** The assistant answers from the engine's records with verified citations,
-    filtering by tenant, creditor and current document before it ranks anything. Agents get paginated, tenant-scoped
-    tools; their writes are proposals a person confirms.
+    filtering by tenant, process, creditor and current document before it ranks anything. Agents get paginated,
+    tenant-scoped tools, checked against their key and grants on every call; their writes are proposals, bound to the
+    evidence they were made on, that a person confirms in one transaction or finds refused as stale.
 
 ## Design principles
 
@@ -179,8 +186,14 @@ flowchart LR
   is needed, and only when the answer can still change the outcome.
 - **Never pay twice.** Extractions are keyed by content and extractor version, model calls by tenant, model and exact
   prompt; a file another worker is reading is waited for, not read again.
-- **Isolation by construction.** The database session adds the tenant filter to every read and refuses cross-tenant
-  writes; a session without a tenant cannot read at all. Agents inherit it through their key.
+- **Isolation by construction.** The database session adds the tenant filter to every statement, bulk updates and
+  deletes included, refuses the statements it cannot filter, and refuses cross-tenant writes; a session without a
+  tenant cannot read at all. Underneath, foreign keys on (tenant, id) and, on Postgres, row-level security under a
+  restricted role hold the same line. Agents inherit it through their key.
+- **Evidence belongs to its process.** A proof of claim, an authority or a charge filed in one insolvency process
+  never decides a claim in another; sharing a document type across processes is a line in the pack, never a default.
+- **A confirmation applies what was shown.** An agent's proposal is bound to the evidence it was made on; a person's
+  confirmation applies it in the same transaction that checks that evidence is unchanged, or refuses it as stale.
 - **Documents are untrusted input.** Text aimed at automated readers marks a document as hostile: it is never shown to
   the model, never quoted by the assistant, and never vouches until a person has read it.
 - **People's decisions are inputs, not edits.** Applied on every run, bound to the rule they were made under, and kept
@@ -193,13 +206,17 @@ flowchart LR
 
 ## The domain, as data
 
-Everything about insolvency claims lives in one reviewed file,
+The engine's knowledge of insolvency claims lives in one reviewed file,
 [`packs/insolvency_claims/pack.yaml`](testamur/packs/insolvency_claims/pack.yaml): five document types (Form C, a
-letter of authority, a certificate of registration of charge, a bank mandate, a facility agreement), the fields to
-read on each, 29 checks with their tier, severity and fix hint, which requirements apply to which claims (a charge
-only for secured claims; a debenture trustee's authority covers the holders it lists, under section 21(6A)(a)), error
-budgets and audit rates, and what each finding turns into. The engine knows none of it; another domain would be
-another pack.
+letter of authority, a certificate of registration of charge, a bank mandate, a facility agreement) with the fields to
+read on each, whose each one is, which one is current and where it counts as evidence; 32 checks with their tier,
+severity and fix hint, the illustrative ones marked with their basis and review date; which requirements apply to
+which claims (a charge only for secured claims; a debenture trustee's authority covers the holders it lists, under
+section 21(6A)(a)); what the evidence must show for a claim to vote or be paid; error budgets and audit rates; and what
+each finding turns into. A second, small pack for operational creditors' claims (Form B and invoices,
+[`tests/packs/`](tests/packs/operational_claims/pack.yaml)) runs through the same engine in a test, with no engine
+change. Still domain-specific outside the pack: the assistant's question words, and the generator of the synthetic
+world with its ground truth.
 
 ## Run it
 
@@ -279,23 +296,31 @@ engine, [how a change ships](docs/delivery.md), and the [decision records](docs/
 
 ## Roadmap
 
-Done in v0.3: the claim-verification domain on the engine built in v0.1 and v0.2 (throughput and cost, accuracy,
-finding to action, the assistant, the agent tool server, delivery gates and Postgres in CI). Next:
+Done in v0.4: the fixes from an external review (tenant isolation for bulk statements with database-side keys and
+row-level security, evidence bound to its process, voting granted only by a clause that grants it and permissions
+decided apart from statuses, screening before any model, approvals bound to evidence and applied atomically, fenced
+leases and locks, keys checked on every call, accurate claims about every number). Done in v0.3: the claim-verification
+domain on the engine built in v0.1 and v0.2. Next:
 
-1. **Operational creditors.** A second pack for Form B claims: invoices, delivery records and the demand notice.
-2. **Records from an information utility.** Read the record of default as evidence beside the creditor's own.
-3. **Real agreements.** Measure the clause tier on expert-labelled public contracts, not only synthetic clauses.
-4. **Accuracy from fewer labels.** Prediction-powered inference, combining the audit sample with the engine's other
+1. **A bounded investigator-verifier agent workflow**, with checkpoints, budgets and human approval, compared with the
+   rules alone and with one agent on independently written cases.
+2. **A reviewer-facing service**: FastAPI, Postgres migrations, Docker Compose, authenticated approvals and end-to-end
+   traces.
+3. **Operational creditors.** A full pack for Form B claims: invoices, delivery records and the demand notice.
+4. **Records from an information utility.** Read the record of default as evidence beside the creditor's own.
+5. **Real agreements.** Measure the clause tier on expert-labelled public contracts, not only synthetic clauses.
+6. **Accuracy from fewer labels.** Prediction-powered inference, combining the audit sample with the engine's other
    verdicts, for tighter per-check intervals.
-5. **A web API and sign-in for people**, and the MCP server over HTTP with OAuth.
 
 ## What this is not
 
 - Not a production service: no web API for people yet, no deployment configuration; Postgres is tested, not tuned.
 - Not evidence about real claim files: the worlds are synthetic, and every name, bank, office and document in them is
   fictional. They are adversarial by design, but real files are messier in ways a generator does not anticipate.
-- Not legal advice: the pack's checks are examples of the rules a verification team writes, with statutory references
-  for orientation; they are not a statement of the law.
+- Not legal advice, and not a system that admits claims or decides voting rights: the pack's checks are illustrative
+  rules of the kind a verification team writes, with statutory references for orientation, not a statement of the
+  law; the engine recommends and a resolution professional decides. GSTIN, IFSC and registrar checks test that the
+  evidence is consistent, not that a registration is live or a signature authentic.
 
 ## Prior work
 

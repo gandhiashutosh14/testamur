@@ -37,6 +37,12 @@
   why: '"save for" withholds the vote'
   lines: ["Powers: To represent the creditor in every matter save for voting"]
   expect: FAIL
+- id: assets-named-only-to-exclude-them
+  doc_type: charge_certificate
+  check: charge_covers_assets
+  why: the charge names the working-capital facility's assets only to exclude them
+  lines: ["Assets charged: All movable fixed assets of the company, excluding stock and book debts"]
+  expect: ABSTAIN
 - id: not-authorised-to-vote
   check: auth_covers_voting
   why: the external review's case; the word "vote" is there, the grant is not
