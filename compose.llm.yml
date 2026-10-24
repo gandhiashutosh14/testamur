@@ -1,0 +1,40 @@
+# The agents with a live model: an open-weight model served by llama.cpp on the CPU, and the stack pointed at it.
+#
+#   docker compose -f docker-compose.yml -f compose.llm.yml up --build
+#
+# The first start downloads the model (Qwen3-4B-Instruct-2507, Q4_K_M, about 2.5 GB) into a volume. On a laptop CPU an
+# investigation takes several minutes; the review page refreshes while the agents work. Not exercised in CI, which
+# runs the stack without a model and measures the agents on GitHub's runners instead (measure.yml, suite holdout).
+services:
+  llm:
+    image: ghcr.io/ggml-org/llama.cpp:server-b11312
+    command: ["--hf-repo", "unsloth/Qwen3-4B-Instruct-2507-GGUF", "--hf-file", "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+              "--host", "0.0.0.0", "--port", "8080", "--ctx-size", "16384", "--jinja"]
+    environment:
+      LLAMA_CACHE: /models
+    volumes:
+      - models:/models
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 90                          # the first start waits for the download
+
+  worker:
+    environment:
+      TESTAMUR_MODEL: openai:http://llm:8080/v1#qwen3-4b
+      TESTAMUR_MODEL_TIMEOUT: "900"        # one CPU step can take minutes
+    depends_on:
+      llm:
+        condition: service_healthy
+
+  api:
+    environment:
+      TESTAMUR_MODEL: openai:http://llm:8080/v1#qwen3-4b
+      TESTAMUR_MODEL_TIMEOUT: "900"
+    depends_on:
+      llm:
+        condition: service_healthy
+
+volumes:
+  models:

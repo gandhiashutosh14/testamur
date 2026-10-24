@@ -186,9 +186,9 @@ class Cassette:
 
 def from_spec(spec: str | None, cassette: str | None = None) -> ModelClient | None:
     """A model from configuration: "none" or nothing; "gguf:<path>" (llama.cpp on CPU); "openai:<base url>#<model>"
-    (any chat-completions server, its key from TESTAMUR_MODEL_KEY). With `cassette`, answers are replayed from that
-    file, and recorded to it when there is a live model; a cassette alone replays only, and a question it has not
-    recorded fails loudly (CassetteMiss)."""
+    (any chat-completions server, its key from TESTAMUR_MODEL_KEY, its timeout in seconds from
+    TESTAMUR_MODEL_TIMEOUT). With `cassette`, answers are replayed from that file, and recorded to it when there is a
+    live model; a cassette alone replays only, and a question it has not recorded fails loudly (CassetteMiss)."""
     inner: ModelClient | None = None
     if spec and spec != "none":
         kind, _, rest = spec.partition(":")
@@ -196,7 +196,8 @@ def from_spec(spec: str | None, cassette: str | None = None) -> ModelClient | No
             inner = LlamaCppClient(rest)
         elif kind == "openai":
             base, _, name = rest.partition("#")
-            inner = OpenAICompatibleClient(base, name or "default", api_key=os.environ.get("TESTAMUR_MODEL_KEY"))
+            inner = OpenAICompatibleClient(base, name or "default", api_key=os.environ.get("TESTAMUR_MODEL_KEY"),
+                                           timeout=float(os.environ.get("TESTAMUR_MODEL_TIMEOUT", "120")))
         else:
             raise ValueError(f"unknown model {spec!r}: none, gguf:<path> or openai:<base url>#<model>")
     if cassette:

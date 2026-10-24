@@ -36,7 +36,10 @@ def call(method: str, path: str, key: str | None = None, body: dict | None = Non
         with urllib.request.urlopen(req, timeout=30) as r:
             return r.status, json.loads(r.read() or b"{}")
     except urllib.error.HTTPError as e:
-        return e.code, json.loads(e.read() or b"{}")
+        try:
+            return e.code, json.loads(e.read() or b"{}")
+        except json.JSONDecodeError:                  # an error page, not JSON
+            return e.code, {}
 
 
 def wait(what: str, check, seconds: float, every: float = 2.0):
@@ -52,6 +55,14 @@ def wait(what: str, check, seconds: float, every: float = 2.0):
         if time.monotonic() > deadline:
             sys.exit(f"FAILED: {what} (gave up after {seconds:.0f}s)")
         time.sleep(every)
+
+
+def traced_services() -> set[str]:
+    """The services Jaeger holds traces of: its query API v3 (Jaeger 2), or the older one."""
+    code, body = call("GET", "/api/v3/services", base=JAEGER)
+    if code == 200:
+        return set(body.get("services") or [])
+    return set(call("GET", "/api/services", base=JAEGER)[1].get("data") or [])
 
 
 def minimal_pdf(text: str) -> bytes:
@@ -128,8 +139,7 @@ def main() -> None:
         print("the service works end to end (traces not checked)")
         return
     wait("the API's and the worker's spans reached Jaeger",
-         lambda: {"testamur-api", "testamur-worker"} <= set(
-             call("GET", "/api/services", base=JAEGER)[1].get("data") or []), 120, 5)
+         lambda: {"testamur-api", "testamur-worker"} <= traced_services(), 120, 5)
     print("the stack works end to end")
 
 
