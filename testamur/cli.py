@@ -398,6 +398,68 @@ def proposals_decline(proposal: int, by: str = BY, db: str = "data/harness.db", 
     typer.echo(_decide(decide, _engine(db), tenant, proposal, by, False))
 
 
+investigate_app = typer.Typer(help="The investigator-verifier workflow on one claim: two agents read, a coordinator "
+                                    "validates and proposes, a person approves.", no_args_is_help=True)
+app.add_typer(investigate_app, name="investigate")
+
+
+def _flow(db: str, model=None):
+    from .investigate import Investigations, sqlite_checkpointer
+    saver, _ = sqlite_checkpointer(str(Path(db).with_suffix("")) + ".checkpoints.sqlite")
+    return Investigations(_engine(db), model, saver)
+
+
+def _show_run(run: dict) -> None:
+    import json
+    typer.echo(f"run {run['run']} on claim {run['claim']} ({run['mode']}): {run['status']}, {run['tokens']} tokens")
+    for e in run["trace"]:
+        if e["kind"] == "agent":
+            typer.echo(f"  {e['role']:12} stopped: {e['outcome']} after {e['detail'].get('steps')} steps")
+        else:
+            typer.echo(f"  {e['role']:12} step {e['step']}: {e['tool']}({json.dumps(e['args'])}) {e['outcome']}"
+                       + (f": {e['reason']}" if e["reason"] else ""))
+    for r in run["recommendations"]:
+        typer.echo(f"  -> {r['action']:16} {r['requirement']}/{r['check'] or '-'} {r.get('verdict') or ''} "
+                   f"[{r['agreement']}] {r['reason'][:120]}"
+                   + (f" (proposal {r['proposal_id']}, digest {r['digest']})" if r.get("proposal_id") else ""))
+
+
+@investigate_app.command("start")
+def investigate_start(claim: int, by: str = BY, mode: str = typer.Option("pair", help="pair or single"),
+                      model_path: str = typer.Option(None, help="a local GGUF model (llama.cpp)"),
+                      cassette: str = typer.Option(None, help="record calls here; replay-only without a model"),
+                      db: str = "data/harness.db", tenant: int = 1):
+    """Investigate one claim: the investigator builds a cited evidence packet, the verifier checks it, the coordinator
+    proposes what only a person may apply."""
+    _show_run(_decide(_flow(db, _model(model_path, None, None, cassette)).start, tenant, claim, by, mode))
+
+
+@investigate_app.command("show")
+def investigate_show(run: int, db: str = "data/harness.db", tenant: int = 1):
+    _show_run(_decide(_flow(db).status, tenant, run))
+
+
+@investigate_app.command("approve")
+def investigate_approve(run: int, proposal: int, by: str = BY, digest: str = typer.Option(..., help="as shown"),
+                        decline: bool = False, db: str = "data/harness.db", tenant: int = 1):
+    """Approve (or --decline) one of a run's proposals, as shown with its digest; it is applied only if its evidence
+    is unchanged."""
+    _show_run(_decide(_flow(db).resume, tenant, run, [{"proposal": proposal, "approve": not decline,
+                                                       "digest": digest}], by))
+
+
+@investigate_app.command("recover")
+def investigate_recover(run: int, model_path: str = typer.Option(None), cassette: str = typer.Option(None),
+                        db: str = "data/harness.db", tenant: int = 1):
+    """Continue a run whose process died, from its last finished step."""
+    _show_run(_decide(_flow(db, _model(model_path, None, None, cassette)).recover, tenant, run))
+
+
+@investigate_app.command("cancel")
+def investigate_cancel(run: int, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
+    _show_run(_decide(_flow(db).cancel, tenant, run, by))
+
+
 @app.command()
 def mcp(db: str = "data/harness.db"):
     """Serve the tenant-scoped tools over MCP (stdio). The agent's key comes from TESTAMUR_API_KEY."""

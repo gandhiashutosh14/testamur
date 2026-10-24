@@ -45,16 +45,26 @@ class ModelClient(Protocol):
     model_id: str          # the name a call is keyed by
     fingerprint: str       # what actually answers: the weights and runtime (a cached answer must come from the same)
 
-    def chat(self, messages: list[dict], max_tokens: int = 200) -> Reply: ...
+    def chat(self, messages: list[dict], max_tokens: int = 200, schema: dict | None = None) -> Reply: ...
 
 
-def call_key(model_id: str, messages: list[dict], max_tokens: int) -> str:
-    raw = json.dumps({"model": model_id, "messages": messages, "max_tokens": max_tokens}, sort_keys=True)
+def call_key(model_id: str, messages: list[dict], max_tokens: int, schema: dict | None = None) -> str:
+    """A call's identity. The JSON schema the answer is constrained to is part of it when there is one (and absent
+    otherwise, so calls made before schemas existed keep their keys)."""
+    body = {"model": model_id, "messages": messages, "max_tokens": max_tokens}
+    if schema is not None:
+        body["schema"] = schema
+    raw = json.dumps(body, sort_keys=True)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 def fingerprint_of(model) -> str:
     return getattr(model, "fingerprint", None) or model.model_id
+
+
+def ask(model, messages: list[dict], max_tokens: int, schema: dict | None) -> Reply:
+    """Call a model, with a schema only when there is one (a client that never constrains its output needs none)."""
+    return model.chat(messages, max_tokens, schema=schema) if schema is not None else model.chat(messages, max_tokens)
 
 
 class LlamaCppClient:
@@ -82,14 +92,16 @@ class LlamaCppClient:
                                 f"ctx {self._n_ctx}"
         return self._fingerprint
 
-    def chat(self, messages: list[dict], max_tokens: int = 200) -> Reply:
+    def chat(self, messages: list[dict], max_tokens: int = 200, schema: dict | None = None) -> Reply:
         if self._llm is None:
             from llama_cpp import Llama
             self._llm = Llama(model_path=self.model_path, n_ctx=self._n_ctx, n_threads=self._threads, seed=0,
                               verbose=False)
         t0 = time.perf_counter()
+        # with a schema, decoding is constrained to it (a grammar compiled from the schema): the answer parses
+        fmt = {"type": "json_object", "schema": schema} if schema is not None else {"type": "json_object"}
         out = self._llm.create_chat_completion(messages=messages, temperature=0.0, max_tokens=max_tokens,
-                                               response_format={"type": "json_object"})
+                                               response_format=fmt)
         u = out.get("usage", {})
         return Reply(out["choices"][0]["message"]["content"], u.get("prompt_tokens", 0), u.get("completion_tokens", 0),
                      time.perf_counter() - t0)
@@ -104,9 +116,11 @@ class OpenAICompatibleClient:
         # a remote server's weights cannot be inspected from here: the endpoint and model name are what is known
         self.fingerprint = f"endpoint:{self.base_url}|{model}"
 
-    def chat(self, messages: list[dict], max_tokens: int = 200) -> Reply:
+    def chat(self, messages: list[dict], max_tokens: int = 200, schema: dict | None = None) -> Reply:
+        fmt = {"type": "json_schema", "json_schema": {"name": "answer", "schema": schema}} if schema is not None \
+            else {"type": "json_object"}
         body = json.dumps({"model": self.model, "messages": messages, "temperature": 0, "max_tokens": max_tokens,
-                           "response_format": {"type": "json_object"}}).encode()
+                           "response_format": fmt}).encode()
         req = urllib.request.Request(f"{self.base_url}/chat/completions", data=body,
                                      headers={"Content-Type": "application/json",
                                               **({"Authorization": f"Bearer {self.api_key}"} if self.api_key else {})})
@@ -152,14 +166,14 @@ class Cassette:
     def fingerprint(self) -> str:
         return fingerprint_of(self.inner) if self.inner else self._recorded("fingerprint", "not recorded")
 
-    def chat(self, messages: list[dict], max_tokens: int = 200) -> Reply:
-        key = call_key(self.model_id, messages, max_tokens)
+    def chat(self, messages: list[dict], max_tokens: int = 200, schema: dict | None = None) -> Reply:
+        key = call_key(self.model_id, messages, max_tokens, schema)
         rec = self._tape.get(key)
         if rec is not None and (self.inner is None or rec.get("fingerprint") == fingerprint_of(self.inner)):
             return Reply(rec["text"], rec["prompt_tokens"], rec["completion_tokens"], 0.0, cached=True)
         if self.inner is None:
             raise CassetteMiss(f"no recorded answer for call {key[:12]} on {self.model_id}")
-        reply = self.inner.chat(messages, max_tokens)
+        reply = ask(self.inner, messages, max_tokens, schema)
         rec = {"key": key, "model": self.model_id, "fingerprint": fingerprint_of(self.inner), "text": reply.text,
                "prompt_tokens": reply.prompt_tokens, "completion_tokens": reply.completion_tokens,
                "seconds": round(reply.seconds, 3)}

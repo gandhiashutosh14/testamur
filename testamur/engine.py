@@ -34,7 +34,7 @@ from .checks import TIME_RULES, CheckContext, evaluate
 from .extract import Extractor, sniff_mime
 from .match import covered, match
 from .model import CheckResult, Evidence, Extraction, FieldValue, Severity, Status, Tier, Verdict
-from .modeltier import CassetteMiss, ModelClient, Reply, call_key, fingerprint_of, judge, locate, quote_in
+from .modeltier import CassetteMiss, ModelClient, Reply, ask, call_key, fingerprint_of, judge, locate, quote_in
 from .pack import Pack, RequirementSpec
 from .status import decide
 from .store import (
@@ -141,8 +141,8 @@ class _TenantCachedModel:
         self.model_id = inner.model_id
         self.fingerprint = fingerprint_of(inner)
 
-    def chat(self, messages: list[dict], max_tokens: int = 200) -> Reply:
-        key = call_key(self.model_id, messages, max_tokens)
+    def chat(self, messages: list[dict], max_tokens: int = 200, schema: dict | None = None) -> Reply:
+        key = call_key(self.model_id, messages, max_tokens, schema)
         row = self.session.get(ModelCall, {"key": key, "tenant_id": self.tenant_id})
         if row is not None and row.fingerprint == self.fingerprint:       # the same question to the same weights
             self.session.add(UsageRow(day=self.today, provider="model",
@@ -150,7 +150,7 @@ class _TenantCachedModel:
             return Reply(row.response, row.prompt_tokens, row.completion_tokens, 0.0, cached=True)
         estimate = len(json.dumps(messages)) / 4 + max_tokens          # checked before money is spent
         budget.check(self.session, self.tenant_id, "model", estimate, self.today)
-        reply = self.inner.chat(messages, max_tokens)
+        reply = ask(self.inner, messages, max_tokens, schema)
         if row is not None:                                               # other weights answered before: replaced
             self.session.delete(row)
             self.session.flush()

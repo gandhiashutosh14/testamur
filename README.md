@@ -78,7 +78,7 @@ Learn then Test on 1,594 labelled documents certifies name-matching thresholds d
 
 ### Delivery
 
-238 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 78 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, approvals and the engine tested on Postgres; the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
+252 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 78 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, approvals and the engine tested on Postgres; the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
 <!-- /RESULTS -->
 
 ## The problem

@@ -195,14 +195,16 @@ class StaleProposal(ValueError):
     """The proposal is not the one the person was shown, or the evidence it was made on has changed."""
 
 
-def propose(engine: Engine, tenant_id: int, agent: str, kind: str, args: dict, reason: str) -> dict:
+def propose(engine: Engine, tenant_id: int, agent: str, kind: str, args: dict, reason: str,
+            origin: str | None = None) -> dict:
     """Record what an agent wants changed, checked for sense first and bound to the evidence it was made on; nothing
-    is changed."""
+    is changed. `origin` names the workflow step that made it (unique per tenant), so a step that runs again finds its
+    proposal instead of making a second one."""
     with engine.store.tenant(tenant_id) as s:
         binding, summary = _binding(engine, s, kind, args)
         full = {**args, "reason": reason}
         p = Proposal(kind=kind, args=full, binding=binding, binding_digest=_digest(kind, full, binding),
-                     summary=summary, proposed_by=agent, expires_at=utcnow() + PROPOSAL_TTL)
+                     summary=summary, proposed_by=agent, expires_at=utcnow() + PROPOSAL_TTL, origin=origin)
         s.add(p)
         s.flush()
         s.add(AuditRow(actor=f"agent:{agent}", action="proposal_created", target=f"proposal:{p.id}",

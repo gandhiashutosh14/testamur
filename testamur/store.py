@@ -515,7 +515,10 @@ class Proposal(TenantScoped, Base):
     transaction that applies the change, and a proposal whose evidence moved on is refused as stale, never applied to
     whatever is current now. `binding_digest` is what the person confirms."""
     __tablename__ = "proposals"
+    __table_args__ = (UniqueConstraint("tenant_id", "origin"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # what made it, when that is a workflow step that may run again (a run and a check): one proposal per origin
+    origin: Mapped[str | None] = mapped_column(String(160), nullable=True)
     kind: Mapped[str] = mapped_column(String(30))
     args: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     binding: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
@@ -528,6 +531,52 @@ class Proposal(TenantScoped, Base):
     decided_by: Mapped[str | None] = mapped_column(String(300), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     outcome: Mapped[str] = mapped_column(Text, default="")
+
+
+class InvestigationRun(TenantScoped, Base):
+    """One run of the investigator-verifier workflow on one claim (testamur.investigate). The workflow's own state is
+    checkpointed by LangGraph under `thread_id`, which is generated here and never taken from a caller: a run is found
+    by its id inside the tenant's session, so nobody resumes or reads another tenant's work by naming its thread."""
+    __tablename__ = "investigation_runs"
+    __table_args__ = (_referable("investigation_runs"), _same_tenant("claim_id", "claims"))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    claim_id: Mapped[int] = mapped_column(Integer, index=True)
+    thread_id: Mapped[str] = mapped_column(String(40), unique=True)
+    mode: Mapped[str] = mapped_column(String(10), default="pair")         # pair | single
+    # started | investigating | evidence_ready | verifying | awaiting_approval | applied | rejected | no_change |
+    # needs_person | stale | cancelled | failed
+    status: Mapped[str] = mapped_column(String(20), default="started")
+    requested_by: Mapped[str] = mapped_column(String(300))
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)   # each requirement's evidence fingerprint
+    packet: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    report: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    recommendations: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    stats: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    outcomes: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+    error: Mapped[str] = mapped_column(Text, default="")
+    tokens: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class AgentEvent(TenantScoped, Base):
+    """The trace of a run: every tool call an agent made (allowed, refused or failed) and each agent's summary (how
+    it stopped, its steps and tokens, its short notes). No document text and no hidden reasoning is kept."""
+    __tablename__ = "agent_events"
+    __table_args__ = (_same_tenant("run_id", "investigation_runs"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(Integer, index=True)
+    role: Mapped[str] = mapped_column(String(20))                           # investigator | verifier | coordinator
+    kind: Mapped[str] = mapped_column(String(10))                           # tool | agent
+    step: Mapped[int] = mapped_column(Integer, default=0)
+    tool: Mapped[str] = mapped_column(String(40), default="")
+    args: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    outcome: Mapped[str] = mapped_column(String(40), default="")             # ok | denied | error | how it stopped
+    reason: Mapped[str] = mapped_column(Text, default="")
+    detail: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    ms: Mapped[float] = mapped_column(Float, default=0.0)
+    at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class Setting(Base):
