@@ -171,7 +171,8 @@ def render(r: dict, meta: dict) -> str:
     out += ["", "## Invariants", "",
             f"- At most one open task per requirement: {inv['max_open_tasks_per_requirement'] <= 1} "
             f"(max {inv['max_open_tasks_per_requirement']}).",
-            f"- At most one open hold per claim: {inv['max_open_holds_per_claim'] <= 1}.",
+            f"- At most one open hold per claim and action: {inv['max_open_holds_per_claim_and_action'] <= 1} "
+            f"(max {inv['max_open_holds_per_claim_and_action']}).",
             "- Each webhook message processed once by the receiver: "
             + str(all(x["processed"] == x["unique"] for x in r["receivers"].values())) + ".",
             ("- The dispatcher, killed in the middle of an event on the first dispatch, left no partial work: the "

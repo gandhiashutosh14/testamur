@@ -148,3 +148,14 @@ def test_a_bulk_load_acts_on_each_requirements_final_state_only(env):
     counts = [dispatch(store, load_pack(), t.id, _now(world)) for t in world.tenants]
     assert sum(c["superseded"] for c in counts) > 0      # intermediate statuses from the load were not acted on
     assert all(c["task_closed"] == 0 for c in counts)   # so no task was opened only to be closed again
+
+
+def test_the_simulations_report_renders_what_the_simulation_returns(tmp_path):
+    """The report reads the simulation's own result: an invariant renamed in one and not the other once broke the
+    regeneration of every report."""
+    from testamur.actionsim import render, run
+    from testamur.synth.world import build_world
+    build_world(seed=11, size="tiny", out=tmp_path / "w", digital_only=True)
+    r = run(tmp_path / "w", tmp_path / "a.db", days=3)
+    text = render(r, {"commit": "test", "command": "test", "seed": 11, "size": "tiny"})
+    assert "At most one open hold per claim and action: True" in text
