@@ -47,9 +47,16 @@ class AgentResult:
         return self.prompt_tokens + self.completion_tokens
 
 
-def step_schema(tools: list[str], output: type[BaseModel]) -> dict:
+def step_schema(tools: list[str], output: type[BaseModel], finish_only: bool = False) -> dict:
     """What one turn may say: a tool call or the final answer, with a short note. Given to the model as a JSON schema
-    (llama.cpp constrains decoding to it) and checked again here whatever the model produced."""
+    (llama.cpp constrains decoding to it) and checked again here whatever the model produced. On the last step only
+    the answer is allowed: an agent that would go on reading answers with what it has instead of answering nothing."""
+    if finish_only:
+        return {"type": "object", "properties": {
+            "note": {"type": "string", "maxLength": 160},
+            "action": {"type": "string", "enum": ["finish"]},
+            "result": _inline(output.model_json_schema())},
+            "required": ["note", "action", "result"]}
     return {"type": "object", "properties": {
         "note": {"type": "string", "maxLength": 160},
         "action": {"type": "string", "enum": ["call_tool", "finish"]},
@@ -72,7 +79,7 @@ def run(model, gateway: ToolGateway, system: str, task: str, output: type[BaseMo
 def _run(model, gateway: ToolGateway, system: str, task: str, output: type[BaseModel], budget: Budget,
          cancelled) -> AgentResult:
     tools = [t["name"] for t in gateway.describe()]
-    schema = step_schema(tools, output)
+    schema, answer_now = step_schema(tools, output), step_schema(tools, output, finish_only=True)
     catalogue = "\n".join(f"- {t['name']}({', '.join(f'{k}: {v}' for k, v in t['args'].items())}): "
                           f"{t['description']}" for t in gateway.describe())
     messages = [{"role": "system", "content": system},
@@ -90,8 +97,11 @@ def _run(model, gateway: ToolGateway, system: str, task: str, output: type[BaseM
             result.stop = "time budget"
             break
         gateway.step = step
+        last = step == budget.steps
+        if last:
+            messages.append({"role": "user", "content": LAST_STEP})
         try:
-            reply = model.chat(messages, max_tokens=STEP_TOKENS, schema=schema)
+            reply = model.chat(messages, max_tokens=STEP_TOKENS, schema=answer_now if last else schema)
         except Exception as exc:  # noqa: BLE001 - a provider failure ends the agent; the coordinator decides
             result.stop = f"model error: {type(exc).__name__}"
             break
@@ -110,10 +120,14 @@ def _run(model, gateway: ToolGateway, system: str, task: str, output: type[BaseM
             continue
         result.notes.append(str(turn.get("note", ""))[:160])
         if turn["action"] == "call_tool":
+            if last:                       # a client that ignored the schema: the last step was for the answer
+                break
             answer = gateway.call(str(turn.get("tool", "")), turn.get("args") if isinstance(turn.get("args"), dict)
                                   else {})
-            messages.append({"role": "user", "content": f"Result of {turn.get('tool')}: "
-                                                         f"{json.dumps(answer, default=str)[:2400]}"})
+            left = budget.steps - step
+            messages.append({"role": "user", "content": f"Result of {turn.get('tool')} (step {step} of "
+                                                         f"{budget.steps}: {left} left, the last of them for your "
+                                                         f"answer): {json.dumps(answer, default=str)[:2400]}"})
             continue
         try:
             result.output = output.model_validate(turn.get("result") or {})
@@ -130,6 +144,9 @@ def _run(model, gateway: ToolGateway, system: str, task: str, output: type[BaseM
     result.seconds = round(time.perf_counter() - t0, 2)
     return result
 
+
+LAST_STEP = ("This is your last step: finish now with the findings you have, and put what you could not settle in "
+             "open questions. Cite only what you read.")
 
 _FORMAT = ("Reply with exactly one JSON object per turn. To use a tool: "
            '{"note": "what you are doing, in a few words", "action": "call_tool", "tool": "<name>", '

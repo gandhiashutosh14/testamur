@@ -26,7 +26,8 @@ WITHHELD = ("withheld: this document carries text aimed at automated readers; a 
 
 DESCRIPTIONS = {
     "claim_summary": ("The claim under investigation: the process (corporate debtor and its dates), the creditor, the "
-                      "amounts in the debtor's books, and each requirement with the engine's status.", {}),
+                      "amounts in the debtor's books, each requirement with the engine's status, and the documents "
+                      "there are to read (id, type, pages, whether current).", {}),
     "list_evidence": ("The documents that can be this claim's evidence for a requirement (or all of them): id, type, "
                       "pages, which one is current, and any that wait for a person.",
                       {"requirement": "optional requirement id"}),
@@ -141,14 +142,17 @@ class ToolGateway:
             m = s.get(Matter, claim.matter_id)
             states = {st.requirement_id: st for st in s.scalars(select(RequirementState).where(
                 RequirementState.claim_id == claim.id))}
-            return {"claim": claim.id, "creditor": creditor.legal_name, "corporate_debtor": m.name,
-                    "commencement": m.commencement.isoformat(), "public_announcement": m.announced.isoformat(),
-                    "last_date_for_claims": m.claims_due.isoformat(), "claim_type": claim.claim_type,
-                    "facility": claim.facility_type, "book_balance_rupees": claim.book_balance,
-                    "sanctioned_rupees": claim.sanctioned,
-                    "requirements": {rid: {"status": st.status, "document": st.document_id,
-                                           "reasons": [r[:160] for r in (st.reasons or [])][:6]}
-                                     for rid, st in sorted(states.items())}}
+            summary = {"claim": claim.id, "creditor": creditor.legal_name, "corporate_debtor": m.name,
+                       "commencement": m.commencement.isoformat(), "public_announcement": m.announced.isoformat(),
+                       "last_date_for_claims": m.claims_due.isoformat(), "claim_type": claim.claim_type,
+                       "facility": claim.facility_type, "book_balance_rupees": claim.book_balance,
+                       "sanctioned_rupees": claim.sanctioned,
+                       "requirements": {rid: {"status": st.status, "document": st.document_id,
+                                              "reasons": [r[:160] for r in (st.reasons or [])][:6]}
+                                        for rid, st in sorted(states.items())}}
+        # what there is to read, so a step is not spent finding out that a requirement has no document
+        summary["documents"] = self._list_evidence()["documents"]
+        return summary
 
     def _list_evidence(self, requirement: str | None = None) -> dict:
         with self.engine.store.tenant(self.tenant_id) as s:

@@ -624,9 +624,12 @@ def evaluate_run(cases: str = "evals/holdout/cases.yaml", out: str = "artifacts/
 @eval_app.command("report")
 def evaluate_report(results: list[str], cases: str = "evals/holdout/cases.yaml",
                     report: str = "reports/holdout-eval.md", data: str = "reports/holdout-eval.json",
-                    work: str = "data/holdout-faults"):
+                    work: str = "data/holdout-faults",
+                    earlier: list[str] | None = typer.Option(None, help="an earlier run's report data, oldest first"),
+                    change: list[str] | None = typer.Option(None, help="what changed after each earlier run, in order")):
     """Merge the shards' results, force the fault scenarios, and write the report and its data."""
     import json
+    import re
     from datetime import UTC, datetime
 
     from . import evaluate as ev
@@ -635,12 +638,20 @@ def evaluate_report(results: list[str], cases: str = "evals/holdout/cases.yaml",
     merged = ev.merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])
     if merged["set"] != hs.digest:
         raise typer.BadParameter(f"the results are about case set {merged['set']}, the file is {hs.digest}")
+    before, change = [], change or []
+    for i, path in enumerate(earlier or []):
+        prior = json.loads(Path(path).read_text(encoding="utf-8"))
+        if prior["set"] != hs.digest:
+            raise typer.BadParameter(f"{path} is about case set {prior['set']}, not {hs.digest}")
+        stamp = re.search(r"at commit `([^`]+)`", Path(path).with_suffix(".md").read_text(encoding="utf-8"))
+        before.append({"label": f"run {i + 1}", "commit": stamp.group(1) if stamp else "?",
+                       "summary": prior["summary"], "change": change[i] if i < len(change) else ""})
     rows = ev.faults(hs, work)
     meta = {"generated": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"), "commit": git_stamp(Path.cwd()),
             "command": "testamur evaluate report " + " ".join(Path(p).name for p in results)}
-    Path(report).write_text(ev.render(merged, meta, rows), encoding="utf-8")
-    Path(data).write_text(json.dumps({**merged, "summary": ev.summarise(merged), "faults": rows}, indent=1),
-                          encoding="utf-8")
+    Path(report).write_text(ev.render(merged, meta, rows, before), encoding="utf-8", newline="\n")
+    Path(data).write_text(json.dumps({**merged, "summary": ev.summarise(merged), "faults": rows,
+                                      "earlier": before, "meta": meta}, indent=1), encoding="utf-8", newline="\n")
     typer.echo(f"{report}: {len(merged['cases'])} cases, {sum(f['held'] for f in rows)} of {len(rows)} faults held")
 
 

@@ -185,12 +185,42 @@ def test_a_quarantined_document_is_withheld_from_the_agents(env, flows):
 def test_an_agent_that_never_finishes_stops_at_its_budget(env, flows):
     world, store, engine = env
     claim, _ = _conditional_authority(env)
-    budgets = Budgets(investigator=Budget(steps=4), tool_calls=3)
+    budgets = Budgets(investigator=Budget(steps=5), tool_calls=3)
     run = flows(Agents([call("claim_summary")]), budgets).start(1, claim, "lead@firm", mode="single")
     summary = next(e for e in run["trace"] if e["kind"] == "agent")
     assert summary["outcome"] == "step budget" and run["status"] == "needs_person"
     tools = [e for e in run["trace"] if e["kind"] == "tool"]
-    assert len(tools) == 4 and [e["outcome"] for e in tools].count("denied") == 1     # the fourth call: no calls left
+    # four calls, the fourth refused (no calls left); the fifth and last step was for the answer, and no tool ran
+    assert len(tools) == 4 and [e["outcome"] for e in tools].count("denied") == 1
+
+
+def test_an_agent_is_told_its_steps_and_its_last_step_may_only_answer(env, flows):
+    """An agent that would read on is made to answer with what it has: every result says how many steps are left,
+    and on the last step the schema allows only the answer."""
+    world, store, engine = env
+    claim, doc = _conditional_authority(env)
+    seen = []
+
+    class Watching(Agents):
+        def chat(self, messages, max_tokens=200, schema=None):
+            seen.append(([m["content"] for m in messages], schema["properties"]["action"]["enum"]))
+            return super().chat(messages, max_tokens, schema)
+    run = flows(Watching([call("read_page", document_id=doc, page=1),
+                          finish({"findings": [_grant_finding(doc)], "open_questions": []})]),
+                Budgets(investigator=Budget(steps=2))).start(1, claim, "lead@firm", mode="single")
+    assert seen[0][1] == ["call_tool", "finish"] and seen[1][1] == ["finish"]
+    result_of_read, last = seen[1][0][-2], seen[1][0][-1]
+    assert "step 1 of 2: 1 left" in result_of_read and "last step" in last
+    assert next(e for e in run["trace"] if e["kind"] == "agent")["outcome"] == "finished"
+
+
+def test_the_claim_summary_lists_the_documents_there_are_to_read(env, flows):
+    world, store, engine = env
+    claim, doc = _conditional_authority(env)
+    from testamur.investigate.tools import ToolGateway
+    summary = ToolGateway(engine, 1, claim, "investigator").call("claim_summary", {})
+    assert doc in {d["document"] for d in summary["documents"]}
+    assert all({"document", "type", "pages", "state", "quarantined"} <= d.keys() for d in summary["documents"])
 
 
 def test_evidence_that_changes_during_review_makes_the_approval_stale(env, flows):

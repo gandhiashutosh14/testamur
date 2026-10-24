@@ -499,7 +499,9 @@ def faults(hs: HoldoutSet, root: str | Path) -> list[dict]:
 
 # ---------------------------------------------------------------------------------------------- the report
 
-def render(merged: dict, meta: dict, fault_rows: list[dict] | None = None) -> str:
+def render(merged: dict, meta: dict, fault_rows: list[dict] | None = None, earlier: list[dict] | None = None) -> str:
+    """`earlier`: the runs before this one on the same cases, each {"label", "commit", "summary", "change"} (what
+    changed after it), kept in the report so a number that moved says why."""
     s = summarise(merged)
     cats = by_category(merged)
     n = len(merged["cases"])
@@ -548,6 +550,21 @@ def render(merged: dict, meta: dict, fault_rows: list[dict] | None = None) -> st
             return "-" if o is None else (f"{o}" if o in c["truth"] else f"**{o}** (wrong)")
         lines.append(f"| {c['case']} | {' or '.join(c['truth'])} | {mark('rules')} | {mark('single')} | "
                      f"{mark('pair')} |")
+    if earlier:
+        lines += ["", "## Earlier runs on the same cases", "",
+                  "| Run | Commit | Rules | One agent | Pair | How the agents stopped |", "|---|---|---|---|---|---|"]
+        for e in earlier:
+            es = e["summary"]
+
+            def short(arm, es=es):
+                m = es.get(arm)
+                return "-" if m is None else f"{m['success']} of {m['cases']} right, {m['false_pass']} false PASS"
+            how = "; ".join(f"{'one agent' if arm == 'single' else 'the pair'}: " +
+                            ", ".join(f"{k} {v}" for k, v in (es.get(arm, {}).get("stops") or {}).items())
+                            for arm in ("single", "pair") if arm in es)
+            lines.append(f"| {e['label']} | `{e['commit']}` | {short('rules')} | {short('single')} | "
+                         f"{short('pair')} | {how} |")
+        lines += [""] + [f"After {e['label']}: {e['change']}" for e in earlier if e.get("change")]
     if fault_rows:
         lines += ["", "## Faults forced on purpose (a scripted model: deterministic, no language model)", "",
                   "| Scenario | Expected | Observed | Held |", "|---|---|---|---|"]

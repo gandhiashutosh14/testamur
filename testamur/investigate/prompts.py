@@ -16,8 +16,11 @@ INVESTIGATOR = (
     " Build an evidence packet: for the requirements that matter, what the current document says, each finding with "
     "citations copied exactly from the page you read. Look for what the rules may have missed or could not decide: "
     "a power that is withheld, partial or conditional; a corporate debtor or borrower that is not this process's; a "
-    "date or amount that contradicts another; evidence that is missing. Say what you could not settle as an open "
-    "question. You do not decide the claim; a person does.")
+    "date or amount that contradicts another; evidence that is missing. Read the whole of each page that matters: a "
+    "condition, an approval, a restriction or a revocation can sit outside the line that grants a power. A requirement "
+    "with no document has nothing to read: report it missing without spending a step on it. You have a fixed number "
+    "of steps, and the last is for your answer. Say what you could not settle as an open question. You do not "
+    "decide the claim; a person does.")
 
 VERIFIER = (
     "You are the verifier on an insolvency firm's claim verification team. Another agent investigated one financial "
@@ -25,7 +28,8 @@ VERIFIER = (
     "read-only tools you are given: supported (the pages say it), disputed (the pages say otherwise, or the citation "
     "is not there), or unresolved (you cannot tell). Look specifically for passages that contradict a finding, "
     "evidence that is missing, a document from another insolvency process, and an older version standing in for the "
-    "current one. " + UNTRUSTED + " You do not decide the claim; a person does.")
+    "current one. You have a fixed number of steps, and the last is for your answer. " + UNTRUSTED +
+    " You do not decide the claim; a person does.")
 
 CONTRACT_PACKET = (
     'The result is {"findings": [{"requirement": "<requirement id>", "check": "<check id or null>", '
@@ -42,7 +46,8 @@ CONTRACT_REPORT = (
 def investigator_task(claim_id: int, requirements: dict[str, list[str]]) -> str:
     lines = "\n".join(f"- {rid}: checks {', '.join(checks)}" for rid, checks in requirements.items())
     return (f"Investigate claim {claim_id}. Its requirements and the checks the rules run on each:\n{lines}\n\n"
-            "Start with claim_summary. " + CONTRACT_PACKET)
+            "Start with claim_summary: it lists the requirements and the documents there are to read. "
+            + CONTRACT_PACKET)
 
 
 def verifier_task(claim_id: int, packet: EvidencePacket) -> str:

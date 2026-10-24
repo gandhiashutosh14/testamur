@@ -218,9 +218,8 @@ MUTANTS = [
     ("an agent's tool calls are unbounded", "testamur/investigate/tools.py",
      '            if len([e for e in self.events if e.outcome != "denied"]) >= self.max_calls:', "            if False:",
      "tests/test_investigate.py"),
-    ("an agent runs past its step budget", "testamur/investigate/agent.py",
-     "    for step in range(1, budget.steps + 1):", "    for step in range(1, budget.steps + 50):",
-     "tests/test_investigate.py"),
+    ("an agent reads on through its last step instead of answering", "testamur/investigate/agent.py",
+     "        last = step == budget.steps", "        last = False", "tests/test_investigate.py"),
     # v0.5: the service
     ("an agent's key opens the service", "testamur/service/auth.py",
      "    if who.role not in SERVICE_ROLES:", "    if False:", "tests/test_service.py"),

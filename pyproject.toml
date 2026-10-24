@@ -61,5 +61,5 @@ select = ["E", "F", "W", "I", "B", "UP"]
 ignore = ["E501"]
 
 [tool.ruff.lint.flake8-bugbear]
-# FastAPI's dependency and parameter markers are declarations, evaluated once by design
-extend-immutable-calls = ["fastapi.Depends", "fastapi.File", "fastapi.Form", "fastapi.Query"]
+# FastAPI's and Typer's parameter markers are declarations, evaluated once by design
+extend-immutable-calls = ["fastapi.Depends", "fastapi.File", "fastapi.Form", "fastapi.Query", "typer.Option"]
