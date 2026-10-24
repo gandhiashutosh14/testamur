@@ -214,8 +214,10 @@ def evaluate(hs: HoldoutSet, root: str | Path, model, *, arms=ARMS, shard: tuple
     finally:
         conn.close()
         built.store.engine.dispose()
+    from .harness import git_stamp
     return {"set": hs.digest, "shard": list(shard), "cases": [asdict(r) for r in results],
-            "model": getattr(model, "model_id", None), "fingerprint": getattr(model, "fingerprint", None)}
+            "model": getattr(model, "model_id", None), "fingerprint": getattr(model, "fingerprint", None),
+            "commit": git_stamp(Path.cwd())}
 
 
 def _summarise_run(run: dict, wall: float, own: set[int]) -> dict:
@@ -252,9 +254,12 @@ def merge(parts: list[dict]) -> dict:
     fingerprints = {p.get("fingerprint") for p in parts if p.get("fingerprint")}
     if len(fingerprints) > 1:
         raise ValueError(f"results of different models: {sorted(fingerprints)}")
+    commits = sorted({p["commit"] for p in parts if p.get("commit")})
+    if len(commits) > 1:
+        raise ValueError(f"results of different commits: {commits}")
     cases = sorted((c for p in parts for c in p["cases"]), key=lambda c: c["case"])
     return {"set": sets.pop(), "cases": cases, "model": next((p["model"] for p in parts if p.get("model")), None),
-            "fingerprint": next(iter(fingerprints), None)}
+            "fingerprint": next(iter(fingerprints), None), "commit": commits[0] if commits else None}
 
 
 def summarise(merged: dict) -> dict[str, dict]:
@@ -506,7 +511,8 @@ def render(merged: dict, meta: dict, fault_rows: list[dict] | None = None, earli
     cats = by_category(merged)
     n = len(merged["cases"])
     lines = ["# The agents against the rules: a holdout comparison", "",
-             f"Generated {meta['generated']} at commit `{meta['commit']}` with `{meta['command']}`.", "",
+             f"Generated {meta['generated']} at commit `{meta['commit']}` with `{meta['command']}`"
+             + (f", from the arms run at commit `{merged['commit']}`" if merged.get("commit") else "") + ".", "",
              f"Cases: {n}, written by hand in `evals/holdout/cases.yaml` (set `{merged['set']}`), independently of "
              "the world generator. Model: " + (f"`{merged['model']}` (fingerprint `{merged['fingerprint']}`)"
                                                if merged.get("model") else "none (the rules alone)") + ".", "",

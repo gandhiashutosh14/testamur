@@ -228,6 +228,21 @@ def render() -> str:
                 row("Latency p50 / p95", lambda m: f"{m['p50_seconds']} s / {m['p95_seconds']} s"
                     if "p50_seconds" in m else "-"),
                 row("Tokens per case", lambda m: f"{m['tokens_per_case']:,}" if "tokens_per_case" in m else "-")]
+        cases = ho["cases"]
+        if all("single" in c["outputs"] for c in cases):
+            def moved(arm, ok_before, ok_after):
+                return [c for c in cases if (c["outputs"]["rules"] in c["truth"]) == ok_before
+                        and (c["outputs"][arm] in c["truth"]) == ok_after and c["outputs"][arm] != c["outputs"]["rules"]]
+            fixed, broke = moved("single", False, True), moved("single", True, False)
+            decided = [c for c in cases if c["outputs"]["single"] in ("PASS", "FAIL")
+                       and c["outputs"]["single"] != c["outputs"]["rules"]]
+            same = sum(c["outputs"].get("pair") == c["outputs"]["single"] for c in cases)
+            out += ["", f"Against the rules, one agent turned {len(fixed)} wrong outputs right "
+                    f"({', '.join(sorted({c['outputs']['rules'] + ' to ' + c['outputs']['single'] for c in fixed}))}) "
+                    f"and {len(broke)} right outputs wrong "
+                    f"({', '.join(sorted({c['outputs']['rules'] + ' to ' + c['outputs']['single'] for c in broke}))}); "
+                    f"{len(decided)} of its own verdicts replaced the rules' output. The pair gave one agent's output "
+                    f"in {same} of {len(cases)} cases."]
         for e in ho.get("earlier") or []:
             single = e["summary"].get("single", {})
             out += ["", f"An earlier {e['label']} on the same cases (commit `{e['commit']}`): one agent "
