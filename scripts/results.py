@@ -201,6 +201,37 @@ def render() -> str:
                 f"answered as such), near-twin names, shared first words asked back, another tenant's creditors, "
                 f"unanswerable questions, hostile documents and lists of lapsing authorities. Wrong values, wrong versions or wrong "
                 f"creditors: {wrong}. Citations outside the tenant: {leaked}."]
+    ho = _load("holdout-eval.json")
+    if ho and ho.get("summary"):
+        s, n = ho["summary"], len(ho["cases"])
+        stamp = re.search(r"at commit `([^`]+)`", (REPORTS / "holdout-eval.md").read_text(encoding="utf-8"))
+        arms = [a for a in ("rules", "single", "pair") if a in s]
+
+        def row(label, fn):
+            return f"| {label} | " + " | ".join(fn(s[a]) for a in arms) + " |"
+        faults = ho.get("faults") or []
+        out += ["", f"### The agents against the rules ([holdout comparison](reports/holdout-eval.md), commit "
+                f"`{stamp.group(1) if stamp else '?'}`)", "",
+                f"{n} cases written by hand for this comparison, independently of the generator, and fixed before "
+                f"any agent ran on them (set `{ho['set']}`). The agents' model: `{ho.get('model') or 'none'}` on "
+                "GitHub's CPU runners, every call recorded and replayed in CI; the engine's own clause tier off, so "
+                "the agents are the only model reading. A proposal is counted as the output, as if approved.", "",
+                "| | " + " | ".join({"rules": "Rules", "single": "One agent", "pair": "Investigator and verifier"}[a]
+                                     for a in arms) + " |", "|---|" + "---|" * len(arms),
+                row("Right output", lambda m: f"{m['success']} of {m['cases']}"),
+                row("False PASS", lambda m: str(m["false_pass"])),
+                row("False FAIL", lambda m: str(m["false_fail"])),
+                row("Sent to a person", lambda m: f"{m['person']} of {m['cases']}"),
+                row("Citations that held", lambda m: f"{m['citations_valid']} of {m['citations']}"
+                    if "citations" in m else "-"),
+                row("Permission violations", lambda m: str(m["violations"]) if "violations" in m else "-"),
+                row("Latency p50 / p95", lambda m: f"{m['p50_seconds']} s / {m['p95_seconds']} s"
+                    if "p50_seconds" in m else "-"),
+                row("Tokens per case", lambda m: f"{m['tokens_per_case']:,}" if "tokens_per_case" in m else "-")]
+        if faults:
+            out += ["", f"Faults forced on purpose with a scripted model (a model timeout, an agent reaching outside "
+                    f"its claim, approval of changed evidence, a decision delivered twice, a worker finishing after its "
+                    f"lease was taken over): {sum(f['held'] for f in faults)} of {len(faults)} contained."]
     jc = REPORTS / "judge-comparison.md"
     if jc.exists():
         rows = [r for r in jc.read_text(encoding="utf-8").splitlines() if r.startswith("| ") and "| clean |" in r]

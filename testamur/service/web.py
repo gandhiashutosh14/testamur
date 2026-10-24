@@ -3,6 +3,7 @@ the API and decides through the same atomic, digest-checked calls; every form ca
 from __future__ import annotations
 
 import re
+import secrets
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -29,11 +30,14 @@ def _page(request: Request, name: str, **ctx) -> HTMLResponse:
 
 @router.get("/login", response_class=HTMLResponse)
 def login_form(request: Request):
+    # a token before anyone signs in, so another site cannot sign a reviewer's browser in as someone else
+    request.session.setdefault("csrf", secrets.token_urlsafe(24))
     return _page(request, "login.html", error=None)
 
 
 @router.post("/login")
-def login(request: Request, key: str = Form(...)):
+def login(request: Request, key: str = Form(...), csrf: str = Form("")):
+    check_csrf(request, csrf)
     try:
         sign_in(request, key.strip())
     except PermissionError as exc:

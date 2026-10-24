@@ -14,11 +14,12 @@ app = typer.Typer(add_completion=False, no_args_is_help=True,
                   help="TESTAMUR: verifying creditors' claims in a corporate insolvency process.")
 
 
-def _model(model_path: str | None, model_url: str | None, model_name: str | None, cassette: str | None):
+def _model(model_path: str | None, model_url: str | None, model_name: str | None, cassette: str | None,
+           ctx: int = 4096):
     from .modeltier import Cassette, LlamaCppClient, OpenAICompatibleClient
     inner = None
     if model_path:
-        inner = LlamaCppClient(model_path)
+        inner = LlamaCppClient(model_path, n_ctx=ctx)
     elif model_url:
         inner = OpenAICompatibleClient(model_url, model_name or "default")
     if cassette:
@@ -404,6 +405,9 @@ investigate_app = typer.Typer(help="The investigator-verifier workflow on one cl
 app.add_typer(investigate_app, name="investigate")
 
 
+AGENT_CTX = 16384      # an agent's conversation: its task, the tools, and several pages read
+
+
 def _flow(db: str, model=None):
     from .investigate import Investigations, sqlite_checkpointer
     saver, _ = sqlite_checkpointer(str(Path(db).with_suffix("")) + ".checkpoints.sqlite")
@@ -432,7 +436,7 @@ def investigate_start(claim: int, by: str = BY, mode: str = typer.Option("pair",
                       db: str = "data/harness.db", tenant: int = 1):
     """Investigate one claim: the investigator builds a cited evidence packet, the verifier checks it, the coordinator
     proposes what only a person may apply."""
-    _show_run(_decide(_flow(db, _model(model_path, None, None, cassette)).start, tenant, claim, by, mode))
+    _show_run(_decide(_flow(db, _model(model_path, None, None, cassette, AGENT_CTX)).start, tenant, claim, by, mode))
 
 
 @investigate_app.command("show")
@@ -453,7 +457,7 @@ def investigate_approve(run: int, proposal: int, by: str = BY, digest: str = typ
 def investigate_recover(run: int, model_path: str = typer.Option(None), cassette: str = typer.Option(None),
                         db: str = "data/harness.db", tenant: int = 1):
     """Continue a run whose process died, from its last finished step."""
-    _show_run(_decide(_flow(db, _model(model_path, None, None, cassette)).recover, tenant, run))
+    _show_run(_decide(_flow(db, _model(model_path, None, None, cassette, AGENT_CTX)).recover, tenant, run))
 
 
 @investigate_app.command("cancel")

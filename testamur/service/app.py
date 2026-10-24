@@ -32,6 +32,10 @@ SECURITY_HEADERS = {
                                "frame-ancestors 'none'; form-action 'self'; base-uri 'none'",
     "Cache-Control": "no-store",
 }
+# FastAPI's documentation page loads Swagger UI from a CDN and starts it with an inline script: that page alone
+DOCS_POLICY = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+               "style-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com; "
+               "frame-ancestors 'none'; base-uri 'none'")
 
 
 def create_app(settings: Settings | None = None, runtime: Runtime | None = None) -> FastAPI:
@@ -64,6 +68,8 @@ def create_app(settings: Settings | None = None, runtime: Runtime | None = None)
             event("request", stage=request.method, status=response.status_code,
                   tenant_id=getattr(who, "tenant_id", None), **{"http.route": getattr(route, "path", "unmatched")},
                   ms=round(1000 * (time.perf_counter() - t0), 1))
+        if request.url.path == "/docs":
+            response.headers["Content-Security-Policy"] = DOCS_POLICY
         for k, v in SECURITY_HEADERS.items():
             response.headers.setdefault(k, v)
         return response

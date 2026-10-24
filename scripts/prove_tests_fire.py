@@ -246,6 +246,16 @@ MUTANTS = [
      "        if k in ALLOWED and v is not None:", "        if v is not None:", "tests/test_telemetry.py"),
     ("a tenant table is left out of row-level security", "testamur/migrations/versions/0002_row_level_security.py",
      '    "agent_events",\n]', "]", "tests/test_migrations.py"),
+    ("two decisions arriving together both resume the run", "testamur/investigate/workflow.py",
+     '        if not claimed:\n            raise ValueError(f"run {run_id} is no longer waiting for approval")',
+     '        if False:\n            raise ValueError(f"run {run_id} is no longer waiting for approval")',
+     "tests/test_investigate.py"),
+    ("a run left mid-decision by a crash stays stuck", "testamur/investigate/workflow.py",
+     '        if run["status"] == "deciding" and self.graph.get_state(config).next == ("await_approval",):',
+     "        if False:", "tests/test_investigate.py"),
+    ("the sign-in form needs no token", "testamur/service/web.py",
+     "    check_csrf(request, csrf)\n    try:\n        sign_in(request, key.strip())",
+     "    try:\n        sign_in(request, key.strip())", "tests/test_service.py"),
 ]
 
 

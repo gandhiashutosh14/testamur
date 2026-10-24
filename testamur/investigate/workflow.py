@@ -32,7 +32,7 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 
 from .. import agents
 from ..engine import Engine
@@ -125,6 +125,11 @@ class Investigations:
         if run["status"] in FINAL or run["status"] == "awaiting_approval":
             return self.status(tenant_id, run_id)
         config = {"configurable": {"thread_id": run["thread_id"]}}
+        if run["status"] == "deciding" and self.graph.get_state(config).next == ("await_approval",):
+            # a decision claimed the run and its process died before the run resumed: nothing was applied, and the
+            # run waits for a person again
+            self._update({"tenant_id": tenant_id, "run_id": run_id}, status="awaiting_approval")
+            return self.status(tenant_id, run_id)
         token = _STOP.set(stop)
         try:
             if self.graph.get_state(config).next:          # checkpointed part-way: continue from there
@@ -154,6 +159,14 @@ class Investigations:
                 raise agents.StaleProposal(f"proposal {d['proposal']} is not the one you were shown: reload it")
             clean.append({"proposal": int(d["proposal"]), "approve": bool(d["approve"]), "digest": d["digest"],
                           "by": by})
+        # the run is claimed for this decision before it resumes: of two decisions arriving together, one resumes it
+        # and the other is refused, rather than both applying and the later one rewriting the run's outcome
+        with self.engine.store.tenant(tenant_id) as s:
+            claimed = s.execute(update(InvestigationRun).where(
+                InvestigationRun.id == run_id, InvestigationRun.status == "awaiting_approval").values(
+                status="deciding", updated_at=utcnow())).rowcount
+        if not claimed:
+            raise ValueError(f"run {run_id} is no longer waiting for approval")
         self.graph.invoke(Command(resume=clean), {"configurable": {"thread_id": run["thread_id"]}})
         return self.status(tenant_id, run_id)
 

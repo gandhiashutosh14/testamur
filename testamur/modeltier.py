@@ -193,7 +193,7 @@ def from_spec(spec: str | None, cassette: str | None = None) -> ModelClient | No
     if spec and spec != "none":
         kind, _, rest = spec.partition(":")
         if kind == "gguf":
-            inner = LlamaCppClient(rest)
+            inner = LlamaCppClient(rest, n_ctx=16384)        # room for an agent's conversation, not only a clause
         elif kind == "openai":
             base, _, name = rest.partition("#")
             inner = OpenAICompatibleClient(base, name or "default", api_key=os.environ.get("TESTAMUR_MODEL_KEY"),

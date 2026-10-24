@@ -230,3 +230,58 @@ def test_cancelling_a_run_that_waits_for_approval_declines_its_proposals(env, fl
     assert flow.cancel(1, run["run"], "lead@firm")["status"] == "cancelled"
     with store.tenant(1) as s:
         assert {p.status for p in s.scalars(select(Proposal))} == {"declined"}
+
+
+def test_two_decisions_arriving_together_resume_the_run_once(env, flows):
+    """Two reviewers press approve at the same moment: one decision resumes the run, the other is refused, and the
+    run's outcome is the first's."""
+    import threading
+    world, store, engine = env
+    claim, doc = _conditional_authority(env)
+    flow = flows(Agents(*_pair(doc)))
+    run = flow.start(1, claim, "lead@firm")
+    rec = next(r for r in run["recommendations"] if r.get("proposal_id"))
+    decision = [{"proposal": rec["proposal_id"], "approve": True, "digest": rec["digest"]}]
+    # both read the run as waiting before either goes on: the worst interleaving, every time
+    read, both_read, mine = flow._run, threading.Barrier(2, timeout=20), threading.local()
+
+    def read_then_wait(tenant_id, run_id):
+        out = read(tenant_id, run_id)
+        if not getattr(mine, "waited", False):
+            mine.waited = True
+            both_read.wait()
+        return out
+    flow._run = read_then_wait
+    results = []
+
+    def press(who):
+        try:
+            results.append(flow.resume(1, run["run"], decision, by=who)["status"])
+        except ValueError as exc:
+            results.append(f"refused: {exc}")
+    threads = [threading.Thread(target=press, args=(w,)) for w in ("first@firm", "second@firm")]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    flow._run = read
+    assert sorted(r.split(":")[0] for r in results) == ["applied", "refused"]
+    assert flow.status(1, run["run"])["status"] == "applied"
+    with store.tenant(1) as s:
+        assert s.scalar(select(func.count()).select_from(CheckReview).where(
+            CheckReview.proposal_id == rec["proposal_id"])) == 1
+
+
+def test_a_decision_whose_process_died_before_the_run_resumed_waits_again(env, flows):
+    from sqlalchemy import update
+    world, store, engine = env
+    claim, doc = _conditional_authority(env)
+    flow = flows(Agents(*_pair(doc)))
+    run = flow.start(1, claim, "lead@firm")
+    with store.tenant(1) as s:                       # claimed for a decision, then the process died
+        s.execute(update(InvestigationRun).where(InvestigationRun.id == run["run"]).values(status="deciding"))
+    assert flow.recover(1, run["run"])["status"] == "awaiting_approval"
+    rec = next(r for r in run["recommendations"] if r.get("proposal_id"))
+    done = flow.resume(1, run["run"], [{"proposal": rec["proposal_id"], "approve": True, "digest": rec["digest"]}],
+                       by="reviewer@firm")
+    assert done["status"] == "applied"

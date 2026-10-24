@@ -183,7 +183,9 @@ class CaseResult:
 
 def evaluate(hs: HoldoutSet, root: str | Path, model, *, arms=ARMS, shard: tuple[int, int] = (0, 1),
              budgets=None) -> dict[str, Any]:
-    """Run the arms over this shard's cases. `model` is the agents' model (None: the agent arms are skipped)."""
+    """Run the arms over this shard's cases. `model` is the agents' model (None: the agent arms are skipped). A shard's
+    database holds its own cases' documents only, and their ids are in the agents' prompts: a replay of a recording
+    must use the shards the recording was made in."""
     from .investigate import Budgets, Investigations, sqlite_checkpointer
     from .investigate.agent import Budget
     index, count = shard

@@ -34,7 +34,7 @@ def svc(env, tmp_path):
         app = create_app(runtime=Runtime(settings, engine=engine, investigations=inv))
         keys = {role: agents.create_key(store, 1, f"{role}-1", role) for role in ("reviewer", "uploader", "agent")}
         keys["other-firm"] = agents.create_key(store, 2, "reviewer-2", "reviewer")
-        client = TestClient(app)
+        client = TestClient(app, base_url="https://testserver" if secure else "http://testserver")
         client.__enter__()
         made.append(client)
         return client, keys, lambda: work(engine, "test-worker", investigations=inv)
@@ -48,6 +48,12 @@ def svc(env, tmp_path):
 
 def _as(key):
     return {"Authorization": f"Bearer {key}"}
+
+
+def _sign_in(client, key):
+    """Sign in as the page does: the form from GET /login, with the token it carries."""
+    token = client.get("/login").text.split('name="csrf" value="')[1].split('"')[0]
+    return client.post("/login", data={"key": key, "csrf": token}, follow_redirects=False)
 
 
 def test_every_request_needs_a_live_key_of_a_role_this_service_serves(svc, env):
@@ -151,10 +157,10 @@ def test_the_review_page_signs_a_session_and_refuses_forms_without_its_token(svc
     claim, doc = _conditional_authority(env)
     client, keys, drain = svc(Agents(*_pair(doc)))
     assert client.get("/", follow_redirects=False).headers["location"] == "/login"
-    refused = client.post("/login", data={"key": keys["uploader"]}, follow_redirects=False)
+    refused = _sign_in(client, keys["uploader"])
     assert refused.status_code == 200 and "only a reviewer&#39;s key opens the review page" in refused.text
     assert "testamur_session" not in refused.cookies
-    signed = client.post("/login", data={"key": keys["reviewer"]}, follow_redirects=False)
+    signed = _sign_in(client, keys["reviewer"])
     assert signed.status_code == 303
     cookie = signed.headers["set-cookie"].lower()
     assert "httponly" in cookie and "samesite=strict" in cookie and keys["reviewer"].lower() not in cookie
@@ -176,8 +182,25 @@ def test_the_review_page_signs_a_session_and_refuses_forms_without_its_token(svc
 
 def test_secure_cookies_outside_a_local_demo(svc):
     client, keys, _ = svc(secure=True)
-    signed = client.post("/login", data={"key": keys["reviewer"]}, follow_redirects=False)
-    assert "secure" in signed.headers["set-cookie"].lower()
+    signed = _sign_in(client, keys["reviewer"])
+    assert signed.status_code == 303 and "secure" in signed.headers["set-cookie"].lower()
+
+
+def test_signing_in_needs_the_sign_in_forms_own_token(svc):
+    """Another site cannot sign a reviewer's browser in as someone else: the form carries a token of the session."""
+    client, keys, _ = svc()
+    assert client.post("/login", data={"key": keys["reviewer"]}, follow_redirects=False).status_code == 403
+    client.get("/login")
+    assert client.post("/login", data={"key": keys["reviewer"], "csrf": "forged"},
+                       follow_redirects=False).status_code == 403
+    assert _sign_in(client, keys["reviewer"]).status_code == 303
+
+
+def test_only_the_api_documentation_page_may_load_from_a_cdn(svc):
+    client, _, _ = svc()
+    docs, login = client.get("/docs"), client.get("/login")
+    assert docs.status_code == 200 and "cdn.jsdelivr.net" in docs.headers["content-security-policy"]
+    assert "cdn.jsdelivr.net" not in login.headers["content-security-policy"]
 
 
 def test_the_api_is_described_by_its_openapi_schema(svc):
