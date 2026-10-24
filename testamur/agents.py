@@ -1,7 +1,9 @@
 """Agents act for one tenant, through a key, within the tools that tenant granted, and change nothing on their own.
 
-- **Keys.** A key names the tenant and the agent; only its hash is stored. Looking a key up is the one read that
-  must happen before any tenant is known, so it is done in the system session, and nothing else is.
+- **Keys.** A key names the tenant, the principal and its role; only its hash is stored. Looking a key up is the
+  one read that must happen before any tenant is known, so it is done in the system session, and nothing else is.
+  Only an agent's key opens the agent surface; only a person's opens the service (testamur.service), and only a
+  reviewer's can approve.
 - **Catalogue.** A tenant grants and revokes tools by name. A tool not granted is not listed and is refused if
   called, checked on every call, so a revocation takes effect immediately.
 - **Reads** paginate with a cursor and run a fixed number of queries per page, however many rows a tenant has: an
@@ -18,6 +20,7 @@ import hashlib
 import json
 import secrets
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
@@ -42,10 +45,12 @@ from .store import (
     ToolGrant,
     utcnow,
 )
+from .telemetry import traced
 
 READ_TOOLS = ("list_claims", "get_requirement", "review_queue", "open_tasks", "ask", "proposal_status")
 PROPOSE_TOOLS = ("propose_check_verdict", "propose_field_reading", "propose_document_decision")
 TOOLS = READ_TOOLS + PROPOSE_TOOLS
+ROLES = ("agent", "uploader", "reviewer")
 PROPOSAL_TTL = timedelta(days=7)
 MAX_PAGE = 100
 
@@ -56,22 +61,44 @@ def _hash(key: str) -> str:
 
 # ---------------------------------------------------------------------------------------------- keys and catalogue
 
-def create_key(store: Store, tenant_id: int, name: str) -> str:
-    """A new key for an agent of this tenant. The key is shown once; only its hash is kept."""
+def create_key(store: Store, tenant_id: int, name: str, role: str = "agent") -> str:
+    """A new key for a principal of this tenant. The key is shown once; only its hash is kept."""
+    if role not in ROLES:
+        raise ValueError(f"role is one of {', '.join(ROLES)}")
     key = "tsk_" + secrets.token_urlsafe(24)
     with store.tenant(tenant_id) as s:
-        s.add(ApiKey(name=name, key_hash=_hash(key)))
-        s.add(AuditRow(actor="admin", action="agent_key_created", target=f"agent:{name}", detail={}))
+        s.add(ApiKey(name=name, key_hash=_hash(key), role=role))
+        s.add(AuditRow(actor="admin", action="agent_key_created" if role == "agent" else "key_created",
+                       target=f"{role}:{name}", detail={"role": role}))
     return key
 
 
-def authenticate(store: Store, key: str) -> tuple[int, str]:
-    """The tenant and agent name a key stands for. The only cross-tenant read: the key decides the tenant."""
+@dataclass(frozen=True)
+class Principal:
+    tenant_id: int
+    name: str
+    role: str
+    key_hash: str
+
+
+def principal_of(store: Store, key: str | None = None, key_hash: str | None = None) -> Principal:
+    """Who a key (or, from a signed session, the hash of one) stands for, while it is live. The only cross-tenant
+    read: the key decides the tenant. Called on every request, so a revocation takes effect on the next one."""
+    digest = key_hash if key_hash is not None else _hash(key or "")
     with store.system() as s:
-        row = s.scalar(select(ApiKey).where(ApiKey.key_hash == _hash(key or ""), ApiKey.revoked_at.is_(None)))
+        row = s.scalar(select(ApiKey).where(ApiKey.key_hash == digest, ApiKey.revoked_at.is_(None)))
         if row is None:
             raise PermissionError("unknown or revoked key")
-        return row.tenant_id, row.name
+        return Principal(row.tenant_id, row.name, row.role, row.key_hash)
+
+
+def authenticate(store: Store, key: str, role: str = "agent") -> tuple[int, str]:
+    """The tenant and name an agent's key stands for: a person's key does not open the agent surface, so nothing an
+    agent did is recorded under a person's name, nor the reverse."""
+    who = principal_of(store, key)
+    if who.role != role:
+        raise PermissionError(f"a {who.role}'s key does not open this surface")
+    return who.tenant_id, who.name
 
 
 def revoke_key(store: Store, tenant_id: int, name: str, by: str) -> int:
@@ -195,6 +222,8 @@ class StaleProposal(ValueError):
     """The proposal is not the one the person was shown, or the evidence it was made on has changed."""
 
 
+@traced("proposal", before=lambda engine, tenant_id, agent, kind, *a, **k: {"tenant_id": tenant_id, "kind": kind},
+        after=lambda r: {"proposal_id": r["proposal"]})
 def propose(engine: Engine, tenant_id: int, agent: str, kind: str, args: dict, reason: str,
             origin: str | None = None) -> dict:
     """Record what an agent wants changed, checked for sense first and bound to the evidence it was made on; nothing
@@ -223,6 +252,9 @@ def proposal_status(store: Store, tenant_id: int, proposal: int) -> dict:
                 "binding": p.binding, "decided_by": p.decided_by, "outcome": p.outcome}
 
 
+@traced("approval", before=lambda engine, tenant_id, proposal, *a, **k: {"tenant_id": tenant_id,
+                                                                          "proposal_id": proposal},
+        after=lambda outcome: {"outcome": outcome})
 def decide(engine: Engine, tenant_id: int, proposal: int, person: str, confirm: bool,
            now: datetime | None = None, seen: str | None = None, fail_at: str | None = None) -> str:
     """A person confirms or declines an agent's proposal; the agent cannot do this step.
@@ -379,4 +411,5 @@ def count_queries(store: Store):
     return counter()
 
 
-__all__ = ["TOOLS", "create_key", "authenticate", "grant", "revoke", "granted", "propose", "decide"]
+__all__ = ["TOOLS", "ROLES", "Principal", "create_key", "principal_of", "authenticate", "grant", "revoke", "granted",
+           "propose", "decide"]

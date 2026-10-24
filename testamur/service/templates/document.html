@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Document {{ d.document }}, page {{ d.page }}{% endblock %}
+{% block main %}
+<section class="card">
+  <p class="crumbs"><a href="/">Overview</a> / document {{ d.document }} / page {{ d.page }} of {{ d.of }}</p>
+  <h1>Document {{ d.document }} <span class="muted">{{ (d.type or 'unclassified')|replace('_', ' ') }}</span></h1>
+  {% if d.quarantined %}
+  <div class="banner warn"><p><strong>Quarantined.</strong> This document contains text aimed at software rather than at a person. It is shown to you as plain text; no agent is ever shown it.</p></div>
+  {% endif %}
+  <p class="pager">
+    {% if d.page > 1 %}<a href="/documents/{{ d.document }}/pages/{{ d.page - 1 }}?q={{ q|urlencode }}">← page {{ d.page - 1 }}</a>{% endif %}
+    {% if d.page < d.of %}<a href="/documents/{{ d.document }}/pages/{{ d.page + 1 }}?q={{ q|urlencode }}">page {{ d.page + 1 }} →</a>{% endif %}
+    <a href="/documents/{{ d.document }}/file">download the file</a>
+  </p>
+  {% if q %}<p class="muted">Highlighting: “{{ q }}”</p>{% endif %}
+  <ol class="lines">
+    {% for i, line, hit in lines %}<li class="{{ 'hit' if hit else '' }}" value="{{ i }}">{{ line }}</li>{% endfor %}
+  </ol>
+</section>
+{% endblock %}

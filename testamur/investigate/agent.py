@@ -15,6 +15,7 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
+from ..telemetry import span
 from .tools import ToolGateway
 
 MAX_INVALID = 2
@@ -58,6 +59,15 @@ def step_schema(tools: list[str], output: type[BaseModel]) -> dict:
 def run(model, gateway: ToolGateway, system: str, task: str, output: type[BaseModel], budget: Budget,
         cancelled=lambda: False) -> AgentResult:
     """Run the agent to its answer or to the end of its budget. `model.chat(messages, max_tokens, schema=...)`."""
+    with span("agent", tenant_id=gateway.tenant_id, claim_id=gateway.claim_id, role=gateway.role) as note:
+        result = _run(model, gateway, system, task, output, budget, cancelled)
+        note(outcome=result.stop, steps=result.steps, prompt_tokens=result.prompt_tokens,
+             completion_tokens=result.completion_tokens, cached_calls=result.cached_calls)
+        return result
+
+
+def _run(model, gateway: ToolGateway, system: str, task: str, output: type[BaseModel], budget: Budget,
+         cancelled) -> AgentResult:
     tools = [t["name"] for t in gateway.describe()]
     schema = step_schema(tools, output)
     catalogue = "\n".join(f"- {t['name']}({', '.join(f'{k}: {v}' for k, v in t['args'].items())}): "

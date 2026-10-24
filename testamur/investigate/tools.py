@@ -18,6 +18,7 @@ from sqlalchemy import select
 from ..engine import Engine
 from ..modeltier import passages
 from ..store import Claim, Creditor, Document, Matter, RequirementState, UploadRow
+from ..telemetry import span
 
 MAX_TEXT = 1800                 # characters of document text one call returns
 WITHHELD = ("withheld: this document carries text aimed at automated readers; a person must read it, and no model "
@@ -97,6 +98,9 @@ class ToolGateway:
             event = ToolEvent(self.role, self.step, tool, args, "error", str(exc))
         event.ms = round(1000 * (time.perf_counter() - t0), 1)
         self.events.append(event)
+        with span("tool", tenant_id=self.tenant_id, claim_id=self.claim_id, role=self.role, tool=tool,
+                  outcome=event.outcome, reason=event.reason[:80] or None, steps=self.step):
+            pass                              # a span per call: who called what, and whether it was allowed
         return result
 
     # ------------------------------------------------------------------ what the claim's evidence is

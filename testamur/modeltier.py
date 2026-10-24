@@ -184,6 +184,26 @@ class Cassette:
         return reply
 
 
+def from_spec(spec: str | None, cassette: str | None = None) -> ModelClient | None:
+    """A model from configuration: "none" or nothing; "gguf:<path>" (llama.cpp on CPU); "openai:<base url>#<model>"
+    (any chat-completions server, its key from TESTAMUR_MODEL_KEY). With `cassette`, answers are replayed from that
+    file, and recorded to it when there is a live model; a cassette alone replays only, and a question it has not
+    recorded fails loudly (CassetteMiss)."""
+    inner: ModelClient | None = None
+    if spec and spec != "none":
+        kind, _, rest = spec.partition(":")
+        if kind == "gguf":
+            inner = LlamaCppClient(rest)
+        elif kind == "openai":
+            base, _, name = rest.partition("#")
+            inner = OpenAICompatibleClient(base, name or "default", api_key=os.environ.get("TESTAMUR_MODEL_KEY"))
+        else:
+            raise ValueError(f"unknown model {spec!r}: none, gguf:<path> or openai:<base url>#<model>")
+    if cassette:
+        return Cassette(cassette, inner)
+    return inner
+
+
 # ---------------------------------------------------------------------------------------------- locating clauses
 
 def passages(lines: list[str], window: int = 5, stride: int = 3) -> list[str]:

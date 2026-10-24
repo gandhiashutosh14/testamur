@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% block head %}{% endblock %}
+  <title>{% block title %}Review{% endblock %} · TESTAMUR</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/">TESTAMUR</a>
+    <span class="tag">claim review</span>
+    {% if who %}
+    <nav>
+      <span class="who">{{ who.name }} · {{ who.role }} · firm {{ who.tenant_id }}</span>
+      <a href="/docs">API</a>
+      <form method="post" action="/logout" class="inline">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="link" type="submit">Sign out</button>
+      </form>
+    </nav>
+    {% endif %}
+  </header>
+  <main>
+    {% block main %}{% endblock %}
+  </main>
+  <footer>Synthetic data. Votes, payments and messages are simulated. Every PASS or FAIL rests on evidence a person can open.</footer>
+</body>
+</html>

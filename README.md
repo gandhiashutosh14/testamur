@@ -78,7 +78,7 @@ Learn then Test on 1,594 labelled documents certifies name-matching thresholds d
 
 ### Delivery
 
-252 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 78 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, approvals and the engine tested on Postgres; the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
+273 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 95 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, migrations, approvals and the engine tested on Postgres; the Compose stack built, started and driven as a client (upload, read, investigate, isolation, traces); the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
 <!-- /RESULTS -->
 
 ## The problem
@@ -250,6 +250,15 @@ testamur calibrate --seeds 21-30                                        # thresh
 The committed reports are regenerated on GitHub's runners by the manual
 [`measure`](.github/workflows/measure.yml) workflow, CPU only.
 
+The service: an API for other systems, a review page for people, workers for the slow parts, all over shared state:
+
+```bash
+docker compose up --build        # Postgres, an S3-compatible store, Jaeger, migrations, the API and a worker
+docker compose logs seed         # sign-in keys for the synthetic world, shown once
+# the review page: http://localhost:8000   the API: http://localhost:8000/docs   traces: http://localhost:16686
+python scripts/dev_service.py    # the same service in one process on SQLite, without Docker
+```
+
 Agents connect over MCP with a key the tenant created, to the tools the tenant granted:
 
 ```bash
@@ -279,13 +288,19 @@ testamur/
   jobs.py, budget.py, worker.py   the job queue, spend caps, worker processes
   actions.py      dispatcher: tasks, reminders, holds, signed webhooks
   assistant.py    answers from the engine's records, with verified citations
-  agents.py, mcp_server.py        keys, tool catalogue, proposals, the MCP server
+  agents.py, mcp_server.py        keys and roles, tool catalogue, proposals, the MCP server
+  investigate/    the investigator-verifier workflow: typed contracts, scoped tools, the coordinator, the graph
+  service/        the FastAPI service: API, review page, sign-in, the demo seed
+  migrations/     the schema's history (Alembic), row-level security included
+  blobs.py, telemetry.py          the object-store interface; traces and structured logs
   harness.py, golden.py           measurement against the ground truth
   loadtest.py, shadow.py, reviewsim.py, actionsim.py, calibrate.py   the experiments behind the results
   synth/          the adversarial world generator and its ground truth
 tests/            unit, integration, isolation and simulation tests; panel.yaml, the adversarial false-PASS panel
 scripts/          prove_tests_fire.py (mutation proof), risk.py (review risk), results.py (this README's numbers),
-                  compare_judges.py (judging strategies and models)
+                  compare_judges.py (judging strategies and models), smoke_stack.py (the stack as a client),
+                  dev_service.py (the service without Docker)
+docker-compose.yml, Dockerfile, deploy/      the demo stack
 docs/             architecture, walkthrough, delivery, decision records
 reports/          committed reports, each stamped with the commit and command that produced it
 gates.yaml        the merge gates
@@ -314,7 +329,9 @@ domain on the engine built in v0.1 and v0.2. Next:
 
 ## What this is not
 
-- Not a production service: no web API for people yet, no deployment configuration; Postgres is tested, not tuned.
+- Not a production deployment: the Compose stack runs in CI and shows the shape (stateless processes, a restricted
+  database role under row-level security, an object store, traces), with no single sign-on, TLS, backup or load test of
+  the service. Postgres is tested, not tuned.
 - Not evidence about real claim files: the worlds are synthetic, and every name, bank, office and document in them is
   fictional. They are adversarial by design, but real files are messier in ways a generator does not anticipate.
 - Not legal advice, and not a system that admits claims or decides voting rights: the pack's checks are illustrative

@@ -24,6 +24,8 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
+from collections.abc import Callable
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypedDict
@@ -35,6 +37,7 @@ from sqlalchemy import delete, func, select
 from .. import agents
 from ..engine import Engine
 from ..store import AgentEvent, Claim, InvestigationRun, Proposal, RequirementState, utcnow
+from ..telemetry import span
 from . import agent as agent_loop
 from .contracts import EvidencePacket, Recommendation, VerificationReport
 from .coordinator import propose, reconcile
@@ -43,6 +46,9 @@ from .prompts import INVESTIGATOR, VERIFIER, investigator_task, verifier_task
 from .tools import ToolGateway
 
 FINAL = frozenset({"applied", "rejected", "no_change", "needs_person", "stale", "cancelled", "failed"})
+
+# set by whoever executes a run (a worker that may lose its lease): checked with the run's own cancellation
+_STOP: ContextVar[Callable[[], bool] | None] = ContextVar("investigation_stop", default=None)
 
 
 class RunState(TypedDict, total=False):
@@ -70,6 +76,22 @@ def sqlite_checkpointer(path: str | Path):
     return SqliteSaver(conn), conn
 
 
+def checkpointer(where: str):
+    """A checkpointer from a location: a Postgres URL (shared by the service's processes: whichever worker or API
+    process continues a run finds its state) or a SQLite file path. Returns (checkpointer, closable)."""
+    if where.startswith(("postgresql://", "postgresql+psycopg://", "postgres://")):
+        from langgraph.checkpoint.postgres import PostgresSaver
+        from psycopg.rows import dict_row
+        from psycopg_pool import ConnectionPool
+        url = "postgresql://" + where.split("://", 1)[1]
+        pool = ConnectionPool(url, min_size=1, max_size=8, open=True,
+                              kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row})
+        saver = PostgresSaver(pool)
+        saver.setup()                                      # LangGraph's own tables, idempotent
+        return saver, pool
+    return sqlite_checkpointer(where)
+
+
 class Investigations:
     """The workflow over one engine and one model. `checkpointer` persists the graph's state (see sqlite_checkpointer);
     the run, its trace and its outcome live in the store, per tenant."""
@@ -80,6 +102,11 @@ class Investigations:
 
     # ------------------------------------------------------------------ the public surface
     def start(self, tenant_id: int, claim_id: int, requested_by: str, mode: str = "pair") -> dict:
+        """Create a run and execute it here, to the approval or the end."""
+        return self.execute(tenant_id, self.create(tenant_id, claim_id, requested_by, mode))
+
+    def create(self, tenant_id: int, claim_id: int, requested_by: str, mode: str = "pair") -> int:
+        """A queued run; the service creates it in the request and a worker executes it."""
         if mode not in ("pair", "single"):
             raise ValueError("mode is pair or single")
         with self.engine.store.tenant(tenant_id) as s:
@@ -88,9 +115,25 @@ class Investigations:
             run = InvestigationRun(claim_id=claim_id, thread_id=uuid.uuid4().hex, mode=mode, requested_by=requested_by)
             s.add(run)
             s.flush()
-            run_id, thread = run.id, run.thread_id
-        self.graph.invoke({"run_id": run_id, "tenant_id": tenant_id, "claim_id": claim_id, "mode": mode},
-                          {"configurable": {"thread_id": thread}})
+            return run.id
+
+    def execute(self, tenant_id: int, run_id: int, stop: Callable[[], bool] | None = None) -> dict:
+        """Run the graph until it pauses for a person or ends. Begins a new run; continues one whose process died from
+        its last finished step. `stop` is asked between steps, with the run's cancellation (a worker that lost its
+        lease stops)."""
+        run = self._run(tenant_id, run_id)
+        if run["status"] in FINAL or run["status"] == "awaiting_approval":
+            return self.status(tenant_id, run_id)
+        config = {"configurable": {"thread_id": run["thread_id"]}}
+        token = _STOP.set(stop)
+        try:
+            if self.graph.get_state(config).next:          # checkpointed part-way: continue from there
+                self.graph.invoke(None, config)
+            else:
+                self.graph.invoke({"run_id": run_id, "tenant_id": tenant_id, "claim_id": run["claim"],
+                                   "mode": run["mode"]}, config)
+        finally:
+            _STOP.reset(token)
         return self.status(tenant_id, run_id)
 
     def resume(self, tenant_id: int, run_id: int, decisions: list[dict], by: str) -> dict:
@@ -100,22 +143,23 @@ class Investigations:
         if run["status"] != "awaiting_approval":
             raise ValueError(f"run {run_id} is {run['status']}, not waiting for approval")
         mine = {r["proposal_id"] for r in run["recommendations"] if r.get("proposal_id")}
+        with self.engine.store.tenant(tenant_id) as s:
+            shown = {p.id: p.binding_digest for p in s.scalars(select(Proposal).where(Proposal.id.in_(mine)))}
         clean = []
         for d in decisions:
             if int(d["proposal"]) not in mine:
                 raise ValueError(f"proposal {d['proposal']} is not one of run {run_id}'s")
-            clean.append({"proposal": int(d["proposal"]), "approve": bool(d["approve"]), "digest": d.get("digest"),
+            if d.get("digest") != shown.get(int(d["proposal"])):
+                # checked before the run resumes (it resumes once): the person reloads and decides what is there
+                raise agents.StaleProposal(f"proposal {d['proposal']} is not the one you were shown: reload it")
+            clean.append({"proposal": int(d["proposal"]), "approve": bool(d["approve"]), "digest": d["digest"],
                           "by": by})
         self.graph.invoke(Command(resume=clean), {"configurable": {"thread_id": run["thread_id"]}})
         return self.status(tenant_id, run_id)
 
     def recover(self, tenant_id: int, run_id: int) -> dict:
         """Continue a run whose process died, from its last finished step."""
-        run = self._run(tenant_id, run_id)
-        if run["status"] in FINAL or run["status"] == "awaiting_approval":
-            return self.status(tenant_id, run_id)
-        self.graph.invoke(None, {"configurable": {"thread_id": run["thread_id"]}})
-        return self.status(tenant_id, run_id)
+        return self.execute(tenant_id, run_id)
 
     def cancel(self, tenant_id: int, run_id: int, by: str) -> dict:
         """Stop a run: between agent steps if it is working, or now if it waits for approval (its proposals are
@@ -162,12 +206,10 @@ class Investigations:
     # ------------------------------------------------------------------ the graph
     def _build(self) -> StateGraph:
         g = StateGraph(RunState)
-        g.add_node("start", self._start)
-        g.add_node("investigate", self._investigate)
-        g.add_node("verify", self._verify)
-        g.add_node("reconcile", self._reconcile)
-        g.add_node("await_approval", self._await_approval)
-        g.add_node("apply", self._apply)
+        for name, fn in (("start", self._start), ("investigate", self._investigate), ("verify", self._verify),
+                         ("reconcile", self._reconcile), ("await_approval", self._await_approval),
+                         ("apply", self._apply)):
+            g.add_node(name, _traced_step(name, fn))
         g.add_edge(START, "start")
         g.add_edge("start", "investigate")
         g.add_conditional_edges("investigate", lambda st: "verify" if st.get("mode") == "pair" and st.get("packet")
@@ -294,6 +336,9 @@ class Investigations:
                 RequirementState.claim_id == st["claim_id"]))}
 
     def _cancelled(self, st: RunState) -> bool:
+        stop = _STOP.get()
+        if stop is not None and stop():
+            return True
         with self.engine.store.tenant(st["tenant_id"]) as s:
             run = s.get(InvestigationRun, st["run_id"])
             return bool(run and run.cancel_requested)
@@ -305,6 +350,18 @@ class Investigations:
                 setattr(run, k, v)
             run.updated_at = utcnow()
         return {k: v for k, v in values.items() if k == "status"}
+
+
+def _traced_step(name: str, fn):
+    """Each step of the graph is a span with the run's identifiers; the interrupt LangGraph raises to pause for a
+    person passes through it untouched."""
+    def step(st: RunState) -> dict:
+        with span(f"investigation.{name}", tenant_id=st.get("tenant_id"), claim_id=st.get("claim_id"),
+                  run_id=st.get("run_id"), mode=st.get("mode")) as note:
+            out = fn(st)
+            note(status=(out or {}).get("status"))
+            return out
+    return step
 
 
 def pending_runs(engine: Engine, tenant_id: int) -> list[dict]:
@@ -322,4 +379,5 @@ def proposals_of(engine: Engine, tenant_id: int, run_id: int) -> int:
             Proposal.origin.like(f"run:{run_id}:%"))) or 0
 
 
-__all__ = ["Investigations", "Budgets", "sqlite_checkpointer", "Recommendation", "pending_runs", "proposals_of"]
+__all__ = ["Investigations", "Budgets", "sqlite_checkpointer", "checkpointer", "Recommendation", "pending_runs",
+           "proposals_of"]

@@ -336,10 +336,11 @@ app.add_typer(proposals, name="proposals")
 
 
 @keys.command("create")
-def keys_create(name: str, db: str = "data/harness.db", tenant: int = 1):
-    """Create a key for an agent; it is shown once."""
+def keys_create(name: str, db: str = "data/harness.db", tenant: int = 1,
+                role: str = typer.Option("agent", help="agent (the agent surface), uploader or reviewer (the service)")):
+    """Create a key; it is shown once."""
     from .agents import create_key
-    typer.echo(create_key(_engine(db).store, tenant, name))
+    typer.echo(create_key(_engine(db).store, tenant, name, role))
 
 
 @keys.command("revoke")
@@ -500,6 +501,93 @@ def explain(claim: int, requirement: str, db: str = "data/harness.db", tenant: i
             typer.echo(f"             evidence {where}: {ev.quote}")
         if r.verdict == Verdict.FAIL and r.fix_hint:
             typer.echo(f"             fix: {r.fix_hint}")
+
+
+db_app = typer.Typer(help="The schema, by migration (row-level security included on Postgres).", no_args_is_help=True)
+demo_app = typer.Typer(help="The demo stack's synthetic data and keys.", no_args_is_help=True)
+app.add_typer(db_app, name="db")
+app.add_typer(demo_app, name="demo")
+
+
+def _db_url(url: str | None) -> str:
+    import os
+    return url or os.environ.get("TESTAMUR_DATABASE_URL") or "sqlite:///data/service.db"
+
+
+@db_app.command("upgrade")
+def db_upgrade(url: str = typer.Option(None, help="the owner's URL; TESTAMUR_DATABASE_URL by default"),
+               app_role: str = typer.Option(None, help="the role row-level security admits; TESTAMUR_APP_ROLE or "
+                                                       "testamur_app by default")):
+    """Bring the database to the current schema, and the workflow's checkpoint tables when they live in Postgres."""
+    import os
+
+    from . import migrations
+    target = _db_url(url)
+    migrations.upgrade(target, app_role=app_role)
+    typer.echo(f"schema at {migrations.current(target)} (head {migrations.head()})")
+    where = os.environ.get("TESTAMUR_CHECKPOINTS", "")
+    if where.startswith(("postgresql://", "postgresql+psycopg://", "postgres://")):
+        from .investigate import checkpointer
+        _, pool = checkpointer(where)          # creates LangGraph's own tables, idempotently
+        pool.close()
+        typer.echo("checkpoint tables ready")
+
+
+@db_app.command("current")
+def db_current(url: str = typer.Option(None, help="TESTAMUR_DATABASE_URL by default")):
+    from . import migrations
+    typer.echo(f"schema at {migrations.current(_db_url(url))} (head {migrations.head()})")
+
+
+@app.command()
+def serve(host: str = "127.0.0.1", port: int = 8000):
+    """The service (API and review page), configured by TESTAMUR_* variables (testamur/service/settings.py)."""
+    import uvicorn
+    uvicorn.run("testamur.service:create_app", factory=True, host=host, port=port, proxy_headers=True,
+                log_level="info")
+
+
+@app.command("worker")
+def worker_cmd(name: str = "worker-1", lease_seconds: float = 120.0,
+               serve_forever: bool = typer.Option(True, "--serve/--drain", help="keep polling, or exit when idle")):
+    """A worker for the service: reads uploads and runs investigations from the shared queue."""
+    import json
+    import signal
+    import threading
+
+    from .service.runtime import Runtime
+    from .service.settings import Settings
+    from .telemetry import configure
+    from .worker import work
+    configure("testamur-worker")
+    rt = Runtime(Settings.from_env(require_secret=False))
+    stop = threading.Event()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, lambda *_: stop.set())        # finish the job in hand, then exit
+    try:
+        stats = work(rt.engine, name, investigations=rt.investigations, lease_seconds=lease_seconds,
+                     forever=serve_forever, stop=stop)
+    finally:
+        rt.close()
+    typer.echo(json.dumps(stats))
+
+
+@demo_app.command("seed")
+def demo_seed(out: str = "data/demo-world", world_seed: int = 3):
+    """Load the synthetic world through the service's intake and print fresh demo keys (shown once)."""
+    from .service.demo import seed
+    from .service.runtime import Runtime
+    from .service.settings import Settings
+    rt = Runtime(Settings.from_env(require_secret=False))
+    try:
+        result = seed(rt, out, world_seed)
+    finally:
+        rt.close()
+    typer.echo(f"registry {result['registry']}: {result['tenants']} firms, {result['claims']} claims; "
+               f"{result['uploads_queued']} upload(s) queued for the worker")
+    for name, k in result["keys"].items():
+        typer.echo(f"  {k['role']:8} key for firm {k['tenant']} ({name}): {k['key']}")
+    typer.echo("Sign in at http://localhost:8000/login with a reviewer key. Synthetic data only.")
 
 
 if __name__ == "__main__":

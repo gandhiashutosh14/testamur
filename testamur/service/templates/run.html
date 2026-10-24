@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block head %}{% if working %}<meta http-equiv="refresh" content="3">{% endif %}{% endblock %}
+{% block title %}Investigation {{ run.run }}{% endblock %}
+{% block main %}
+<section class="card">
+  <p class="crumbs"><a href="/">Overview</a> / <a href="/claims/{{ run.claim }}">claim {{ run.claim }}</a> / investigation {{ run.run }}</p>
+  <h1>Investigation {{ run.run }} <span class="chip s-{{ run.status }}">{{ run.status|replace('_', ' ') }}</span></h1>
+  <p class="muted">{{ 'Investigator and verifier' if run.mode == 'pair' else 'Investigator alone' }} · asked by {{ run.requested_by }} at {{ run.created_at }} UTC · {{ run.tokens }} tokens{% if working %} · refreshing while the agents work{% endif %}</p>
+  {% if run.error %}<p class="error">{{ run.error }}</p>{% endif %}
+  {% if not run.packet and not working %}
+  {% set stops = run.trace|selectattr('kind', 'equalto', 'agent')|map(attribute='outcome')|list %}
+  <div class="banner warn"><p>The investigator produced no evidence packet{% if stops %} ({{ stops|join('; ') }}){% endif %}: nothing is proposed, and the claim stays with a person.</p></div>
+  {% endif %}
+  {% if run.stats %}<p class="muted">{% for k, v in run.stats|dictsort %}{{ k|replace('_', ' ') }}: {{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+</section>
+
+{% set recs = run.recommendations %}
+{% set proposed = recs|selectattr('proposal_id')|list %}
+{% if run.status == 'awaiting_approval' and proposed %}
+<section class="card accent">
+  <h2>Your decision</h2>
+  <p class="muted">Each proposal is bound to the evidence it was made on. If a document, a correction or a rule changed since, approving it applies nothing and marks it stale.</p>
+  <form method="post" action="/runs/{{ run.run }}/decide">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% for r in proposed %}
+    <fieldset>
+      <legend>{{ r.requirement|replace('_', ' ') }} · {{ r.check }} → <span class="chip v-{{ r.verdict }}">{{ r.verdict }}</span> <span class="muted">({{ r.agreement|replace('_', ' ') }})</span></legend>
+      <p>{{ r.reason }}</p>
+      {% for c in r.citations %}<p class="quote"><a href="/documents/{{ c.document_id }}/pages/{{ c.page }}?q={{ c.quote|urlencode }}">document {{ c.document_id }}, page {{ c.page }}</a>: “{{ c.quote }}”</p>{% endfor %}
+      <input type="hidden" name="digest-{{ r.proposal_id }}" value="{{ r.digest }}">
+      <label><input type="radio" name="decision-{{ r.proposal_id }}" value="approve"> approve</label>
+      <label><input type="radio" name="decision-{{ r.proposal_id }}" value="reject"> reject</label>
+      <p class="muted small">proposal {{ r.proposal_id }} · binding {{ r.digest[:12] }}…</p>
+    </fieldset>
+    {% endfor %}
+    <button type="submit">Record my decisions</button>
+  </form>
+</section>
+{% endif %}
+
+{% if run.outcomes %}
+<section class="card">
+  <h2>Decisions</h2>
+  <table><thead><tr><th>Proposal</th><th>Decision</th><th>By</th><th>Outcome</th></tr></thead><tbody>
+  {% for o in run.outcomes %}<tr><td>{{ o.proposal }}</td><td>{{ 'approved' if o.approve else 'rejected' }}</td><td>{{ o.by }}</td><td>{{ o.outcome }}</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+{% endif %}
+
+{% if recs %}
+<section class="card">
+  <h2>What the coordinator made of it</h2>
+  <table><thead><tr><th>Requirement</th><th>Check</th><th>Action</th><th>Agreement</th><th>Why</th></tr></thead><tbody>
+  {% for r in recs %}<tr><td>{{ r.requirement }}</td><td>{{ r.check or '' }}</td><td>{{ r.action|replace('_', ' ') }}{% if r.verdict %} <span class="chip v-{{ r.verdict }}">{{ r.verdict }}</span>{% endif %}</td><td>{{ r.agreement|replace('_', ' ') }}</td><td>{{ r.reason }}</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+{% endif %}
+
+{% if run.packet %}
+<section class="card">
+  <h2>The investigator's evidence packet</h2>
+  {% for f in run.packet.findings %}
+  {% set fi = loop.index0 %}
+  <div class="finding">
+    <p><span class="chip st-{{ f.stance }}">{{ f.stance }}</span> <strong>{{ f.requirement }}{% if f.check %} · {{ f.check }}{% endif %}</strong>: {{ f.statement }}</p>
+    {% for c in f.citations %}<p class="quote"><a href="/documents/{{ c.document_id }}/pages/{{ c.page }}?q={{ c.quote|urlencode }}">document {{ c.document_id }}, page {{ c.page }}</a>: “{{ c.quote }}”</p>{% endfor %}
+    {% if run.report %}{% for rv in run.report.reviews if rv.finding == fi %}
+      <p class="review"><span class="chip a-{{ rv.assessment }}">verifier: {{ rv.assessment }}</span> {{ rv.reason }}</p>
+    {% endfor %}{% endif %}
+  </div>
+  {% endfor %}
+  {% if run.packet.open_questions %}<p class="muted">Open questions: {{ run.packet.open_questions|join('; ') }}</p>{% endif %}
+</section>
+{% endif %}
+
+{% if run.report and run.report.additional %}
+<section class="card">
+  <h2>What the verifier found that the investigator did not</h2>
+  {% for f in run.report.additional %}
+  <div class="finding">
+    <p><span class="chip st-{{ f.stance }}">{{ f.stance }}</span> <strong>{{ f.requirement }}{% if f.check %} · {{ f.check }}{% endif %}</strong>: {{ f.statement }}</p>
+    {% for c in f.citations %}<p class="quote"><a href="/documents/{{ c.document_id }}/pages/{{ c.page }}?q={{ c.quote|urlencode }}">document {{ c.document_id }}, page {{ c.page }}</a>: “{{ c.quote }}”</p>{% endfor %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if run.trace %}
+<section class="card">
+  <h2>Trace</h2>
+  <p class="muted">Every tool call either agent made, with the gateway's decision. Agents see documents only through these tools, only for this claim, and never a quarantined document's text.</p>
+  <table class="small"><thead><tr><th>Agent</th><th>Step</th><th>Kind</th><th>Tool</th><th>Arguments</th><th>Outcome</th><th>ms</th></tr></thead><tbody>
+  {% for e in run.trace %}<tr><td>{{ e.role }}</td><td>{{ e.step }}</td><td>{{ e.kind }}</td><td>{{ e.tool or '' }}</td><td><code>{{ e.args|tojson if e.args else '' }}</code></td><td>{{ e.outcome }}{% if e.reason %}: {{ e.reason }}{% endif %}</td><td>{{ e.ms }}</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+{% endif %}
+{% endblock %}

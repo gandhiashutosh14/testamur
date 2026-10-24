@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python }}
-      - run: python -m pip install -e ".[dev,ocr,agents]"
+      - run: python -m pip install -e ".[dev,ocr,agents,service]"
       - run: ruff check testamur tests scripts
       - name: Tests (a skipped test fails the run unless allow-listed; so does a suite smaller than its floor)
         run: pytest -q
@@ -82,7 +82,7 @@ jobs:
           python-version: "3.11"
       - run: python -m pip install -e ".[dev,ocr,postgres]"
       - name: Leases with FOR UPDATE SKIP LOCKED, advisory locks per tenant, tenant isolation, the same statuses
-        run: pytest -q tests/test_jobs.py tests/test_tenancy.py tests/test_postgres.py
+        run: pytest -q tests/test_jobs.py tests/test_tenancy.py tests/test_postgres.py tests/test_migrations.py
 
   workflows:
     name: the pipeline's own security and correctness
@@ -98,12 +98,35 @@ jobs:
       - run: zizmor --offline .github/workflows
       - run: actionlint .github/workflows/*.yml
 
+  stack:
+    name: the demo stack end to end (Docker Compose)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and start Postgres, the object store, Jaeger, the migrations, the API and the worker
+        run: docker compose up --build --detach --wait api worker
+      - name: Seed a synthetic world through the intake, then upload, read, investigate, isolate and trace
+        run: |
+          set -o pipefail
+          docker compose run --rm seed | tee seed.log
+          key() { sed -n "s/.*$1: //p" seed.log; }
+          python3 scripts/smoke_stack.py --reviewer "$(key 'firm 1 (demo-reviewer)')" \
+            --uploader "$(key 'firm 1 (demo-uploader)')" --other-firm "$(key 'firm 2 (demo-reviewer-firm-2)')"
+      - name: The services' logs
+        if: always()
+        run: docker compose logs --no-color --tail 300
+      - run: docker compose down --volumes
+        if: always()
+
   gate:
     # The one check branch protection should require. A job that was skipped reports success to required checks;
     # this one runs always and passes only if every job above actually succeeded.
     name: gate
     if: always()
-    needs: [test, harness, postgres, workflows]
+    needs: [test, harness, postgres, stack, workflows]
     runs-on: ubuntu-latest
     steps:
       - name: Every job must have succeeded

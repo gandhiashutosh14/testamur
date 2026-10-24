@@ -484,11 +484,13 @@ class TenantBudget(TenantScoped, Base):
 
 
 class ApiKey(TenantScoped, Base):
-    """An agent's key: the tenant it acts for and the name it acts under. Only a hash of the key is stored."""
+    """A key: the tenant it acts for, the name it acts under and its role (an agent on the agent surface; a person who
+    uploads, or who reviews and approves, on the service). Only a hash of the key is stored."""
     __tablename__ = "api_keys"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(80))
     key_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    role: Mapped[str] = mapped_column(String(12), default="agent")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -666,7 +668,7 @@ class Store:
     statement reaches it. The owner connection (`url`) creates the schema and runs the system sessions."""
 
     def __init__(self, url: str = "sqlite:///data/testamur.db", busy_timeout_ms: int = 120_000,
-                 tenant_url: str | None = None):
+                 tenant_url: str | None = None, create_schema: bool = True):
         self.engine = create_engine(url, future=True)
         self.dialect = self.engine.dialect.name
         self.tenant_engine = create_engine(tenant_url, future=True) if tenant_url else self.engine
@@ -691,7 +693,8 @@ class Store:
                 # BEGIN fails, and its write lock is held until then
                 if dbapi_conn.in_transaction:
                     dbapi_conn.rollback()
-        Base.metadata.create_all(self.engine)
+        if create_schema:                    # a deployment runs the migrations instead (testamur db upgrade)
+            Base.metadata.create_all(self.engine)
         self._factory = sessionmaker(self.engine, expire_on_commit=False)
         self._tenant_factory = sessionmaker(self.tenant_engine, expire_on_commit=False)
 
@@ -741,15 +744,34 @@ def enable_row_level_security(store: Store, role: str) -> None:
     tenant matches nothing: it fails closed. Defence in depth under the session's own filter; idempotent."""
     if store.dialect != "postgresql":
         raise RuntimeError("row-level security needs Postgres")
-    prep = store.engine.dialect.identifier_preparer
+    with store.engine.begin() as conn:
+        for sql in rls_statements(store.engine.dialect.identifier_preparer, role):
+            conn.exec_driver_sql(sql)
+
+
+def rls_statements(prep, role: str, tables: list[str] | None = None) -> list[str]:
+    """The row-level security for `role` on `tables` (by default every tenant table), as SQL (idempotent): run by
+    enable_row_level_security, and by the migrations, which name their own tables."""
     who = prep.quote(role)
     current = "NULLIF(current_setting('testamur.tenant_id', true), '')::int"
-    with store.engine.begin() as conn:
-        for name in ["tenants", *tenant_tables()]:
-            table, column = prep.quote(name), "id" if name == "tenants" else "tenant_id"
-            conn.exec_driver_sql(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
-            conn.exec_driver_sql(f"DROP POLICY IF EXISTS tenant_isolation ON {table}")
-            conn.exec_driver_sql(f"CREATE POLICY tenant_isolation ON {table} TO {who} "
-                                 f"USING ({column} = {current}) WITH CHECK ({column} = {current})")
-            conn.exec_driver_sql(f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO {who}")
-        conn.exec_driver_sql(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {who}")
+    out = []
+    for name in tables if tables is not None else ["tenants", *tenant_tables()]:
+        table, column = prep.quote(name), "id" if name == "tenants" else "tenant_id"
+        out += [f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY",
+                f"DROP POLICY IF EXISTS tenant_isolation ON {table}",
+                f"CREATE POLICY tenant_isolation ON {table} TO {who} "
+                f"USING ({column} = {current}) WITH CHECK ({column} = {current})",
+                f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO {who}"]
+    return out + [f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {who}"]
+
+
+def rls_drop_statements(prep, role: str, tables: list[str]) -> list[str]:
+    """Undoes rls_statements on `tables`."""
+    who = prep.quote(role)
+    out = []
+    for name in tables:
+        table = prep.quote(name)
+        out += [f"REVOKE SELECT, INSERT, UPDATE, DELETE ON {table} FROM {who}",
+                f"DROP POLICY IF EXISTS tenant_isolation ON {table}",
+                f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY"]
+    return out
