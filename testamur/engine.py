@@ -43,6 +43,7 @@ from .store import (
     CheckEvent,
     CheckReview,
     Claim,
+    ClaimPermission,
     Creditor,
     Document,
     DocumentReview,
@@ -744,6 +745,46 @@ class Engine:
                               payload={"claim": eid, "requirement": rid, "creditor": e.creditor_id,
                                        "from": before[0], "to": status, "failing": failing, "hints": hints,
                                        "document": doc.id if doc else None, "as_of": self.as_of.isoformat()}))
+        s.flush()
+        self._permissions(s, tenant_id, e)
+
+    def _permissions(self, s: Session, tenant_id: int, e: Claim) -> None:
+        """What the claim's evidence permits now, decided apart from whether each document suffices: every condition
+        of the pack's permission must hold, and each unmet one is named. A change is reported through the outbox in the
+        same transaction as the status change that caused it."""
+        states = {st.requirement_id: st for st in s.scalars(select(RequirementState).where(
+            RequirementState.claim_id == e.id))}
+        for action, spec in self.pack.permissions.items():
+            unmet = []
+            for c in spec.requires:
+                if c.requirement is not None:
+                    st = states.get(c.requirement)
+                    if st is None or st.status not in c.statuses:
+                        unmet.append(f"{c.requirement} is {st.status if st else 'not yet computed'}")
+                    continue
+                rid = self.pack.requirement_of(c.check)
+                st = states.get(rid)
+                if st is not None and st.status == Status.VERIFIED_OUT_OF_BAND:
+                    continue                                   # verified by a person outside the platform
+                verdict = None
+                if st is not None and st.document_id is not None:
+                    _, results = self._verdicts(s, tenant_id, e.id, rid)
+                    verdict = next((r.verdict for r in results if r.check_id == c.check), None)
+                if verdict not in c.verdicts:
+                    unmet.append(f"{c.check} is {verdict or 'not evaluated'}")
+            granted = not unmet
+            key = {"claim_id": e.id, "action": action, "tenant_id": tenant_id}
+            row = s.get(ClaimPermission, key)
+            if row is not None and (row.granted, row.unmet) == (granted, unmet):
+                continue
+            if row is None:
+                row = ClaimPermission(**key, granted=granted, unmet=unmet, version=0)
+                s.add(row)
+            was = None if row.version == 0 else row.granted
+            row.granted, row.unmet, row.version, row.updated_at = granted, unmet, (row.version or 0) + 1, utcnow()
+            s.add(OutboxEvent(key=f"permission:{e.id}/{action}#{row.version}", kind="claim.permission_changed",
+                              payload={"claim": e.id, "action": action, "creditor": e.creditor_id, "was": was,
+                                       "granted": granted, "unmet": unmet, "as_of": self.as_of.isoformat()}))
         s.flush()
 
     # ------------------------------------------------------------------ checks

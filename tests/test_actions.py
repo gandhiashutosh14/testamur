@@ -1,6 +1,6 @@
-"""From finding to action: one outbox event per status change; dispatching turns events into single tasks, reminders
-and holds, even across a crash; putting the evidence right undoes them; webhooks are signed, retried and processed
-once."""
+"""From finding to action: one outbox event per status or permission change; dispatching turns events into single
+tasks, reminders and holds, even across a crash; putting the evidence right undoes them; webhooks are signed, retried
+and processed once."""
 from collections import Counter
 from datetime import datetime, time, timedelta
 
@@ -13,6 +13,7 @@ from testamur.model import Status
 from testamur.pack import load_pack
 from testamur.store import (
     Claim,
+    ClaimPermission,
     Creditor,
     Delivery,
     Hold,
@@ -28,12 +29,13 @@ def _now(world):
     return datetime.combine(world.as_of, time(9))
 
 
-def test_every_status_change_writes_exactly_one_event(env):
+def test_every_status_and_permission_change_writes_exactly_one_event(env):
     world, store, engine = env
     with store.tenant(1) as s:
         events = s.scalar(select(func.count()).select_from(OutboxEvent))
         versions = s.scalar(select(func.sum(RequirementState.version)))
-    assert events == versions > 0
+        permissions = s.scalar(select(func.sum(ClaimPermission.version)))
+    assert events == versions + permissions and versions > 0 and permissions > 0
     engine.reindex(1)
     engine.refresh(1)                                   # nothing changed, so nothing new is reported
     with store.tenant(1) as s:
@@ -58,21 +60,19 @@ def test_a_crash_mid_dispatch_leaves_no_partial_work_and_nothing_twice(env):
 
 
 def _lapsed_authority_alone(store, world):
-    """A claim whose expired authority is its only reason to be on hold, in whichever tenant has one."""
-    holding = load_pack().actions
+    """A claim whose vote is withheld only because its authority lapsed, in whichever tenant has one: its proof of
+    claim permits a vote, so renewing the authority must permit it and release the hold."""
+    proof_ok = next(c.statuses for c in load_pack().permissions["vote"].requires if c.requirement == "proof_of_claim")
     for t in world.tenants:
         with store.tenant(t.id) as s:
-            def only_authority_holds(eid):             # so putting the authority right must release the hold outright
-                return all(x.requirement_id == "authority" or x.requirement_id not in holding.hold_requirements
-                           or x.status not in holding.hold_statuses
-                           for x in s.scalars(select(RequirementState).where(RequirementState.claim_id == eid)))
-            st = next((x for x in s.scalars(select(RequirementState).where(
-                RequirementState.requirement_id == "authority", RequirementState.status == Status.EXPIRED))
-                if only_authority_holds(x.claim_id)), None)
-            if st is not None:
-                e = s.get(Claim, st.claim_id)
-                return t.id, e.id, e.matter_id, e.creditor_id, s.get(Creditor, e.creditor_id).legal_name
-    raise AssertionError("the tiny world has an expired authority that is its claim's only hold")
+            for st in s.scalars(select(RequirementState).where(RequirementState.requirement_id == "authority",
+                                                               RequirementState.status == Status.EXPIRED)):
+                proof = s.get(RequirementState, {"claim_id": st.claim_id, "requirement_id": "proof_of_claim",
+                                                 "tenant_id": t.id})
+                if proof is not None and proof.status in proof_ok:
+                    e = s.get(Claim, st.claim_id)
+                    return t.id, e.id, e.matter_id, e.creditor_id, s.get(Creditor, e.creditor_id).legal_name
+    raise AssertionError("the tiny world has a claim whose vote waits only on an expired authority")
 
 
 def test_putting_the_evidence_right_closes_the_chase_and_releases_the_hold(env):
@@ -81,8 +81,8 @@ def test_putting_the_evidence_right_closes_the_chase_and_releases_the_hold(env):
     tenant, eid, matter, creditor_id, name = _lapsed_authority_alone(store, world)
     dispatch(store, pack, tenant, now)
     with store.tenant(tenant) as s:
-        hold = s.scalar(select(Hold).where(Hold.claim_id == eid, Hold.released_at.is_(None)))
-        assert hold is not None and "authority" in hold.requirements
+        hold = s.scalar(select(Hold).where(Hold.claim_id == eid, Hold.action == "vote", Hold.released_at.is_(None)))
+        assert hold is not None and "authority is EXPIRED" in hold.reasons
         assert s.scalar(select(Task).where(Task.claim_id == eid, Task.requirement_id == "authority",
                                            Task.status == "open")).kind == "chase_creditor"
     data = renewed_authority(name, world.as_of, seed=1)
@@ -94,8 +94,10 @@ def test_putting_the_evidence_right_closes_the_chase_and_releases_the_hold(env):
         assert st.status in (Status.SATISFIED, Status.SATISFIED_WITH_FINDINGS)
         assert all(t.status != "open" for t in s.scalars(select(Task).where(Task.claim_id == eid,
                                                                            Task.requirement_id == "authority")))
-        assert s.scalar(select(Hold).where(Hold.claim_id == eid, Hold.released_at.is_(None))) is None
-        assert s.scalar(select(Hold).where(Hold.claim_id == eid)).released_at is not None
+        assert s.get(ClaimPermission, {"claim_id": eid, "action": "vote", "tenant_id": tenant}).granted
+        assert s.scalar(select(Hold).where(Hold.claim_id == eid, Hold.action == "vote",
+                                           Hold.released_at.is_(None))) is None
+        assert s.scalar(select(Hold).where(Hold.claim_id == eid, Hold.action == "vote")).released_at is not None
 
 
 def test_a_reminder_waits_out_its_cooldown(env):

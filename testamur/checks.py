@@ -22,6 +22,20 @@ from .understand import Fields
 # cover it.
 _EXCLUSION = re.compile(r"\b(?:except|excluding|excludes|excluded|other than|not including|with the exception of|"
                         r"outside|save for)\b", re.I)
+# What withholds a power in the clause that names it: "is not authorised to vote", "may not vote", "no authority to
+# vote", "voting rights are withdrawn".
+_WITHHELD = re.compile(r"\b(?:not|no|never|neither|nor|without|cannot|can't|isn't|prohibited|forbidden|barred|"
+                       r"except|excluding|excluded|other than|save for|withdrawn|revoked|rescinded|cancell?ed|"
+                       r"suspended|ceases?|ceased|no longer)\b|n't\b", re.I)
+# What makes a grant depend on something a rule cannot see: a condition, an approval, a later date.
+_CONDITIONAL = re.compile(r"\b(?:subject to|provided that|unless|conditional|pending|upon (?:receipt|approval|"
+                          r"confirmation|ratification)|after (?:approval|confirmation|ratification)|only (?:if|after|"
+                          r"upon|when|with)|with the (?:prior |written )?(?:approval|consent|sanction)|"
+                          r"(?:from|with effect from|effective from|on and after) \d)\b", re.I)
+# What narrows a grant to part of the power: "only on", "solely for", "limited to".
+_PARTIAL = re.compile(r"\b(?:only|solely|limited to|restricted to|confined to)\b", re.I)
+_CLAUSES = re.compile(r"[;.\n]+|,\s+(?=(?:but|however|although|save|except|excluding)\b)", re.I)
+_CONTRAST = re.compile(r"(?:but|however|although|save|except|excluding|other than)\b", re.I)
 # What a signature line says when nobody signed it: a template's placeholder, not a name.
 _PLACEHOLDER = re.compile(r"^(?:\W*(?:n/?a|tbc|tbd|to be signed|unsigned|not signed|pending|name|signature|title|date|"
                           r"print name|authori[sz]ed signatory)\W*|\[.*\]|\(.*\)|[\W_]*)$", re.I)
@@ -78,8 +92,8 @@ def _value(ctx: CheckContext, name: str) -> tuple[FieldValue | None, str | None]
 
 
 # Rules whose verdict depends on the as-of date: a verdict from yesterday is not today's (an authority can lapse
-# overnight).
-TIME_RULES = frozenset({"date_covers", "within_days"})
+# overnight, and one dated for next week takes effect next week).
+TIME_RULES = frozenset({"date_covers", "within_days", "in_effect"})
 
 
 def evaluate(cid: str, rid: str, ctx: CheckContext) -> CheckResult:
@@ -194,7 +208,11 @@ def _shift_years(d: date, years: int) -> date:
 def _date_not_before(cid, rid, spec, ctx, p):
     """A date on the document no earlier than a date of the process, shifted by whole years: a default within the
     three years before the insolvency commencement date, a form signed after the public announcement. The anchor is
-    fixed for the process, so the verdict does not change with the calendar."""
+    fixed for the process, so the verdict does not change with the calendar.
+
+    `beyond: abstain` makes an earlier date a question for a person, not a FAIL: where the rule is only the usual
+    case of the law (a debt older than three years may still be within limitation if it was acknowledged in writing),
+    the engine flags it and a person decides."""
     fv, why = _value(ctx, p["field"])
     if fv is None:
         return _result(cid, rid, spec, Verdict.ABSTAIN, why, ctx)
@@ -203,8 +221,25 @@ def _date_not_before(cid, rid, spec, ctx, p):
     if fv.value >= limit:
         return _result(cid, rid, spec, Verdict.PASS, f"{fv.value.isoformat()} is on or after {limit.isoformat()}", ctx,
                        [_ev(ctx, fv)])
+    if p.get("beyond") == "abstain":
+        return _result(cid, rid, spec, Verdict.ABSTAIN, f"{fv.value.isoformat()} is before {limit.isoformat()}: "
+                       f"{p.get('question', 'a person decides')}", ctx, [_ev(ctx, fv)])
     return _result(cid, rid, spec, Verdict.FAIL, f"{fv.value.isoformat()} is before {limit.isoformat()}", ctx,
                    [_ev(ctx, fv)], found=fv.value.isoformat(), anchor=anchor.isoformat())
+
+
+def _in_effect(cid, rid, spec, ctx, p):
+    """A document that takes effect on a date: in effect on the as-of date, or not yet (a FAIL that becomes a PASS when
+    the date comes; the rule depends on the date). Without its own date, the fallback field (the date of issue)."""
+    fv, why = _value(ctx, p["field"])
+    if fv is None and p.get("fallback") and p["field"] not in ctx.fields.conflicts:
+        fv, why = _value(ctx, p["fallback"])
+    if fv is None:
+        return _result(cid, rid, spec, Verdict.ABSTAIN, why, ctx)
+    if fv.value <= ctx.as_of:
+        return _result(cid, rid, spec, Verdict.PASS, f"in effect since {fv.value.isoformat()}", ctx, [_ev(ctx, fv)])
+    return _result(cid, rid, spec, Verdict.FAIL, f"takes effect on {fv.value.isoformat()}, after {ctx.as_of.isoformat()}",
+                   ctx, [_ev(ctx, fv)], found=fv.value.isoformat())
 
 
 def _date_covers(cid, rid, spec, ctx, p):
@@ -263,6 +298,36 @@ def _scope_mentions(cid, rid, spec, ctx, p):
         return _result(cid, rid, spec, Verdict.PASS, f"mentions '{hit}'", ctx, [_ev(ctx, fv)])
     return _result(cid, rid, spec, Verdict.FAIL, f"does not mention {', '.join(terms)}", ctx, [_ev(ctx, fv)],
                    required=" or ".join(terms))
+
+
+def _grants_power(cid, rid, spec, ctx, p):
+    """Does the document grant a power (to vote)? Read clause by clause, not word by word: the clause that names the
+    power must grant it plainly. A clause that withholds it ("is not authorised to vote", "voting rights are
+    withdrawn") is a FAIL; one that makes it depend on something a rule cannot see (an approval, a condition, a later
+    date), narrows it ("only on"), or sits beside a clause withholding part of it, is a question for a person. A grant
+    is never read into a document: no clause naming the power is a FAIL."""
+    fv, why = _value(ctx, p["field"])
+    if fv is None:
+        return _result(cid, rid, spec, Verdict.ABSTAIN, why, ctx)
+    terms = p["terms"]
+    clauses = [c.strip() for c in _CLAUSES.split(fv.value) if c and c.strip()]
+    naming = [c for c in clauses if any(re.search(rf"\b{re.escape(t)}", c, re.I) for t in terms)]
+    if not naming:
+        return _result(cid, rid, spec, Verdict.FAIL, f"does not grant the power to {terms[0]}", ctx, [_ev(ctx, fv)],
+                       required=" or ".join(terms))
+    withheld = [c for c in naming if _WITHHELD.search(c)]
+    doubtful = [c for c in naming if c not in withheld and (_CONDITIONAL.search(c) or _PARTIAL.search(c))]
+    # a restriction that follows the grant without repeating the word ("..., but not on a resolution plan")
+    doubtful += [c for c in clauses if c not in naming and _CONTRAST.match(c)]
+    granted = [c for c in naming if c not in withheld and c not in doubtful]
+    if withheld and not granted and not doubtful:
+        return _result(cid, rid, spec, Verdict.FAIL, f"withholds the power: '{withheld[0]}'", ctx, [_ev(ctx, fv)],
+                       required=" or ".join(terms))
+    if withheld or doubtful:
+        what = doubtful[0] if doubtful else withheld[0]
+        return _result(cid, rid, spec, Verdict.ABSTAIN, f"the grant is partial or conditional ('{what}'); a person "
+                       "reads whether it covers the vote at hand", ctx, [_ev(ctx, fv)])
+    return _result(cid, rid, spec, Verdict.PASS, f"grants it: '{granted[0]}'", ctx, [_ev(ctx, fv)])
 
 
 def _gstin_checksum(cid, rid, spec, ctx, p):
@@ -359,6 +424,8 @@ RULES = {
     "money_within_record": _money_within_record,
     "words_match_figures": _words_match_figures,
     "date_not_before": _date_not_before,
+    "in_effect": _in_effect,
+    "grants_power": _grants_power,
     "date_covers": _date_covers,
     "within_days": _within_days,
     "in_allowlist": _in_allowlist,

@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from testamur.checks import CheckContext, evaluate
+from testamur.checks import TIME_RULES, CheckContext, evaluate
 from testamur.ids import gstin_with_check
 from testamur.model import FieldValue, Verdict
 from testamur.pack import load_pack
@@ -60,7 +60,11 @@ def test_a_default_more_than_three_years_before_commencement_is_time_barred():
     inside = v("claim_not_time_barred", ctx({"default_date": date(2023, 5, 1)}), "proof_of_claim")
     assert inside.verdict == Verdict.PASS                          # exactly three years: still within limitation
     barred = v("claim_not_time_barred", ctx({"default_date": date(2023, 4, 30)}), "proof_of_claim")
-    assert barred.verdict == Verdict.FAIL and "section 18" in barred.fix_hint and not barred.lapsed
+    # outside the usual three years: a person checks for a written acknowledgement (section 18), the rule never fails
+    # it outright, and never passes it
+    assert barred.verdict == Verdict.ABSTAIN and "acknowledged in writing" in barred.reason and not barred.lapsed
+    spec = load_pack().checks["claim_not_time_barred"]
+    assert spec.illustrative and spec.reviewed and "section 238A" in spec.basis
 
 
 def test_a_claim_may_be_below_the_books_but_not_above_them():
@@ -114,7 +118,30 @@ def test_a_representative_who_may_only_file_cannot_vote():
     filing = v("auth_covers_voting", ctx({"powers": "To sign and submit the proof of claim"}))
     assert filing.verdict == Verdict.FAIL
     excluded = ctx({"powers": "To attend meetings of the committee of creditors, excluding voting on any plan"})
-    assert v("auth_covers_voting", excluded).verdict == Verdict.ABSTAIN
+    assert v("auth_covers_voting", excluded).verdict == Verdict.FAIL
+
+
+@pytest.mark.parametrize("powers,verdict", [
+    ("The representative is not authorised to vote on any resolution.", Verdict.FAIL),
+    ("To file the claim; the representative may not vote", Verdict.FAIL),
+    ("No authority to vote is conferred", Verdict.FAIL),
+    ("Voting rights under the earlier letter are withdrawn", Verdict.FAIL),
+    ("To vote, subject to the approval of the board", Verdict.ABSTAIN),
+    ("To vote only on resolutions about the extension of the process", Verdict.ABSTAIN),
+    ("To attend and vote, but not on a resolution plan", Verdict.ABSTAIN),
+    ("To vote on all matters; voting on a resolution plan is excluded", Verdict.ABSTAIN),
+    ("To attend, speak and vote for the creditor at every meeting of creditors", Verdict.PASS),
+])
+def test_the_vote_is_granted_only_by_a_clause_that_grants_it(powers, verdict):
+    assert v("auth_covers_voting", ctx({"powers": powers})).verdict == verdict
+
+
+def test_an_authority_is_in_effect_only_from_its_effective_date():
+    assert v("auth_in_effect", ctx({"effective_date": date(2026, 9, 1)})).verdict == Verdict.PASS
+    later = v("auth_in_effect", ctx({"effective_date": date(2026, 11, 1)}))
+    assert later.verdict == Verdict.FAIL and "2026-11-01" in later.reason
+    assert v("auth_in_effect", ctx({"issue_date": date(2026, 9, 1)})).verdict == Verdict.PASS      # falls back
+    assert "in_effect" in TIME_RULES                                       # judged again when the date moves
 
 
 def test_a_charge_must_be_the_creditors_over_the_debtor_and_cover_the_facility():

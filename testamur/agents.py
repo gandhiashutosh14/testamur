@@ -135,10 +135,13 @@ def list_claims(store: Store, tenant_id: int, cursor: int = 0, limit: int = 25) 
         states: dict[int, dict] = defaultdict(dict)
         for st in s.scalars(select(RequirementState).where(RequirementState.claim_id.in_(ids))):
             states[st.claim_id][st.requirement_id] = st.status
-        held = {h.claim_id for h in s.scalars(select(Hold).where(Hold.claim_id.in_(ids),
-                                                                     Hold.released_at.is_(None)))}
+        held: dict[int, list[str]] = defaultdict(list)
+        for h in s.scalars(select(Hold).where(Hold.claim_id.in_(ids), Hold.released_at.is_(None))
+                           .order_by(Hold.action)):
+            held[h.claim_id].append(h.action)
     items = [{"claim": e.id, "creditor": names.get(e.creditor_id), "tier": e.tier, "type": e.claim_type,
-              "statuses": states.get(e.id, {}), "on_hold": e.id in held} for e in engs]
+              "statuses": states.get(e.id, {}), "on_hold": bool(held.get(e.id)), "held_for": held.get(e.id, [])}
+             for e in engs]
     return {"items": items, "next_cursor": ids[-1] if len(ids) == limit else None}
 
 

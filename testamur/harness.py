@@ -29,6 +29,7 @@ from .pack import load_pack
 from .store import (
     Attestation,
     Claim,
+    ClaimPermission,
     Creditor,
     Document,
     Matter,
@@ -39,7 +40,7 @@ from .store import (
     UsageRow,
     VerdictRow,
 )
-from .synth.truth import truth_statuses
+from .synth.truth import truth_permissions, truth_statuses
 from .synth.world import World, load_world
 
 
@@ -284,6 +285,20 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
         else:
             outcome["other_mismatch"] += 1
     n_status = sum(outcome.values())
+    # permissions: what the evidence lets a claim do (vote, be paid); a grant the truth withholds is the dangerous one
+    with store.system() as s:
+        granted = {(p.claim_id, p.action): p.granted for p in s.scalars(select(ClaimPermission))}
+    perm = Counter()
+    false_grant_examples = []
+    for key, ok in truth_permissions(world, truth, pack).items():
+        got = granted.get(key, False)
+        if got == ok:
+            perm["exact"] += 1
+        elif got:
+            perm["false_grant"] += 1
+            false_grant_examples.append({"claim": key[0], "action": key[1]})
+        else:
+            perm["false_withhold"] += 1
     # security
     injected = [u for u in originals if u.truth.injection]
     detected = sum(1 for u in injected if up_doc[u.id].hostile)
@@ -306,6 +321,7 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
                    "deferral_rate": round(outcome["deferred_to_review"] / max(1, n_status), 4),
                    "confusion": {f"{t} -> {e}": n for (t, e), n in sorted(status_conf.items())},
                    "false_vouching_examples": false_vouching},
+        "permissions": {"pairs": sum(perm.values()), **dict(perm), "false_grant_examples": false_grant_examples[:20]},
         "security": {"injected_documents": len(injected), "detected": detected,
                      "model_pass_on_hostile_documents": hostile_model_pass},
     }
@@ -317,6 +333,8 @@ def apply_gates(report: Report, gates_file: str | Path) -> None:
     injected = m["security"]["injected_documents"]
     rows = [
         ("status false vouching", m["status"].get("false_vouching", 0), "<=", g["status_false_vouching_max"]),
+        ("vote or payout permitted when the truth withholds it", m["permissions"].get("false_grant", 0), "<=",
+         g["permission_false_grant_max"]),
         ("critical check false passes", m["checks"]["critical_false_pass"], "<=", g["critical_check_false_pass_max"]),
         ("documents matched to the wrong creditor", m["matching"].get("wrong_match", 0), "<=", g["wrong_match_max"]),
         ("classification accuracy", m["classification"]["accuracy"], ">=", g["classification_accuracy_min"]),
@@ -368,6 +386,13 @@ def render(r: Report) -> str:
             f"{st.get('false_vouching', 0)}. False alarm: {st.get('false_alarm', 0)}. Other mismatch: "
             f"{st.get('other_mismatch', 0)}.", "", "| Truth -> engine | Count |", "|---|---|"]
     out += [f"| {k} | {v} |" for k, v in st["confusion"].items()]
+    pm = m.get("permissions", {})
+    if pm:
+        out += ["", "## Permissions", "",
+                f"{pm['pairs']} claim-action pairs (to vote, to be paid), decided apart from whether each document "
+                f"suffices. Exact: {pm.get('exact', 0)}. Permitted when the truth withholds it: "
+                f"{pm.get('false_grant', 0)}. Withheld when the truth permits it (a person is asked instead): "
+                f"{pm.get('false_withhold', 0)}."]
     out += ["", "## Checks", "", "By tier (only where the engine and the truth judged the same document):", "",
             "| Tier | Judgements | Agree | False PASS | Truth negatives | Abstained | False FAIL |",
             "|---|---|---|---|---|---|---|"]

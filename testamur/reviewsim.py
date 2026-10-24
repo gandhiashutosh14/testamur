@@ -235,7 +235,8 @@ def accuracy_scenario(world_dir: str | Path, db: str | Path, model=None, fault: 
 
 
 def _false_passes(world: World, store: Store, engine: Engine, check: str, truth: dict) -> dict[int, int]:
-    """Per tenant: the engine's PASS verdicts of `check` on current documents that the truth says are FAIL."""
+    """Per tenant: the engine's PASS verdicts of `check` on current documents where the truth gives no PASS (a FAIL,
+    or a question only a person can settle)."""
     out: Counter = Counter()
     tenant_of = {e.id: e.tenant_id for e in world.claims}
     for key, tv in truth.items():
@@ -243,7 +244,7 @@ def _false_passes(world: World, store: Store, engine: Engine, check: str, truth:
             continue
         _, results = engine.verdicts(tenant_of[key[0]], *key)
         mine = next((r for r in results if r.check_id == check), None)
-        if mine is not None and mine.verdict == Verdict.PASS and tv["checks"][check] == Verdict.FAIL:
+        if mine is not None and mine.verdict == Verdict.PASS and tv["checks"][check] in (Verdict.FAIL, Verdict.ABSTAIN):
             out[tenant_of[key[0]]] += 1
     return dict(out)
 

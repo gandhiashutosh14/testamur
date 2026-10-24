@@ -376,16 +376,33 @@ class Notification(TenantScoped, Base):
     sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
+class ClaimPermission(TenantScoped, Base):
+    """Whether a claim's evidence permits an action (to vote, to be paid), and which conditions are unmet. Computed by
+    the engine whenever a status changes, and reported through the outbox like a status. A recommendation: the action
+    itself is taken elsewhere, by a person."""
+    __tablename__ = "claim_permissions"
+    __table_args__ = (_same_tenant("claim_id", "claims"),)
+    claim_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    action: Mapped[str] = mapped_column(String(20), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(_tenant_fk(), primary_key=True)
+    granted: Mapped[bool] = mapped_column(Boolean, default=False)
+    unmet: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    version: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
 class Hold(TenantScoped, Base):
-    """A hold on a claim while a critical requirement is unmet: its votes are not counted and nothing is paid to it.
-    Placed and released by the engine, announced by webhook; reversible by design. At most one open hold per claim."""
+    """A hold on one action for a claim while its evidence does not permit it: its votes are not counted, or nothing is
+    paid to it. Placed and released by the dispatcher from the claim's permissions, announced by webhook; reversible by
+    design. At most one open hold per claim and action."""
     __tablename__ = "holds"
-    __table_args__ = (Index("one_open_hold", "tenant_id", "claim_id", unique=True,
+    __table_args__ = (Index("one_open_hold", "tenant_id", "claim_id", "action", unique=True,
                             sqlite_where=text("released_at IS NULL"), postgresql_where=text("released_at IS NULL")),
                       _same_tenant("claim_id", "claims"))
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     claim_id: Mapped[int] = mapped_column(Integer, index=True)
-    requirements: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    action: Mapped[str] = mapped_column(String(20), default="vote")
+    reasons: Mapped[list[Any]] = mapped_column(JSON, default=list)        # the conditions unmet when it was placed
     placed_at: Mapped[datetime] = mapped_column(DateTime)
     released_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

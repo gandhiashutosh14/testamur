@@ -9,7 +9,7 @@ from decimal import Decimal
 from ..model import CheckResult, Severity, Status, Tier, Verdict
 from ..pack import Pack, load_pack
 from ..status import decide
-from .world import Claim, Upload, World
+from .world import VOTING_POWERS, Claim, Upload, World
 
 KEY_DATE = {"authority_letter": "effective_date", "charge_certificate": "registration_date",
             "bank_mandate": "letter_date"}
@@ -110,7 +110,11 @@ def truth_check(pack: Pack, world: World, check_id: str, rid: str, e: Claim, up:
     if check_id == "claim_words_match":
         return ok(f["amount_in_words"] == f["amount_claimed"])
     if check_id == "claim_not_time_barred":
-        return ok(_d(f["default_date"]) >= _years_before(matter.commencement, 3))
+        # older than three years: a question for a person (an acknowledgement could save it); the world files none,
+        # so a careful person finds the debt time-barred
+        if _d(f["default_date"]) >= _years_before(matter.commencement, 3):
+            return res(Verdict.PASS)
+        return res(Verdict.FAIL if resolved else Verdict.ABSTAIN)
     if check_id == "claim_dated_after_announcement":
         return ok(_d(f["claim_date"]) >= matter.announced)
     if check_id == "claim_gstin_valid":
@@ -122,6 +126,8 @@ def truth_check(pack: Pack, world: World, check_id: str, rid: str, e: Claim, up:
     if check_id == "auth_creditor_matches":
         expected = world.creditor(t.owner_creditor_id).legal_name if via_trustee else creditor.legal_name
         return ok(f["creditor_name"] == expected)
+    if check_id == "auth_in_effect":
+        return ok(_d(f["effective_date"]) <= as_of)
     if check_id == "auth_current":
         return ok(_d(f["valid_until"]) >= as_of, lapsed=True)
     if check_id == "auth_renewal_due":
@@ -131,7 +137,7 @@ def truth_check(pack: Pack, world: World, check_id: str, rid: str, e: Claim, up:
     if check_id == "auth_issued_recently":
         return ok((as_of - _d(f["issue_date"])).days <= 400)
     if check_id == "auth_covers_voting":
-        return ok(any(term in f["powers"].casefold() for term in spec.params["terms"]))
+        return ok(f["powers"] in VOTING_POWERS)        # the generator wrote a grant of the vote, or a filing power
     if check_id == "charge_holder_matches":
         return ok(f["charge_holder"] == creditor.legal_name)
     if check_id == "charge_on_debtor":
@@ -181,6 +187,27 @@ def truth_statuses(world: World, pack: Pack | None = None, resolved: bool = Fals
                                hostile=bool(up and up.truth.injection) and not resolved)
             out[(e.id, rid)] = {"status": status, "upload_id": up.id if up else None, "via_trustee": via_trustee,
                                 "checks": {r.check_id: r.verdict for r in results} if results else {}}
+    return out
+
+
+def truth_permissions(world: World, statuses: dict[tuple[int, str], dict],
+                      pack: Pack | None = None) -> dict[tuple[int, str], bool]:
+    """(claim id, action) -> whether the evidence permits the action, by the pack's permission conditions applied to
+    the true statuses and verdicts. The conditions are the specification, shared on purpose like the status policy."""
+    pack = pack or load_pack()
+    out = {}
+    for e in world.claims:
+        for action, spec in pack.permissions.items():
+            ok = True
+            for c in spec.requires:
+                if c.requirement is not None:
+                    ok &= str(statuses[(e.id, c.requirement)]["status"]) in c.statuses
+                else:
+                    t = statuses[(e.id, pack.requirement_of(c.check))]
+                    if t["status"] == Status.VERIFIED_OUT_OF_BAND:
+                        continue
+                    ok &= str(t["checks"].get(c.check)) in c.verdicts
+            out[(e.id, action)] = ok
     return out
 
 

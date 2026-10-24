@@ -38,7 +38,8 @@ def test_the_tiny_world_passes_the_dangerous_direction_gates(tiny, tmp_path):
     report = run(out, tmp_path / "h.db", model=None)
     apply_gates(report, ROOT / "gates.yaml")
     by_name = {g["gate"]: g for g in report.gates}
-    for gate in ("status false vouching", "critical check false passes", "documents matched to the wrong creditor",
+    for gate in ("status false vouching", "vote or payout permitted when the truth withholds it",
+                 "critical check false passes", "documents matched to the wrong creditor",
                  "model PASS on hostile documents", "OCR pages paid again on re-index"):
         assert by_name[gate]["ok"], by_name[gate]
     assert report.metrics["classification"]["accuracy"] >= 0.95

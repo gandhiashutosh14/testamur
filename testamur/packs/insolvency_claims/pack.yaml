@@ -143,8 +143,16 @@ checks:
     tier: field
     severity: critical
     rule: date_not_before
-    params: {field: default_date, anchor: commencement, offset_years: -3}
-    hint: "The default on {found} is more than three years before the insolvency commencement date ({anchor}). Admit it only if a written acknowledgement of the debt within limitation is on file (Limitation Act, section 18)."
+    params:
+      field: default_date
+      anchor: commencement
+      offset_years: -3
+      beyond: abstain
+      question: "the default is more than three years before the insolvency commencement date; the debt may still be within limitation if it was acknowledged in writing (Limitation Act, section 18), so a person checks the acknowledgements on file"
+    hint: "The default is more than three years before the insolvency commencement date. Admit it only if a written acknowledgement of the debt within limitation is on file (Limitation Act, section 18)."
+    illustrative: true
+    reviewed: "2026-10-24"
+    basis: "Three years from default is the usual period (Limitation Act 1963, art. 137, applied to the Code by section 238A); acknowledgements and other exceptions are for a person. Not legal advice."
   claim_dated_after_announcement:
     tier: field
     severity: minor
@@ -175,6 +183,12 @@ checks:
     rule: name_matches
     params: {field: creditor_name, against: filing_party, pass_at: 92, fail_below: 80}
     hint: "The authority is issued by '{found}', not '{expected}'. Ask {creditor} for an authority issued in its own name."
+  auth_in_effect:
+    tier: field
+    severity: critical
+    rule: in_effect
+    params: {field: effective_date, fallback: issue_date}
+    hint: "The authority takes effect only on {found}; until then the representative cannot act for {creditor}."
   auth_current:
     tier: field
     severity: critical
@@ -195,10 +209,10 @@ checks:
     hint: "The authority was issued {found}; ask for a current one."
   auth_covers_voting:
     tier: field
-    severity: major
-    rule: scope_mentions
+    severity: major            # the document is good for filing without it; the vote gate below needs it to PASS
+    rule: grants_power
     params: {field: powers, terms: ["vote", "voting"]}
-    hint: "The authority does not mention voting: a representative who may only file the claim cannot vote for {creditor} in the committee of creditors."
+    hint: "The authority does not plainly grant the power to vote: a representative who may only file the claim cannot vote for {creditor} in the committee of creditors."
   charge_holder_matches:
     tier: field
     severity: critical
@@ -319,7 +333,8 @@ requirements:
   authority:
     doc_type: authority_letter
     applies_to: {}
-    checks: [auth_creditor_matches, auth_current, auth_renewal_due, auth_issued_recently, auth_covers_voting]
+    checks: [auth_creditor_matches, auth_in_effect, auth_current, auth_renewal_due, auth_issued_recently,
+             auth_covers_voting]
     trustee_cover: true        # a debenture trustee's authority covers the holders it lists (section 21(6A)(a))
   security_interest:
     doc_type: charge_certificate
@@ -369,16 +384,33 @@ audit:
   audit_rate: {critical: 0.10, major: 0.05, minor: 0.02}
   confidence: 0.95
 
+# What the evidence permits, decided separately from whether each document is good enough. A requirement's status says
+# whether a document suffices; an action needs more: a finding that is only a finding for the document ("the
+# authority does not grant the vote", a major check) is a bar for the vote. Each action lists every condition it needs;
+# one unmet withholds the action and says which. The engine only recommends: votes and payments are made elsewhere, by
+# a person, and are simulated here.
+permissions:
+  vote:
+    description: "the representative may cast the creditor's votes in the committee of creditors"
+    requires:
+      - {requirement: proof_of_claim, statuses: [SATISFIED, SATISFIED_WITH_FINDINGS, VERIFIED_OUT_OF_BAND]}
+      - {requirement: authority, statuses: [SATISFIED, SATISFIED_WITH_FINDINGS, COVERED_BY_TRUSTEE, VERIFIED_OUT_OF_BAND]}
+      - {check: auth_covers_voting, verdicts: [PASS]}
+  payout:
+    description: "a distribution may be paid to the account on file"
+    requires:
+      - {requirement: proof_of_claim, statuses: [SATISFIED, SATISFIED_WITH_FINDINGS, VERIFIED_OUT_OF_BAND]}
+      - {requirement: bank_details, statuses: [SATISFIED, VERIFIED_OUT_OF_BAND]}   # payment details without findings
+
 # What a finding turns into. The representative's authority is chased with the creditor (a task and a reminder, at
 # most one a week); any other unmet requirement becomes a follow-up task for the resolution professional's team; while
-# the authority or the bank details are expired or not satisfied, the claim is on hold: its votes are not counted and
-# nothing is paid to it. Due dates by the claim's tier.
+# an action is withheld, the claim is on hold for it: its votes are not counted, or nothing is paid to it. Due dates by
+# the claim's tier.
 actions:
   chase_requirements: [authority]
   chase_statuses: [MISSING, EXPIRED, NOT_SATISFIED]
   chase_findings: [auth_renewal_due]
   follow_up_statuses: [MISSING, EXPIRED, NOT_SATISFIED]
-  hold_requirements: [authority, bank_details]
-  hold_statuses: [EXPIRED, NOT_SATISFIED]
+  hold_permissions: [vote, payout]
   notify_cooldown_days: 7
   task_due_days: {critical: 2, high: 3, standard: 5, low: 7}

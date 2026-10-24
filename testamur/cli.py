@@ -284,7 +284,7 @@ def tasks(db: str = "data/harness.db", tenant: int = 1, show_closed: bool = Fals
         for t in s.scalars(q):
             typer.echo(f"{t.status:10} due {t.due_at:%Y-%m-%d} {t.kind:15} {t.title}")
         for h in s.scalars(select(Hold).where(Hold.released_at.is_(None))):
-            typer.echo(f"HOLD       claim {h.claim_id} since {h.placed_at:%Y-%m-%d}: {', '.join(h.requirements)}")
+            typer.echo(f"HOLD {h.action:6} claim {h.claim_id} since {h.placed_at:%Y-%m-%d}: {'; '.join(h.reasons)}")
 
 
 @app.command()
