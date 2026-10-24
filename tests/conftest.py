@@ -24,9 +24,11 @@ ALLOWED_SKIPS: dict[str, str] = {
             "needs a Postgres server: runs in the postgres CI job",
         "tests/test_postgres.py::test_row_level_security_refuses_other_tenants_rows_to_any_statement":
             "needs a Postgres server: runs in the postgres CI job",
+        "tests/test_postgres.py::test_two_people_confirming_one_proposal_at_once_apply_it_once_on_postgres":
+            "needs a Postgres server: runs in the postgres CI job",
     }),
 }
-MIN_TESTS = 220
+MIN_TESTS = 229
 
 
 def pytest_collection_finish(session):

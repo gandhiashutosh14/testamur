@@ -39,6 +39,50 @@ def test_the_engine_gives_the_same_statuses_on_postgres(tmp_path, db_url):
     assert len(on_postgres) > 50 and on_postgres == on_sqlite
 
 
+def test_two_people_confirming_one_proposal_at_once_apply_it_once_on_postgres(tmp_path, db_url):
+    """On Postgres the proposal row is locked FOR UPDATE inside the tenant's transaction: of two confirmations racing,
+    one applies it and the other finds it applied. The effect exists once."""
+    import threading
+
+    from sqlalchemy import func
+
+    from testamur import agents
+    from testamur.store import CheckReview
+    out = tmp_path / "world"
+    world = build_world(seed=3, size="tiny", out=out, digital_only=True)
+    store = Store(db_url)
+    load_registry(store, world)
+    engine = Engine(store, load_pack(), world.as_of, tmp_path / "blobs")
+    for u in world.uploads:
+        engine.process(u.tenant_id, engine.ingest(u.tenant_id, u.matter_id, u.filename, (out / u.file).read_bytes(),
+                                                  u.channel, u.uploaded_at, u.declared_creditor_id))
+    engine.refresh(1)
+    with store.tenant(1) as s:
+        claim = s.scalar(select(RequirementState.claim_id).where(RequirementState.requirement_id == "authority",
+                                                                 RequirementState.status == "SATISFIED"))
+    p = agents.propose(engine, 1, "agent-a", "check_verdict", {"claim": claim, "requirement": "authority",
+                                                              "check": "auth_creditor_matches", "verdict": "FAIL"},
+                       "not the creditor's signatory")
+    outcomes, errors, start = [], [], threading.Barrier(2)
+
+    def confirm(who):
+        start.wait()
+        try:
+            outcomes.append(agents.decide(engine, 1, p["proposal"], who, confirm=True))
+        except ValueError as exc:
+            errors.append(exc)
+    threads = [threading.Thread(target=confirm, args=(f"reviewer-{i}@firm",)) for i in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(outcomes) == 1 and len(errors) == 1
+    with store.tenant(1) as s:
+        assert s.scalar(select(func.count()).select_from(CheckReview).where(
+            CheckReview.proposal_id == p["proposal"])) == 1
+    store.engine.dispose()
+
+
 APP_ROLE = "testamur_app"
 
 

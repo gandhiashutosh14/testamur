@@ -30,6 +30,24 @@ servers but not one already running. The key is now authenticated again on every
 revoked key stops working at once (`testamur keys revoke`). Grants can be made to every agent of a tenant or to one
 agent by name, so agents with different jobs (an investigator, a verifier) hold different tools.
 
+## Revised in v0.4: a confirmation applies what was shown, once
+The same review found two gaps in "a person confirms". A check-verdict proposal named its document only in its
+summary; confirmation looked the current document up again, so a proposal made on document 32 wrote the person's
+verdict onto its replacement, document 72. And confirmation ran in three transactions (read the proposal, apply the
+change, mark it applied): a crash between the second and third left the change made and the proposal open to be
+applied again, and two people confirming at once could both pass the first.
+
+Now a proposal is bound to the evidence it was made on: for a check verdict, the claim, process, document, its bytes,
+the requirement's evidence fingerprint (every verdict with its reason and evidence, people's decisions in place: it
+changes when evidence changes even if the status does not), the check's rule digest and the engine; for a field
+reading or a document decision, the document and the readings or decisions it rests on. A digest of the binding is
+what the person confirms (`proposals confirm --digest`). Confirmation is one transaction: claim the proposal (FOR
+UPDATE on Postgres), derive its binding again, refuse it as stale if anything moved, apply the change through the
+engine inside the same transaction, mark it, audit it and write a `proposal.applied` outbox event. A crash before the
+commit leaves nothing, after it everything; a retry is refused. The effect row carries the proposal id under a unique
+key, so the effect cannot exist twice even by a path that bypassed the proposal's own state. Tests crash it at each
+step and race two confirmations, on SQLite and on Postgres.
+
 ## Consequences
 - An agent with every tool granted still cannot change a status by itself, cannot see another tenant, and cannot
   call a tool its tenant revoked a second ago.

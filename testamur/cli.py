@@ -379,14 +379,17 @@ def tools_list(agent: str = typer.Option(None, "--agent", help="what one agent m
 def proposals_list(db: str = "data/harness.db", tenant: int = 1):
     from .agents import pending_proposals
     for p in pending_proposals(_engine(db).store, tenant):
-        typer.echo(f"{p['proposal']:5} by {p['by']}: {p['summary']} (expires {p['expires']})")
+        typer.echo(f"{p['proposal']:5} by {p['by']}: {p['summary']} (digest {p['digest']}, expires {p['expires']})")
 
 
 @proposals.command("confirm")
-def proposals_confirm(proposal: int, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
-    """Apply an agent's proposal, under your name with the agent's beside it."""
+def proposals_confirm(proposal: int, by: str = BY,
+                      digest: str = typer.Option(None, help="the digest you were shown; refused if it differs"),
+                      db: str = "data/harness.db", tenant: int = 1):
+    """Apply an agent's proposal, under your name with the agent's beside it, if its evidence is still what it was
+    made on (otherwise it is marked stale and nothing changes)."""
     from .agents import decide
-    typer.echo(_decide(decide, _engine(db), tenant, proposal, by, True))
+    typer.echo(_decide(decide, _engine(db), tenant, proposal, by, True, None, digest))
 
 
 @proposals.command("decline")

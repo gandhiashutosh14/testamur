@@ -263,6 +263,8 @@ class CheckReview(TenantScoped, Base):
     kind: Mapped[str] = mapped_column(String(10), default="queue")
     reviewer: Mapped[str] = mapped_column(String(300))
     note: Mapped[str] = mapped_column(Text, default="")
+    # the agent proposal this decision applied, if any: unique, so a proposal's effect exists at most once
+    proposal_id: Mapped[int | None] = mapped_column(Integer, nullable=True, unique=True)
     at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -278,6 +280,7 @@ class FieldCorrection(TenantScoped, Base):
     machine_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewer: Mapped[str] = mapped_column(String(300))
     note: Mapped[str] = mapped_column(Text, default="")
+    proposal_id: Mapped[int | None] = mapped_column(Integer, nullable=True, unique=True)
     at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -308,6 +311,7 @@ class DocumentReview(TenantScoped, Base):
     machine: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     reviewer: Mapped[str] = mapped_column(String(300))
     note: Mapped[str] = mapped_column(Text, default="")
+    proposal_id: Mapped[int | None] = mapped_column(Integer, nullable=True, unique=True)
     at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -323,6 +327,10 @@ class RequirementState(TenantScoped, Base):
     reasons: Mapped[list[Any]] = mapped_column(JSON, default=list)
     failing: Mapped[list[Any]] = mapped_column(JSON, default=list)      # checks that FAIL, for findings that act
     version: Mapped[int] = mapped_column(Integer, default=0)            # one more for every change reported
+    # a fingerprint of everything the status rests on (the document and its version, every verdict with its reason
+    # and evidence, people's decisions, the engine): it changes when the evidence changes, whatever the status does.
+    # A proposal is bound to it; a person's confirmation of a proposal made on other evidence is refused
+    evidence_digest: Mapped[str] = mapped_column(String(16), default="")
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -499,14 +507,21 @@ class ToolGrant(TenantScoped, Base):
 
 class Proposal(TenantScoped, Base):
     """A change an agent asked for. Nothing happens until a person confirms it; it is then applied through the same
-    engine call a person would make, and audited with both names. Unconfirmed proposals expire."""
+    engine call a person would make, and audited with both names. Unconfirmed proposals expire.
+
+    `binding` is the evidence the proposal was made on and the person is shown: the document and its bytes, the
+    requirement's evidence fingerprint, the check's rule digest, the engine. Confirmation re-derives it in the same
+    transaction that applies the change, and a proposal whose evidence moved on is refused as stale, never applied to
+    whatever is current now. `binding_digest` is what the person confirms."""
     __tablename__ = "proposals"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     kind: Mapped[str] = mapped_column(String(30))
     args: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    binding: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    binding_digest: Mapped[str] = mapped_column(String(16), default="")
     summary: Mapped[str] = mapped_column(Text)
     proposed_by: Mapped[str] = mapped_column(String(300))
-    status: Mapped[str] = mapped_column(String(10), default="proposed")    # proposed | applied | declined | expired
+    status: Mapped[str] = mapped_column(String(10), default="proposed")   # proposed | applied | declined | expired | stale
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime)
     decided_by: Mapped[str | None] = mapped_column(String(300), nullable=True)

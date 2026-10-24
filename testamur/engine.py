@@ -78,6 +78,10 @@ def _jsonable(value):
 LOCK_SECONDS = 300.0      # a lock on a file older than this is a dead worker's
 
 
+class StaleDecision(ValueError):
+    """A decision made about evidence that is no longer what is being judged: it must be made again."""
+
+
 class ReadingElsewhere(Exception):
     """Another worker is reading the same file: wait a little rather than pay for the same OCR twice."""
 
@@ -343,37 +347,49 @@ class Engine:
         """A person's verdict on a check of the document behind a requirement. Use it when the reading is right
         but the judgement needs a person; when the reading is wrong, correct the field instead and let the rules
         judge it. Returns the requirement's status afterwards."""
+        with self.store.tenant(tenant_id) as s:
+            return self.review_check_in(s, tenant_id, claim_id, requirement_id, check_id, verdict, reviewer, note,
+                                        kind)
+
+    def review_check_in(self, s: Session, tenant_id: int, claim_id: int, requirement_id: str, check_id: str,
+                        verdict: Verdict | str, reviewer: str, note: str = "", kind: str = "queue",
+                        proposal_id: int | None = None, document_id: int | None = None) -> Status:
+        """`review_check` inside a transaction the caller holds, so a confirmed proposal's effect commits with the
+        proposal's own state change, or neither does. `document_id`, when given, is the document the decision was
+        made about: if it is no longer the one being judged, nothing is written."""
         verdict = Verdict(verdict)
         if verdict not in (Verdict.PASS, Verdict.FAIL):
             raise ValueError("a person decides PASS or FAIL; a check nobody can decide stays in the queue")
         if check_id not in self.pack.requirements[requirement_id].checks:
             raise KeyError(f"requirement {requirement_id} has no check {check_id}")
-        with self.store.tenant(tenant_id) as s:
-            key = {"claim_id": claim_id, "requirement_id": requirement_id, "tenant_id": tenant_id}
-            state = s.get(RequirementState, key)
-            if state is None or state.document_id is None:
-                raise KeyError("no document is being judged for this requirement")
-            row = s.scalar(select(VerdictRow).where(
-                VerdictRow.claim_id == claim_id, VerdictRow.requirement_id == requirement_id,
-                VerdictRow.check_id == check_id, VerdictRow.document_id == state.document_id,
-                VerdictRow.engine_version == self.version))
-            machine = row.verdict if row is not None else "MISSING"
-            before = self._demoted(s)
-            if kind == "queue" and check_id in before and machine == Verdict.PASS:
-                kind = "confirm"                       # a census of a demoted check's PASSes: counts for accuracy
-            timed = self.pack.checks[check_id].rule in TIME_RULES
-            s.add(CheckReview(claim_id=claim_id, requirement_id=requirement_id, check_id=check_id,
-                              document_id=state.document_id, verdict=verdict.value, machine_verdict=machine,
-                              rule_digest=self.pack.rule_digest(check_id), as_of=self.as_of if timed else None,
-                              kind=kind, reviewer=reviewer, note=note))
-            s.add(AuditRow(actor=reviewer, action="check_reviewed",
-                           target=f"claim:{claim_id}/{requirement_id}/{check_id}",
-                           detail={"document": state.document_id, "engine": machine, "person": verdict.value,
-                                   "kind": kind, "note": note}))
-            s.flush()
-            for key2 in sorted({(claim_id, requirement_id)} | self._health_changed(s, tenant_id, before)):
-                self._recompute(s, tenant_id, key2)
-            return Status(s.get(RequirementState, key).status)
+        key = {"claim_id": claim_id, "requirement_id": requirement_id, "tenant_id": tenant_id}
+        state = s.get(RequirementState, key)
+        if state is None or state.document_id is None:
+            raise KeyError("no document is being judged for this requirement")
+        if document_id is not None and state.document_id != document_id:
+            raise StaleDecision(f"the decision was about document {document_id}; document {state.document_id} is "
+                                "now being judged")
+        row = s.scalar(select(VerdictRow).where(
+            VerdictRow.claim_id == claim_id, VerdictRow.requirement_id == requirement_id,
+            VerdictRow.check_id == check_id, VerdictRow.document_id == state.document_id,
+            VerdictRow.engine_version == self.version))
+        machine = row.verdict if row is not None else "MISSING"
+        before = self._demoted(s)
+        if kind == "queue" and check_id in before and machine == Verdict.PASS:
+            kind = "confirm"                       # a census of a demoted check's PASSes: counts for accuracy
+        timed = self.pack.checks[check_id].rule in TIME_RULES
+        s.add(CheckReview(claim_id=claim_id, requirement_id=requirement_id, check_id=check_id,
+                          document_id=state.document_id, verdict=verdict.value, machine_verdict=machine,
+                          rule_digest=self.pack.rule_digest(check_id), as_of=self.as_of if timed else None,
+                          kind=kind, reviewer=reviewer, note=note, proposal_id=proposal_id))
+        s.add(AuditRow(actor=reviewer, action="check_reviewed",
+                       target=f"claim:{claim_id}/{requirement_id}/{check_id}",
+                       detail={"document": state.document_id, "engine": machine, "person": verdict.value,
+                               "kind": kind, "note": note, "proposal": proposal_id}))
+        s.flush()
+        for key2 in sorted({(claim_id, requirement_id)} | self._health_changed(s, tenant_id, before)):
+            self._recompute(s, tenant_id, key2)
+        return Status(s.get(RequirementState, key).status)
 
     def audit_sample(self, tenant_id: int, seed: str = "audit") -> list[QueueItem]:
         """A random sample of the engine's conclusive verdicts for people to check, at the pack's rate for each
@@ -441,23 +457,27 @@ class Engine:
         """A person's reading of a field, typed as it appears on the page. It must parse as that field's type, like
         any reading; then every check that uses it is judged again."""
         with self.store.tenant(tenant_id) as s:
-            doc = s.get(Document, document_id)
-            if doc is None or doc.doc_type is None:
-                raise KeyError(f"no classified document {document_id} for tenant {tenant_id}")
-            spec = self.pack.doc_types[doc.doc_type].fields.get(field)
-            if spec is None:
-                raise KeyError(f"a {doc.doc_type} has no field {field}")
-            if parse_value(spec.type, raw) is None:
-                raise ValueError(f"'{raw}' does not read as a {spec.type}")
-            read = (doc.fields or {}).get(field, {}).get("raw")
-            clash = [c["raw"] for c in (doc.conflicts or {}).get(field, [])]
-            machine = read if read is not None else (" | ".join(clash) if clash else None)
-            s.add(FieldCorrection(document_id=doc.id, field=field, raw=raw, machine_raw=machine, reviewer=reviewer,
-                                  note=note))
-            s.add(AuditRow(actor=reviewer, action="field_corrected", target=f"document:{doc.id}/{field}",
-                           detail={"engine": machine, "person": raw, "note": note}))
-            s.flush()
-            self._redo(s, tenant_id, doc)
+            self.correct_field_in(s, tenant_id, document_id, field, raw, reviewer, note)
+
+    def correct_field_in(self, s: Session, tenant_id: int, document_id: int, field: str, raw: str, reviewer: str,
+                         note: str = "", proposal_id: int | None = None) -> None:
+        doc = s.get(Document, document_id)
+        if doc is None or doc.doc_type is None:
+            raise KeyError(f"no classified document {document_id} for tenant {tenant_id}")
+        spec = self.pack.doc_types[doc.doc_type].fields.get(field)
+        if spec is None:
+            raise KeyError(f"a {doc.doc_type} has no field {field}")
+        if parse_value(spec.type, raw) is None:
+            raise ValueError(f"'{raw}' does not read as a {spec.type}")
+        read = (doc.fields or {}).get(field, {}).get("raw")
+        clash = [c["raw"] for c in (doc.conflicts or {}).get(field, [])]
+        machine = read if read is not None else (" | ".join(clash) if clash else None)
+        s.add(FieldCorrection(document_id=doc.id, field=field, raw=raw, machine_raw=machine, reviewer=reviewer,
+                              note=note, proposal_id=proposal_id))
+        s.add(AuditRow(actor=reviewer, action="field_corrected", target=f"document:{doc.id}/{field}",
+                       detail={"engine": machine, "person": raw, "note": note, "proposal": proposal_id}))
+        s.flush()
+        self._redo(s, tenant_id, doc)
 
     def classify_document(self, tenant_id: int, document_id: int, doc_type: str, reviewer: str,
                           note: str = "") -> None:
@@ -479,23 +499,33 @@ class Engine:
     def _document_decision(self, tenant_id: int, document_id: int, action: str, reviewer: str, note: str,
                            doc_type: str | None = None, creditor_id: int | None = None) -> None:
         with self.store.tenant(tenant_id) as s:
-            doc = s.get(Document, document_id)
-            if doc is None:
-                raise KeyError(f"document {document_id} not found for tenant {tenant_id}")
-            if action == "assign":
-                if doc.doc_type is None:
-                    raise ValueError("say what the document is before saying whose it is")
-                if s.get(Creditor, creditor_id) is None:
-                    raise KeyError(f"creditor {creditor_id} not found for tenant {tenant_id}")
-            if action == "clear" and not doc.hostile:
-                raise ValueError("nothing to clear: the document has no security finding")
-            machine = {"doc_type": doc.doc_type, "creditor_id": doc.creditor_id, "state": doc.state}
-            s.add(DocumentReview(document_id=doc.id, action=action, doc_type=doc_type, creditor_id=creditor_id,
-                                 machine=machine, reviewer=reviewer, note=note))
-            s.add(AuditRow(actor=reviewer, action=f"document_{action}", target=f"document:{doc.id}",
-                           detail={"engine": machine, "doc_type": doc_type, "creditor": creditor_id, "note": note}))
-            s.flush()
-            self._redo(s, tenant_id, doc)
+            self.document_decision_in(s, tenant_id, document_id, action, reviewer, note, doc_type, creditor_id)
+
+    def document_decision_in(self, s: Session, tenant_id: int, document_id: int, action: str, reviewer: str,
+                             note: str, doc_type: str | None = None, creditor_id: int | None = None,
+                             proposal_id: int | None = None) -> None:
+        if action not in ("classify", "assign", "reject", "clear"):
+            raise ValueError("a document decision is assign, reject, clear or classify")
+        if action == "classify" and doc_type not in self.pack.doc_types:
+            raise KeyError(f"unknown document type {doc_type}")
+        doc = s.get(Document, document_id)
+        if doc is None:
+            raise KeyError(f"document {document_id} not found for tenant {tenant_id}")
+        if action == "assign":
+            if doc.doc_type is None:
+                raise ValueError("say what the document is before saying whose it is")
+            if s.get(Creditor, creditor_id) is None:
+                raise KeyError(f"creditor {creditor_id} not found for tenant {tenant_id}")
+        if action == "clear" and not doc.hostile:
+            raise ValueError("nothing to clear: the document has no security finding")
+        machine = {"doc_type": doc.doc_type, "creditor_id": doc.creditor_id, "state": doc.state}
+        s.add(DocumentReview(document_id=doc.id, action=action, doc_type=doc_type, creditor_id=creditor_id,
+                             machine=machine, reviewer=reviewer, note=note, proposal_id=proposal_id))
+        s.add(AuditRow(actor=reviewer, action=f"document_{action}", target=f"document:{doc.id}",
+                       detail={"engine": machine, "doc_type": doc_type, "creditor": creditor_id, "note": note,
+                               "proposal": proposal_id}))
+        s.flush()
+        self._redo(s, tenant_id, doc)
 
     def _redo(self, s: Session, tenant_id: int, doc: Document) -> None:
         """Derive a document again from its cached reading and every decision people made about it, then
@@ -723,12 +753,13 @@ class Engine:
         status, reasons = decide(applicable=applicable, results=results, via_trustee=via_trustee, attested=attested,
                                  pending_review=pending, hostile=bool(doc and doc.hostile and not doc.cleared))
         failing = sorted(r.check_id for r in results or [] if r.verdict == Verdict.FAIL)
+        digest = self._evidence_digest(doc, via_trustee, status, results)
         state = s.get(RequirementState, {"claim_id": eid, "requirement_id": rid, "tenant_id": tenant_id})
         before = (state.status, state.failing) if state is not None else (None, [])
         if state is None:
             state = RequirementState(claim_id=eid, requirement_id=rid, tenant_id=tenant_id, status=status,
                                      document_id=doc.id if doc else None, via_trustee=via_trustee, reasons=reasons,
-                                     failing=failing, version=0)
+                                     failing=failing, version=0, evidence_digest=digest)
             s.add(state)
         else:
             if state.status != status:
@@ -736,6 +767,7 @@ class Engine:
                                detail={"from": state.status, "to": status}))
             state.status, state.document_id, state.via_trustee, state.reasons, state.failing = \
                 status, doc.id if doc else None, via_trustee, reasons, failing
+            state.evidence_digest = digest
             state.updated_at = utcnow()
         if before != (status, failing):
             # the transactional outbox: the event commits with the change it reports, or neither does
@@ -747,6 +779,18 @@ class Engine:
                                        "document": doc.id if doc else None, "as_of": self.as_of.isoformat()}))
         s.flush()
         self._permissions(s, tenant_id, e)
+
+    def _evidence_digest(self, doc: Document | None, via_trustee: bool, status: str,
+                         results: list[CheckResult] | None) -> str:
+        """Everything a status rests on, fingerprinted: which document (and its bytes), every verdict as it stands
+        (people's decisions in place) with its reason and evidence, and the engine. Changes whenever the evidence
+        does, even when the status does not."""
+        raw = json.dumps({"document": doc.id if doc else None, "sha256": doc.sha256 if doc else None,
+                          "via_trustee": via_trustee, "status": str(status), "engine": self.version,
+                          "checks": [[r.check_id, str(r.verdict), r.reason,
+                                      [[ev.document_id, ev.page, ev.quote, ev.source] for ev in r.evidence]]
+                                     for r in results or []]}, sort_keys=True, default=str)
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
     def _permissions(self, s: Session, tenant_id: int, e: Claim) -> None:
         """What the claim's evidence permits now, decided apart from whether each document suffices: every condition

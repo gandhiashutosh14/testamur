@@ -93,6 +93,9 @@ def _act(s: Session, pack: Pack, ev: OutboxEvent, now: datetime) -> Counter:
         out = _hold(s, pack, ev, ev.payload["claim"], ev.payload["action"], now)
         _announce(s, ev, "claim.permission_changed", ev.payload, now)
         return out
+    if ev.kind != "requirement.status_changed":          # a person's decision on a proposal: announced, nothing more
+        _announce(s, ev, ev.kind, ev.payload, now)
+        return Counter({ev.kind: 1})
     policy, p, out = pack.actions, ev.payload, Counter()
     eid, rid, to = p["claim"], p["requirement"], p["to"]
     e = s.get(Claim, eid)
