@@ -1,39 +1,38 @@
 {
   "meta": {
-    "commit": "6b2b49d",
+    "commit": "f16af51",
     "command": "testamur reviewsim --world data/world_full11 --db data/reviewsim.db --report reports/review-sim-full-seed11.md --cassette reports/cassettes/full-seed11.jsonl",
     "seed": 11,
     "size": "full"
   },
   "queue": {
-    "pairs": 430,
-    "seconds": 289.4,
+    "pairs": 460,
+    "seconds": 146.6,
     "before": {
       "vs_truth": {
-        "exact": 415,
-        "deferred": 14,
+        "exact": 441,
+        "deferred": 18,
         "other": 1
       },
       "vs_settled_truth": {
-        "exact": 391,
-        "deferred": 38,
+        "exact": 414,
+        "deferred": 45,
         "other": 1
       },
       "queue": {
-        "document_owner": 13,
+        "document_owner": 16,
         "document_type": 18,
-        "document_security": 18,
+        "document_security": 17,
         "check": 73
       }
     },
     "effort": {
-      "assign": 7,
-      "reject": 24,
-      "clear": 18,
-      "check": 75
+      "reject": 34,
+      "clear": 17,
+      "check": 73
     },
     "after": {
-      "exact": 430
+      "exact": 460
     },
     "changed_by_reindex": 0
   },
@@ -46,10 +45,10 @@
       "minor": 0.02
     },
     "seed": 1,
-    "seconds": 288.1,
+    "seconds": 146.7,
     "before": {
-      "exact": 410,
-      "deferred": 14,
+      "exact": 436,
+      "deferred": 18,
       "false_vouching": 5,
       "other": 1
     },
@@ -57,15 +56,15 @@
       {
         "tenant": 1,
         "false_pass_verdicts": 2,
-        "audits": 36,
+        "audits": 57,
         "audits_of_the_check": 6,
-        "tripped_after": null,
-        "overturned": 0
+        "tripped_after": 47,
+        "overturned": 1
       },
       {
         "tenant": 2,
         "false_pass_verdicts": 3,
-        "audits": 38,
+        "audits": 48,
         "audits_of_the_check": 2,
         "tripped_after": null,
         "overturned": 0
@@ -73,27 +72,27 @@
       {
         "tenant": 3,
         "false_pass_verdicts": 0,
-        "audits": 36,
-        "audits_of_the_check": 3,
+        "audits": 41,
+        "audits_of_the_check": 2,
         "tripped_after": null,
         "overturned": 0
       }
     ],
     "after_audit": {
-      "exact": 410,
-      "deferred": 14,
-      "false_vouching": 5,
-      "other": 1
+      "deferred": 42,
+      "exact": 413,
+      "other": 2,
+      "false_vouching": 3
     },
     "effort_after_audit": {
-      "assign": 7,
-      "reject": 24,
-      "clear": 18,
-      "check": 75
+      "reject": 34,
+      "clear": 17,
+      "confirm": 25,
+      "check": 68
     },
     "final": {
-      "exact": 425,
-      "false_vouching": 5
+      "exact": 457,
+      "false_vouching": 3
     },
     "detection_probability": {
       "2%": {
@@ -122,6 +121,6 @@
         "3": 0.0
       }
     },
-    "pairs": 430
+    "pairs": 460
   }
 }

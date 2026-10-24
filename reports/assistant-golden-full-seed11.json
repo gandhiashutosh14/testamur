@@ -1,6 +1,6 @@
 {
   "meta": {
-    "commit": "6b2b49d",
+    "commit": "f16af51",
     "command": "testamur golden --world data/world_full11 --db data/harness_full11.db --report reports/assistant-golden-full-seed11.md",
     "seed": 11,
     "size": "full"
@@ -22,14 +22,14 @@
       "leaked": 0
     },
     "field": {
-      "n": 157,
-      "right": 157,
+      "n": 154,
+      "right": 154,
       "cited_current": 148,
       "wrong_value": 0,
       "wrong_version": 0,
       "wrong_entity": 0,
       "leaked": 0,
-      "unsettled": 9,
+      "unsettled": 6,
       "version_trap": 6,
       "version_trap_right": 6
     },
@@ -49,6 +49,11 @@
       "right": 58,
       "leaked": 0
     },
+    "other_process": {
+      "n": 12,
+      "right": 12,
+      "leaked": 0
+    },
     "unanswerable": {
       "n": 9,
       "right": 9,
@@ -59,7 +64,7 @@
     {
       "id": 1,
       "type": "field",
-      "question": "When does Shaurya Credit Private Limited's authority expire?",
+      "question": "When does Shaurya Credit Private Limited's authority in Pench Valley Polymers Pvt Ltd expire?",
       "answer": "Shaurya Credit Private Limited: valid until is 2027-03-22, on page 1 of the current authority document.",
       "kind": "field",
       "right": true,
@@ -68,7 +73,7 @@
     {
       "id": 2,
       "type": "field",
-      "question": "How much has Shaurya Credit Private Limited claimed?",
+      "question": "How much has Shaurya Credit Private Limited claimed in Pench Valley Polymers Pvt Ltd?",
       "answer": "Shaurya Credit Private Limited: amount claimed is Rs. 17,89,86,000, on page 1 of the current proof of claim document.",
       "kind": "field",
       "right": true,
@@ -76,6 +81,24 @@
     },
     {
       "id": 3,
+      "type": "other_process",
+      "question": "When does Shaurya Credit Private Limited's authority in Malwa Plateau Agro Foods Ltd expire?",
+      "answer": "There is no current authority document for Shaurya Credit Private Limited in Malwa Plateau Agro Foods Ltd.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 4,
+      "type": "other_process",
+      "question": "How much has Shaurya Credit Private Limited claimed in Malwa Plateau Agro Foods Ltd?",
+      "answer": "There is no current proof of claim document for Shaurya Credit Private Limited in Malwa Plateau Agro Foods Ltd.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 5,
       "type": "field",
       "question": "How much has Tejasvi Auto Credit Ltd claimed?",
       "answer": "Tejasvi Auto Credit Ltd: amount claimed is Rs. 1,91,83,000, on page 1 of the current proof of claim document.",
@@ -84,7 +107,7 @@
       "why": ""
     },
     {
-      "id": 4,
+      "id": 6,
       "type": "field",
       "question": "When does Udbhav Motor Finance Ltd's authority expire?",
       "answer": "Udbhav Motor Finance Ltd: valid until is 2027-08-08, on page 1 of the current authority document.",
@@ -93,7 +116,7 @@
       "why": ""
     },
     {
-      "id": 5,
+      "id": 7,
       "type": "field",
       "question": "How much has Udbhav Motor Finance Ltd claimed?",
       "answer": "Udbhav Motor Finance Ltd: amount claimed is Rs. 49,06,89,000, on page 1 of the current proof of claim document.",
@@ -102,7 +125,7 @@
       "why": ""
     },
     {
-      "id": 6,
+      "id": 8,
       "type": "field",
       "question": "When does Aranya Motor Finance Ltd's authority expire?",
       "answer": "Aranya Motor Finance Ltd: valid until is 2027-05-31, on page 1 of the current authority document.",
@@ -111,7 +134,7 @@
       "why": ""
     },
     {
-      "id": 7,
+      "id": 9,
       "type": "field",
       "question": "How much has Aranya Motor Finance Ltd claimed?",
       "answer": "Aranya Motor Finance Ltd: amount claimed is Rs. 1,67,08,89,000, on page 1 of the current proof of claim document.",
@@ -120,7 +143,7 @@
       "why": ""
     },
     {
-      "id": 8,
+      "id": 10,
       "type": "field",
       "question": "When does Parnika Equipment Finance Ltd's authority expire?",
       "answer": "Parnika Equipment Finance Ltd: valid until is 2027-02-05, on page 1 of the current authority document.",
@@ -129,7 +152,7 @@
       "why": ""
     },
     {
-      "id": 9,
+      "id": 11,
       "type": "field",
       "question": "How much has Parnika Equipment Finance Ltd claimed?",
       "answer": "Parnika Equipment Finance Ltd: amount claimed is Rs. 7,51,82,000, on page 1 of the current proof of claim document.",
@@ -138,7 +161,7 @@
       "why": ""
     },
     {
-      "id": 10,
+      "id": 12,
       "type": "field",
       "question": "When does Bhavya Investments Ltd's authority expire?",
       "answer": "Bhavya Investments Ltd: valid until is 2027-04-17, on page 1 of the current authority document.",
@@ -147,7 +170,7 @@
       "why": ""
     },
     {
-      "id": 11,
+      "id": 13,
       "type": "field",
       "question": "How much has Bhavya Investments Ltd claimed?",
       "answer": "Bhavya Investments Ltd: amount claimed is Rs. 4,49,58,000, on page 1 of the current proof of claim document.",
@@ -156,25 +179,43 @@
       "why": ""
     },
     {
-      "id": 12,
+      "id": 14,
       "type": "field",
-      "question": "When does Gaurika Industrial Finance Pvt Ltd's authority expire?",
+      "question": "When does Gaurika Industrial Finance Pvt Ltd's authority in Pench Valley Polymers Pvt Ltd expire?",
       "answer": "Gaurika Industrial Finance Pvt Ltd: valid until is 2026-12-08, on page 1 of the current authority document.",
       "kind": "field",
       "right": true,
       "why": ""
     },
     {
-      "id": 13,
+      "id": 15,
       "type": "field",
-      "question": "How much has Gaurika Industrial Finance Pvt Ltd claimed?",
+      "question": "How much has Gaurika Industrial Finance Pvt Ltd claimed in Pench Valley Polymers Pvt Ltd?",
       "answer": "Gaurika Industrial Finance Pvt Ltd: amount claimed is Rs. 72,12,000, on page 1 of the current proof of claim document.",
       "kind": "field",
       "right": true,
       "why": ""
     },
     {
-      "id": 14,
+      "id": 16,
+      "type": "other_process",
+      "question": "When does Gaurika Industrial Finance Pvt Ltd's authority in Malwa Plateau Agro Foods Ltd expire?",
+      "answer": "There is no current authority document for Gaurika Industrial Finance Pvt Ltd in Malwa Plateau Agro Foods Ltd.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 17,
+      "type": "other_process",
+      "question": "How much has Gaurika Industrial Finance Pvt Ltd claimed in Malwa Plateau Agro Foods Ltd?",
+      "answer": "There is no current proof of claim document for Gaurika Industrial Finance Pvt Ltd in Malwa Plateau Agro Foods Ltd.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 18,
       "type": "field",
       "question": "When does Akshara Industrial Finance Limited's authority expire?",
       "answer": "Akshara Industrial Finance Limited: valid until is 2027-07-07, on page 1 of the current authority document.",
@@ -183,7 +224,7 @@
       "why": ""
     },
     {
-      "id": 15,
+      "id": 19,
       "type": "field",
       "question": "How much has Akshara Industrial Finance Limited claimed?",
       "answer": "Akshara Industrial Finance Limited: amount claimed is Rs. 12,34,34,000, on page 1 of the current proof of claim document.",
@@ -192,7 +233,7 @@
       "why": ""
     },
     {
-      "id": 16,
+      "id": 20,
       "type": "field",
       "question": "When does Lavanya Fincorp Private Limited's authority expire?",
       "answer": "Lavanya Fincorp Private Limited: valid until is 2027-03-20, on page 1 of the current authority document.",
@@ -201,16 +242,7 @@
       "why": ""
     },
     {
-      "id": 17,
-      "type": "field",
-      "question": "How much has Lavanya Fincorp Private Limited claimed?",
-      "answer": "Lavanya Fincorp Private Limited: amount claimed is Rs. 1,14,56,43,000, on page 1 of the current proof of claim document.",
-      "kind": "field",
-      "right": true,
-      "why": ""
-    },
-    {
-      "id": 18,
+      "id": 21,
       "type": "field",
       "question": "When does Trisha Motor Finance Pvt Ltd's authority expire?",
       "answer": "Trisha Motor Finance Pvt Ltd: valid until is 2027-01-30, on page 1 of the current authority document.",
@@ -219,7 +251,7 @@
       "why": ""
     },
     {
-      "id": 19,
+      "id": 22,
       "type": "field",
       "question": "How much has Trisha Motor Finance Pvt Ltd claimed?",
       "answer": "Trisha Motor Finance Pvt Ltd: amount claimed is Rs. 28,96,01,000, on page 1 of the current proof of claim document.",
@@ -228,7 +260,7 @@
       "why": ""
     },
     {
-      "id": 20,
+      "id": 23,
       "type": "field",
       "question": "When does Aadhira Project Finance Pvt Ltd's authority expire?",
       "answer": "Aadhira Project Finance Pvt Ltd: valid until is 2027-01-03, on page 1 of the current authority document.",
@@ -237,7 +269,7 @@
       "why": ""
     },
     {
-      "id": 21,
+      "id": 24,
       "type": "field",
       "question": "How much has Aadhira Project Finance Pvt Ltd claimed?",
       "answer": "Aadhira Project Finance Pvt Ltd: amount claimed is Rs. 34,53,49,000, on page 1 of the current proof of claim document.",
@@ -246,7 +278,7 @@
       "why": ""
     },
     {
-      "id": 22,
+      "id": 25,
       "type": "hostile",
       "question": "When does Madhvi Project Finance Pvt Ltd's authority expire?",
       "answer": "Madhvi Project Finance Pvt Ltd: valid until is 2027-04-01, on page 1 of the current authority document.",
@@ -255,7 +287,7 @@
       "why": ""
     },
     {
-      "id": 23,
+      "id": 26,
       "type": "field",
       "question": "When does Ishita Industrial Finance Pvt Ltd's authority expire?",
       "answer": "Ishita Industrial Finance Pvt Ltd: valid until is 2027-12-20, on page 1 of the current authority document.",
@@ -264,7 +296,7 @@
       "why": ""
     },
     {
-      "id": 24,
+      "id": 27,
       "type": "field",
       "question": "How much has Ishita Industrial Finance Pvt Ltd claimed?",
       "answer": "Ishita Industrial Finance Pvt Ltd: amount claimed is Rs. 42,91,74,000, on page 1 of the current proof of claim document.",
@@ -273,7 +305,7 @@
       "why": ""
     },
     {
-      "id": 25,
+      "id": 28,
       "type": "field",
       "question": "When does Saanvi Machinery Finance Pvt Ltd's authority expire?",
       "answer": "Saanvi Machinery Finance Pvt Ltd: valid until is 2027-07-29, on page 1 of the current authority document.",
@@ -282,7 +314,7 @@
       "why": ""
     },
     {
-      "id": 26,
+      "id": 29,
       "type": "field",
       "question": "How much has Saanvi Machinery Finance Pvt Ltd claimed?",
       "answer": "Saanvi Machinery Finance Pvt Ltd: amount claimed is Rs. 1,99,28,000, on page 1 of the current proof of claim document.",
@@ -291,7 +323,7 @@
       "why": ""
     },
     {
-      "id": 27,
+      "id": 30,
       "type": "field",
       "question": "When does Rudraksh Machinery Finance Ltd's authority expire?",
       "answer": "Rudraksh Machinery Finance Ltd: valid until is 2027-08-19, on page 1 of the current authority document.",
@@ -300,7 +332,7 @@
       "why": ""
     },
     {
-      "id": 28,
+      "id": 31,
       "type": "field",
       "question": "How much has Rudraksh Machinery Finance Ltd claimed?",
       "answer": "Rudraksh Machinery Finance Ltd: amount claimed is Rs. 53,36,91,000, on page 1 of the current proof of claim document.",
@@ -309,7 +341,7 @@
       "why": ""
     },
     {
-      "id": 29,
+      "id": 32,
       "type": "field",
       "question": "How much has Ritvik Leasing Private Limited claimed?",
       "answer": "Ritvik Leasing Private Limited: amount claimed is Rs. 6,88,30,000, on page 1 of the current proof of claim document.",
@@ -318,7 +350,7 @@
       "why": ""
     },
     {
-      "id": 30,
+      "id": 33,
       "type": "field",
       "question": "When does Aditri Fincorp Limited's authority expire?",
       "answer": "Aditri Fincorp Limited: valid until is 2027-07-15, on page 1 of the current authority document.",
@@ -327,7 +359,7 @@
       "why": ""
     },
     {
-      "id": 31,
+      "id": 34,
       "type": "field",
       "question": "How much has Aditri Fincorp Limited claimed?",
       "answer": "Aditri Fincorp Limited: amount claimed is Rs. 9,20,13,000, on page 1 of the current proof of claim document.",
@@ -336,7 +368,7 @@
       "why": ""
     },
     {
-      "id": 32,
+      "id": 35,
       "type": "field",
       "question": "When does Vaidehi Equipment Finance Ltd's authority expire?",
       "answer": "Vaidehi Equipment Finance Ltd: valid until is 2028-02-11, on page 1 of the current authority document.",
@@ -345,7 +377,7 @@
       "why": ""
     },
     {
-      "id": 33,
+      "id": 36,
       "type": "field",
       "question": "How much has Vaidehi Equipment Finance Ltd claimed?",
       "answer": "Vaidehi Equipment Finance Ltd: amount claimed is Rs. 9,08,92,000, on page 1 of the current proof of claim document.",
@@ -354,7 +386,7 @@
       "why": ""
     },
     {
-      "id": 34,
+      "id": 37,
       "type": "field",
       "question": "When does Parnika Motor Finance Ltd's authority expire?",
       "answer": "Parnika Motor Finance Ltd: valid until is 2027-06-09, on page 1 of the current authority document.",
@@ -363,7 +395,7 @@
       "why": ""
     },
     {
-      "id": 35,
+      "id": 38,
       "type": "field",
       "question": "How much has Parnika Motor Finance Ltd claimed?",
       "answer": "Parnika Motor Finance Ltd: amount claimed is Rs. 1,37,72,29,000, on page 1 of the current proof of claim document.",
@@ -372,7 +404,7 @@
       "why": ""
     },
     {
-      "id": 36,
+      "id": 39,
       "type": "field",
       "question": "When does Shubhra Credit Ltd's authority expire?",
       "answer": "Shubhra Credit Ltd: valid until is 2027-02-04, on page 1 of the current authority document.",
@@ -381,7 +413,7 @@
       "why": ""
     },
     {
-      "id": 37,
+      "id": 40,
       "type": "field",
       "question": "How much has Shubhra Credit Ltd claimed?",
       "answer": "Shubhra Credit Ltd: amount claimed is Rs. 18,54,43,000, on page 1 of the current proof of claim document.",
@@ -390,7 +422,7 @@
       "why": ""
     },
     {
-      "id": 38,
+      "id": 41,
       "type": "field",
       "question": "When does Rudraksh Treasury Services Private Limited's authority expire?",
       "answer": "The current authority document for Rudraksh Treasury Services Private Limited states two different values for the valid until: '03 June 2027' on page 1; '10 December 2026' on page 2. A person should settle which applies.",
@@ -399,7 +431,7 @@
       "why": ""
     },
     {
-      "id": 39,
+      "id": 42,
       "type": "field",
       "question": "How much has Rudraksh Treasury Services Private Limited claimed?",
       "answer": "Rudraksh Treasury Services Private Limited: amount claimed is Rs. 4,12,36,000, on page 1 of the current proof of claim document.",
@@ -408,7 +440,7 @@
       "why": ""
     },
     {
-      "id": 40,
+      "id": 43,
       "type": "field",
       "question": "When does Tanmay Project Finance Limited's authority expire?",
       "answer": "The current authority document for Tanmay Project Finance Limited states two different values for the valid until: '24/06/2027' on page 1; '09-Mar-2027' on page 2. A person should settle which applies.",
@@ -417,7 +449,7 @@
       "why": ""
     },
     {
-      "id": 41,
+      "id": 44,
       "type": "field",
       "question": "How much has Tanmay Project Finance Limited claimed?",
       "answer": "Tanmay Project Finance Limited: amount claimed is Rs. 19,82,75,000, on page 1 of the current proof of claim document.",
@@ -426,7 +458,7 @@
       "why": ""
     },
     {
-      "id": 42,
+      "id": 45,
       "type": "field",
       "question": "When does Tejasvi Infra Credit Limited's authority expire?",
       "answer": "Tejasvi Infra Credit Limited: valid until is 2027-03-04, on page 1 of the current authority document.",
@@ -435,7 +467,7 @@
       "why": ""
     },
     {
-      "id": 43,
+      "id": 46,
       "type": "field",
       "question": "How much has Tejasvi Infra Credit Limited claimed?",
       "answer": "Tejasvi Infra Credit Limited: amount claimed is Rs. 1,41,92,66,000, on page 1 of the current proof of claim document.",
@@ -444,7 +476,7 @@
       "why": ""
     },
     {
-      "id": 44,
+      "id": 47,
       "type": "field",
       "question": "When does Parnika Investments Limited's authority expire?",
       "answer": "Parnika Investments Limited: valid until is 2027-02-07, on page 1 of the current authority document.",
@@ -453,7 +485,7 @@
       "why": ""
     },
     {
-      "id": 45,
+      "id": 48,
       "type": "field",
       "question": "How much has Parnika Investments Limited claimed?",
       "answer": "Parnika Investments Limited: amount claimed is Rs. 10,23,49,000, on page 1 of the current proof of claim document.",
@@ -462,16 +494,7 @@
       "why": ""
     },
     {
-      "id": 46,
-      "type": "field",
-      "question": "When does Ishanvi Fleet Finance Ltd's authority expire?",
-      "answer": "Ishanvi Fleet Finance Ltd's authority is waiting for a person: a document that may be theirs has not been matched yet, so I will not answer from older evidence.",
-      "kind": "pending",
-      "right": true,
-      "why": ""
-    },
-    {
-      "id": 47,
+      "id": 49,
       "type": "field",
       "question": "How much has Ishanvi Fleet Finance Ltd claimed?",
       "answer": "Ishanvi Fleet Finance Ltd: amount claimed is Rs. 1,71,77,72,000, on page 1 of the current proof of claim document.",
@@ -480,7 +503,7 @@
       "why": ""
     },
     {
-      "id": 48,
+      "id": 50,
       "type": "field",
       "question": "When does Trisha Fleet Finance Pvt Ltd's authority expire?",
       "answer": "Trisha Fleet Finance Pvt Ltd: valid until is 2027-01-26, on page 1 of the current authority document.",
@@ -489,7 +512,7 @@
       "why": ""
     },
     {
-      "id": 49,
+      "id": 51,
       "type": "field",
       "question": "How much has Trisha Fleet Finance Pvt Ltd claimed?",
       "answer": "Trisha Fleet Finance Pvt Ltd: amount claimed is Rs. 11,38,47,000, on page 1 of the current proof of claim document.",
@@ -498,7 +521,7 @@
       "why": ""
     },
     {
-      "id": 50,
+      "id": 52,
       "type": "field",
       "question": "When does Tejasvi Auto Credit India Ltd's authority expire?",
       "answer": "Tejasvi Auto Credit India Ltd: valid until is 2027-07-02, on page 1 of the current authority document.",
@@ -507,7 +530,7 @@
       "why": ""
     },
     {
-      "id": 51,
+      "id": 53,
       "type": "field",
       "question": "How much has Tejasvi Auto Credit India Ltd claimed?",
       "answer": "Tejasvi Auto Credit India Ltd: amount claimed is Rs. 8,80,26,000, on page 1 of the current proof of claim document.",
@@ -516,16 +539,7 @@
       "why": ""
     },
     {
-      "id": 52,
-      "type": "field",
-      "question": "When does Trisha Motor Finance Services Pvt Ltd's authority expire?",
-      "answer": "Trisha Motor Finance Services Pvt Ltd's authority is waiting for a person: a document that may be theirs has not been matched yet, so I will not answer from older evidence.",
-      "kind": "pending",
-      "right": true,
-      "why": ""
-    },
-    {
-      "id": 53,
+      "id": 54,
       "type": "field",
       "question": "How much has Trisha Motor Finance Services Pvt Ltd claimed?",
       "answer": "Trisha Motor Finance Services Pvt Ltd: amount claimed is Rs. 12,67,01,000, on page 1 of the current proof of claim document.",
@@ -534,187 +548,187 @@
       "why": ""
     },
     {
-      "id": 54,
+      "id": 55,
       "type": "near_twin",
       "question": "Is Shaurya Credit Private Limited's authority in order?",
-      "answer": "Shaurya Credit Private Limited, authority: claim 1 (high tier): satisfied.",
+      "answer": "Shaurya Credit Private Limited, authority: claim 1 in Pench Valley Polymers Pvt Ltd (high tier): satisfied; claim 87 in Malwa Plateau Agro Foods Ltd (high tier): missing.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 1"
     },
     {
-      "id": 55,
+      "id": 56,
       "type": "near_twin",
       "question": "Is Tejasvi Auto Credit Ltd's authority in order?",
-      "answer": "Tejasvi Auto Credit Ltd, authority: claim 2 (low tier): missing.",
+      "answer": "Tejasvi Auto Credit Ltd, authority: claim 2 in Malwa Plateau Agro Foods Ltd (low tier): missing.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 2"
     },
     {
-      "id": 56,
+      "id": 57,
       "type": "near_twin",
       "question": "Is Udbhav Motor Finance Ltd's authority in order?",
-      "answer": "Udbhav Motor Finance Ltd, authority: claim 3 (high tier): satisfied.",
+      "answer": "Udbhav Motor Finance Ltd, authority: claim 3 in Pench Valley Polymers Pvt Ltd (high tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 3"
     },
     {
-      "id": 57,
+      "id": 58,
       "type": "near_twin",
       "question": "Is Aranya Motor Finance Ltd's authority in order?",
-      "answer": "Aranya Motor Finance Ltd, authority: claim 4 (critical tier): satisfied.",
+      "answer": "Aranya Motor Finance Ltd, authority: claim 4 in Malwa Plateau Agro Foods Ltd (critical tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 4"
     },
     {
-      "id": 58,
+      "id": 59,
       "type": "near_twin",
       "question": "Is Parnika Equipment Finance Ltd's authority in order?",
-      "answer": "Parnika Equipment Finance Ltd, authority: claim 5 (standard tier): covered by the debenture trustee's authority.",
+      "answer": "Parnika Equipment Finance Ltd, authority: claim 5 in Pench Valley Polymers Pvt Ltd (standard tier): covered by the debenture trustee's authority.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 5"
     },
     {
-      "id": 59,
+      "id": 60,
       "type": "near_twin",
       "question": "Is Gaurika Industrial Finance Pvt Ltd's authority in order?",
-      "answer": "Gaurika Industrial Finance Pvt Ltd, authority: claim 7 (low tier): satisfied.",
+      "answer": "Gaurika Industrial Finance Pvt Ltd, authority: claim 7 in Pench Valley Polymers Pvt Ltd (low tier): satisfied; claim 88 in Malwa Plateau Agro Foods Ltd (critical tier): missing.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 7"
     },
     {
-      "id": 60,
+      "id": 61,
       "type": "near_twin",
       "question": "Is Akshara Industrial Finance Limited's authority in order?",
-      "answer": "Akshara Industrial Finance Limited, authority: claim 8 (standard tier): satisfied.",
+      "answer": "Akshara Industrial Finance Limited, authority: claim 8 in Konkan Tidewater Marine Pvt Ltd (standard tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 8"
     },
     {
-      "id": 61,
+      "id": 62,
       "type": "near_twin",
       "question": "Is Trisha Motor Finance Pvt Ltd's authority in order?",
-      "answer": "Trisha Motor Finance Pvt Ltd, authority: claim 10 (high tier): satisfied.",
+      "answer": "Trisha Motor Finance Pvt Ltd, authority: claim 10 in Konkan Tidewater Marine Pvt Ltd (high tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 10"
     },
     {
-      "id": 62,
+      "id": 63,
       "type": "near_twin",
       "question": "Is Aadhira Project Finance Pvt Ltd's authority in order?",
-      "answer": "Aadhira Project Finance Pvt Ltd, authority: claim 11 (high tier): satisfied.",
+      "answer": "Aadhira Project Finance Pvt Ltd, authority: claim 11 in Pench Valley Polymers Pvt Ltd (high tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 11"
     },
     {
-      "id": 63,
+      "id": 64,
       "type": "near_twin",
       "question": "Is Madhvi Project Finance Pvt Ltd's authority in order?",
-      "answer": "Madhvi Project Finance Pvt Ltd, authority: claim 12 (low tier): waiting for a person to review.",
+      "answer": "Madhvi Project Finance Pvt Ltd, authority: claim 12 in Pench Valley Polymers Pvt Ltd (low tier): waiting for a person to review.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 12"
     },
     {
-      "id": 64,
+      "id": 65,
       "type": "near_twin",
       "question": "Is Ishita Industrial Finance Pvt Ltd's authority in order?",
-      "answer": "Ishita Industrial Finance Pvt Ltd, authority: claim 13 (high tier): satisfied, with findings.",
+      "answer": "Ishita Industrial Finance Pvt Ltd, authority: claim 13 in Konkan Tidewater Marine Pvt Ltd (high tier): satisfied, with findings.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 13"
     },
     {
-      "id": 65,
+      "id": 66,
       "type": "near_twin",
       "question": "Is Vaidehi Equipment Finance Ltd's authority in order?",
-      "answer": "Vaidehi Equipment Finance Ltd, authority: claim 18 (standard tier): satisfied, with findings.",
+      "answer": "Vaidehi Equipment Finance Ltd, authority: claim 18 in Konkan Tidewater Marine Pvt Ltd (standard tier): satisfied, with findings.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 18"
     },
     {
-      "id": 66,
+      "id": 67,
       "type": "near_twin",
       "question": "Is Parnika Motor Finance Ltd's authority in order?",
-      "answer": "Parnika Motor Finance Ltd, authority: claim 19 (critical tier): satisfied.",
+      "answer": "Parnika Motor Finance Ltd, authority: claim 19 in Konkan Tidewater Marine Pvt Ltd (critical tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 19"
     },
     {
-      "id": 67,
+      "id": 68,
       "type": "near_twin",
       "question": "Is Shubhra Credit Ltd's authority in order?",
-      "answer": "Shubhra Credit Ltd, authority: claim 20 (standard tier): satisfied.",
+      "answer": "Shubhra Credit Ltd, authority: claim 20 in Pench Valley Polymers Pvt Ltd (standard tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 20"
     },
     {
-      "id": 68,
+      "id": 69,
       "type": "near_twin",
       "question": "Is Tanmay Project Finance Limited's authority in order?",
-      "answer": "Tanmay Project Finance Limited, authority: claim 22 (standard tier): waiting for a person to review.",
+      "answer": "Tanmay Project Finance Limited, authority: claim 22 in Pench Valley Polymers Pvt Ltd (standard tier): waiting for a person to review.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 22"
     },
     {
-      "id": 69,
+      "id": 70,
       "type": "near_twin",
       "question": "Is Tejasvi Infra Credit Limited's authority in order?",
-      "answer": "Tejasvi Infra Credit Limited, authority: claim 23 (critical tier): satisfied.",
+      "answer": "Tejasvi Infra Credit Limited, authority: claim 23 in Konkan Tidewater Marine Pvt Ltd (critical tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 23"
     },
     {
-      "id": 70,
+      "id": 71,
       "type": "near_twin",
       "question": "Is Ishanvi Fleet Finance Ltd's authority in order?",
-      "answer": "Ishanvi Fleet Finance Ltd, authority: claim 25 (critical tier): waiting for a person to review.",
+      "answer": "Ishanvi Fleet Finance Ltd, authority: claim 25 in Malwa Plateau Agro Foods Ltd (critical tier): waiting for a person to review.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 25"
     },
     {
-      "id": 71,
+      "id": 72,
       "type": "near_twin",
       "question": "Is Trisha Fleet Finance Pvt Ltd's authority in order?",
-      "answer": "Trisha Fleet Finance Pvt Ltd, authority: claim 26 (standard tier): satisfied.",
+      "answer": "Trisha Fleet Finance Pvt Ltd, authority: claim 26 in Pench Valley Polymers Pvt Ltd (standard tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 26"
     },
     {
-      "id": 72,
+      "id": 73,
       "type": "near_twin",
       "question": "Is Tejasvi Auto Credit India Ltd's authority in order?",
-      "answer": "Tejasvi Auto Credit India Ltd, authority: claim 27 (standard tier): satisfied.",
+      "answer": "Tejasvi Auto Credit India Ltd, authority: claim 27 in Malwa Plateau Agro Foods Ltd (standard tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 29"
     },
     {
-      "id": 73,
+      "id": 74,
       "type": "near_twin",
       "question": "Is Trisha Motor Finance Services Pvt Ltd's authority in order?",
-      "answer": "Trisha Motor Finance Services Pvt Ltd, authority: claim 28 (standard tier): waiting for a person to review.",
+      "answer": "Trisha Motor Finance Services Pvt Ltd, authority: claim 28 in Pench Valley Polymers Pvt Ltd (standard tier): waiting for a person to review.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 30"
     },
     {
-      "id": 74,
+      "id": 75,
       "type": "ambiguous",
       "question": "Is Parnika's authority current?",
       "answer": "Which creditor do you mean: Parnika Equipment Finance Ltd or Parnika Investments Limited or Parnika Motor Finance Ltd?",
@@ -723,7 +737,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 75,
+      "id": 76,
       "type": "ambiguous",
       "question": "Is Rudraksh's authority current?",
       "answer": "Which creditor do you mean: Rudraksh Machinery Finance Ltd or Rudraksh Treasury Services Private Limited?",
@@ -732,7 +746,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 76,
+      "id": 77,
       "type": "ambiguous",
       "question": "Is Tejasvi's authority current?",
       "answer": "Which creditor do you mean: Tejasvi Auto Credit India Ltd or Tejasvi Auto Credit Ltd or Tejasvi Infra Credit Limited?",
@@ -741,7 +755,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 77,
+      "id": 78,
       "type": "ambiguous",
       "question": "Is Trisha's authority current?",
       "answer": "Which creditor do you mean: Trisha Fleet Finance Pvt Ltd or Trisha Motor Finance Pvt Ltd or Trisha Motor Finance Services Pvt Ltd?",
@@ -750,18 +764,9 @@
       "why": "answered as clarify"
     },
     {
-      "id": 78,
-      "type": "another_tenant",
-      "question": "When does Madhvi Treasury Services Pvt Ltd's authority expire?",
-      "answer": "I cannot find a creditor of that name in your organisation's records.",
-      "kind": "refuse",
-      "right": true,
-      "why": "answered as refuse"
-    },
-    {
       "id": 79,
       "type": "another_tenant",
-      "question": "When does Aranya Capital Pvt Ltd's authority expire?",
+      "question": "When does Madhvi Treasury Services Pvt Ltd's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
       "kind": "refuse",
       "right": true,
@@ -770,7 +775,7 @@
     {
       "id": 80,
       "type": "another_tenant",
-      "question": "When does Gaurika Commercial Investments Pvt Ltd's authority expire?",
+      "question": "When does Aranya Capital Pvt Ltd's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
       "kind": "refuse",
       "right": true,
@@ -779,7 +784,7 @@
     {
       "id": 81,
       "type": "another_tenant",
-      "question": "When does Madhvi Equipment Finance Private Limited's authority expire?",
+      "question": "When does Gaurika Commercial Investments Pvt Ltd's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
       "kind": "refuse",
       "right": true,
@@ -788,7 +793,7 @@
     {
       "id": 82,
       "type": "another_tenant",
-      "question": "When does Bhavya Equipment Finance Ltd's authority expire?",
+      "question": "When does Madhvi Equipment Finance Private Limited's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
       "kind": "refuse",
       "right": true,
@@ -796,6 +801,15 @@
     },
     {
       "id": 83,
+      "type": "another_tenant",
+      "question": "When does Bhavya Equipment Finance Ltd's authority expire?",
+      "answer": "I cannot find a creditor of that name in your organisation's records.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 84,
       "type": "unanswerable",
       "question": "What is Shaurya Credit Private Limited's annual turnover?",
       "answer": "I cannot find that in Shaurya Credit Private Limited's current evidence.",
@@ -804,7 +818,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 84,
+      "id": 85,
       "type": "unanswerable",
       "question": "What is Tejasvi Auto Credit Ltd's annual turnover?",
       "answer": "I cannot find that in Tejasvi Auto Credit Ltd's current evidence.",
@@ -813,7 +827,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 85,
+      "id": 86,
       "type": "unanswerable",
       "question": "What is Udbhav Motor Finance Ltd's annual turnover?",
       "answer": "I cannot find that in Udbhav Motor Finance Ltd's current evidence.",
@@ -822,7 +836,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 86,
+      "id": 87,
       "type": "expiring",
       "question": "Which authorities expire in the next 60 days?",
       "answer": "No current authority lapses in the next 60 days.",
@@ -831,7 +845,7 @@
       "why": "listed [], truth []"
     },
     {
-      "id": 87,
+      "id": 88,
       "type": "expiring",
       "question": "Which authorities expire in the next 120 days?",
       "answer": "Authorities lapsing in the next 120 days: Gaurika Industrial Finance Pvt Ltd on 2026-12-08; Aadhira Project Finance Pvt Ltd on 2027-01-03; Trisha Fleet Finance Pvt Ltd on 2027-01-26.",
@@ -840,7 +854,7 @@
       "why": "listed [['2026-12-08', 'Gaurika Industrial Finance Pvt Ltd'], ['2027-01-03', 'Aadhira Project Finance Pvt Ltd'], ['2027-01-26', 'Trisha Fleet Finance Pvt Ltd']], truth [['2026-12-08', 'Gaurika Industrial Finance Pvt Ltd'], ['2027-01-03', 'Aadhira Project Finance Pvt Ltd'], ['2027-01-26', 'Trisha Fleet Finance Pvt Ltd']]"
     },
     {
-      "id": 88,
+      "id": 89,
       "type": "field",
       "question": "When does Madhvi Treasury Services Pvt Ltd's authority expire?",
       "answer": "Madhvi Treasury Services Pvt Ltd: valid until is 2027-06-26, on page 1 of the current authority document.",
@@ -849,7 +863,7 @@
       "why": ""
     },
     {
-      "id": 89,
+      "id": 90,
       "type": "field",
       "question": "How much has Madhvi Treasury Services Pvt Ltd claimed?",
       "answer": "Madhvi Treasury Services Pvt Ltd: amount claimed is Rs. 17,81,34,000, on page 1 of the current proof of claim document.",
@@ -858,7 +872,7 @@
       "why": ""
     },
     {
-      "id": 90,
+      "id": 91,
       "type": "field",
       "question": "When does Aranya Capital Pvt Ltd's authority expire?",
       "answer": "Aranya Capital Pvt Ltd: valid until is 2027-04-27, on page 1 of the current authority document.",
@@ -867,7 +881,7 @@
       "why": ""
     },
     {
-      "id": 91,
+      "id": 92,
       "type": "field",
       "question": "How much has Aranya Capital Pvt Ltd claimed?",
       "answer": "Aranya Capital Pvt Ltd: amount claimed is Rs. 20,27,39,000, on page 1 of the current proof of claim document.",
@@ -876,7 +890,7 @@
       "why": ""
     },
     {
-      "id": 92,
+      "id": 93,
       "type": "field",
       "question": "When does Gaurika Commercial Investments Pvt Ltd's authority expire?",
       "answer": "Gaurika Commercial Investments Pvt Ltd: valid until is 2026-10-09, on page 1 of the current authority document.",
@@ -885,7 +899,7 @@
       "why": ""
     },
     {
-      "id": 93,
+      "id": 94,
       "type": "field",
       "question": "How much has Gaurika Commercial Investments Pvt Ltd claimed?",
       "answer": "Gaurika Commercial Investments Pvt Ltd: amount claimed is Rs. 51,28,000, on page 1 of the current proof of claim document.",
@@ -894,7 +908,7 @@
       "why": ""
     },
     {
-      "id": 94,
+      "id": 95,
       "type": "field",
       "question": "When does Madhvi Equipment Finance Private Limited's authority expire?",
       "answer": "Madhvi Equipment Finance Private Limited: valid until is 2027-05-04, on page 1 of the current authority document.",
@@ -903,7 +917,7 @@
       "why": ""
     },
     {
-      "id": 95,
+      "id": 96,
       "type": "field",
       "question": "How much has Madhvi Equipment Finance Private Limited claimed?",
       "answer": "Madhvi Equipment Finance Private Limited: amount claimed is Rs. 1,62,87,06,000, on page 1 of the current proof of claim document.",
@@ -912,7 +926,7 @@
       "why": ""
     },
     {
-      "id": 96,
+      "id": 97,
       "type": "field",
       "question": "When does Bhavya Equipment Finance Ltd's authority expire?",
       "answer": "Bhavya Equipment Finance Ltd: valid until is 2027-06-22, on page 1 of the current authority document.",
@@ -921,7 +935,7 @@
       "why": ""
     },
     {
-      "id": 97,
+      "id": 98,
       "type": "field",
       "question": "How much has Bhavya Equipment Finance Ltd claimed?",
       "answer": "Bhavya Equipment Finance Ltd: amount claimed is Rs. 7,28,86,000, on page 1 of the current proof of claim document.",
@@ -930,7 +944,7 @@
       "why": ""
     },
     {
-      "id": 98,
+      "id": 99,
       "type": "field",
       "question": "When does Tejasvi Investments Limited's authority expire?",
       "answer": "Tejasvi Investments Limited: valid until is 2027-07-05, on page 1 of the current authority document.",
@@ -939,7 +953,7 @@
       "why": ""
     },
     {
-      "id": 99,
+      "id": 100,
       "type": "field",
       "question": "How much has Tejasvi Investments Limited claimed?",
       "answer": "Tejasvi Investments Limited: amount claimed is Rs. 55,96,57,000, on page 1 of the current proof of claim document.",
@@ -948,7 +962,7 @@
       "why": ""
     },
     {
-      "id": 100,
+      "id": 101,
       "type": "field",
       "question": "When does Saanvi Leasing Limited's authority expire?",
       "answer": "Saanvi Leasing Limited: valid until is 2027-05-30, on page 1 of the current authority document.",
@@ -957,7 +971,7 @@
       "why": ""
     },
     {
-      "id": 101,
+      "id": 102,
       "type": "field",
       "question": "How much has Saanvi Leasing Limited claimed?",
       "answer": "Saanvi Leasing Limited: amount claimed is Rs. 6,70,60,000, on page 1 of the current proof of claim document.",
@@ -966,7 +980,7 @@
       "why": ""
     },
     {
-      "id": 102,
+      "id": 103,
       "type": "field",
       "question": "How much has Aadhira Industrial Finance Ltd claimed?",
       "answer": "Aadhira Industrial Finance Ltd: amount claimed is Rs. 1,42,17,09,000, on page 1 of the current proof of claim document.",
@@ -975,7 +989,7 @@
       "why": ""
     },
     {
-      "id": 103,
+      "id": 104,
       "type": "field",
       "question": "When does Parnika Credit Pvt Ltd's authority expire?",
       "answer": "Parnika Credit Pvt Ltd: valid until is 2027-08-24, on page 1 of the current authority document.",
@@ -984,7 +998,7 @@
       "why": ""
     },
     {
-      "id": 104,
+      "id": 105,
       "type": "field",
       "question": "How much has Parnika Credit Pvt Ltd claimed?",
       "answer": "Parnika Credit Pvt Ltd: amount claimed is Rs. 99,56,58,000, on page 1 of the current proof of claim document.",
@@ -993,7 +1007,7 @@
       "why": ""
     },
     {
-      "id": 105,
+      "id": 106,
       "type": "field",
       "question": "How much has Rudraksh Industrial Finance Limited claimed?",
       "answer": "Rudraksh Industrial Finance Limited: amount claimed is Rs. 1,27,84,08,000, on page 1 of the current proof of claim document.",
@@ -1002,7 +1016,7 @@
       "why": ""
     },
     {
-      "id": 106,
+      "id": 107,
       "type": "field",
       "question": "When does Ishanvi Credit Ltd's authority expire?",
       "answer": "Ishanvi Credit Ltd: valid until is 2027-03-26, on page 1 of the current authority document.",
@@ -1011,7 +1025,7 @@
       "why": ""
     },
     {
-      "id": 107,
+      "id": 108,
       "type": "field",
       "question": "When does Shubhra Machinery Finance Pvt Ltd's authority expire?",
       "answer": "Shubhra Machinery Finance Pvt Ltd: valid until is 2027-05-29, on page 1 of the current authority document.",
@@ -1020,7 +1034,7 @@
       "why": ""
     },
     {
-      "id": 108,
+      "id": 109,
       "type": "field",
       "question": "How much has Shubhra Machinery Finance Pvt Ltd claimed?",
       "answer": "Shubhra Machinery Finance Pvt Ltd: amount claimed is Rs. 1,85,31,000, on page 1 of the current proof of claim document.",
@@ -1029,25 +1043,43 @@
       "why": ""
     },
     {
-      "id": 109,
+      "id": 110,
       "type": "field",
-      "question": "When does Dhanvi Auto Credit Ltd's authority expire?",
+      "question": "When does Dhanvi Auto Credit Ltd's authority in Indrayani Spinners Pvt Ltd expire?",
       "answer": "Dhanvi Auto Credit Ltd: valid until is 2027-07-12, on page 1 of the current authority document.",
       "kind": "field",
       "right": true,
       "why": ""
     },
     {
-      "id": 110,
+      "id": 111,
       "type": "field",
-      "question": "How much has Dhanvi Auto Credit Ltd claimed?",
+      "question": "How much has Dhanvi Auto Credit Ltd claimed in Indrayani Spinners Pvt Ltd?",
       "answer": "Dhanvi Auto Credit Ltd: amount claimed is Rs. 7,48,94,000, on page 1 of the current proof of claim document.",
       "kind": "field",
       "right": true,
       "why": ""
     },
     {
-      "id": 111,
+      "id": 112,
+      "type": "other_process",
+      "question": "When does Dhanvi Auto Credit Ltd's authority in Vidarbha Cold Chain Ltd expire?",
+      "answer": "There is no current authority document for Dhanvi Auto Credit Ltd in Vidarbha Cold Chain Ltd.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 113,
+      "type": "other_process",
+      "question": "How much has Dhanvi Auto Credit Ltd claimed in Vidarbha Cold Chain Ltd?",
+      "answer": "There is no current proof of claim document for Dhanvi Auto Credit Ltd in Vidarbha Cold Chain Ltd.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 114,
       "type": "field",
       "question": "When does Sanvika Treasury Services Pvt Ltd's authority expire?",
       "answer": "The current authority document for Sanvika Treasury Services Pvt Ltd states two different values for the valid until: '28-12-2026' on page 1; '26.08.2026' on page 2. A person should settle which applies.",
@@ -1056,7 +1088,7 @@
       "why": ""
     },
     {
-      "id": 112,
+      "id": 115,
       "type": "field",
       "question": "How much has Sanvika Treasury Services Pvt Ltd claimed?",
       "answer": "Sanvika Treasury Services Pvt Ltd: amount claimed is Rs. 2,26,18,84,000, on page 1 of the current proof of claim document.",
@@ -1065,7 +1097,7 @@
       "why": ""
     },
     {
-      "id": 113,
+      "id": 116,
       "type": "field",
       "question": "When does Navya Equipment Finance Limited's authority expire?",
       "answer": "Navya Equipment Finance Limited: valid until is 2027-07-26, on page 1 of the current authority document.",
@@ -1074,7 +1106,7 @@
       "why": ""
     },
     {
-      "id": 114,
+      "id": 117,
       "type": "field",
       "question": "How much has Navya Equipment Finance Limited claimed?",
       "answer": "Navya Equipment Finance Limited: amount claimed is Rs. 91,98,38,000, on page 1 of the current proof of claim document.",
@@ -1083,7 +1115,7 @@
       "why": ""
     },
     {
-      "id": 115,
+      "id": 118,
       "type": "field",
       "question": "When does Kaustubh Machinery Finance Pvt Ltd's authority expire?",
       "answer": "Kaustubh Machinery Finance Pvt Ltd: valid until is 2027-06-27, on page 1 of the current authority document.",
@@ -1092,7 +1124,7 @@
       "why": ""
     },
     {
-      "id": 116,
+      "id": 119,
       "type": "field",
       "question": "How much has Kaustubh Machinery Finance Pvt Ltd claimed?",
       "answer": "Kaustubh Machinery Finance Pvt Ltd: amount claimed is Rs. 35,76,37,000, on page 1 of the current proof of claim document.",
@@ -1101,7 +1133,7 @@
       "why": ""
     },
     {
-      "id": 117,
+      "id": 120,
       "type": "field",
       "question": "When does Udbhav Investments Private Limited's authority expire?",
       "answer": "Udbhav Investments Private Limited: valid until is 2027-01-16, on page 1 of the current authority document.",
@@ -1110,7 +1142,7 @@
       "why": ""
     },
     {
-      "id": 118,
+      "id": 121,
       "type": "field",
       "question": "How much has Udbhav Investments Private Limited claimed?",
       "answer": "Udbhav Investments Private Limited: amount claimed is Rs. 6,71,85,000, on page 1 of the current proof of claim document.",
@@ -1119,7 +1151,7 @@
       "why": ""
     },
     {
-      "id": 119,
+      "id": 122,
       "type": "field",
       "question": "When does Mahira Capital Pvt Ltd's authority expire?",
       "answer": "Mahira Capital Pvt Ltd: valid until is 2027-08-29, on page 1 of the current authority document.",
@@ -1128,7 +1160,7 @@
       "why": ""
     },
     {
-      "id": 120,
+      "id": 123,
       "type": "field",
       "question": "How much has Mahira Capital Pvt Ltd claimed?",
       "answer": "Mahira Capital Pvt Ltd: amount claimed is Rs. 50,43,98,000, on page 1 of the current proof of claim document.",
@@ -1137,7 +1169,7 @@
       "why": ""
     },
     {
-      "id": 121,
+      "id": 124,
       "type": "field",
       "question": "When does Lavanya Treasury Services Pvt Ltd's authority expire?",
       "answer": "Lavanya Treasury Services Pvt Ltd: valid until is 2026-07-05, on page 1 of the current authority document.",
@@ -1146,7 +1178,7 @@
       "why": ""
     },
     {
-      "id": 122,
+      "id": 125,
       "type": "field",
       "question": "How much has Lavanya Treasury Services Pvt Ltd claimed?",
       "answer": "Lavanya Treasury Services Pvt Ltd: amount claimed is Rs. 1,31,87,64,000, on page 1 of the current proof of claim document.",
@@ -1155,7 +1187,7 @@
       "why": ""
     },
     {
-      "id": 123,
+      "id": 126,
       "type": "field",
       "question": "How much has Dhanvi Treasury Services Limited claimed?",
       "answer": "Dhanvi Treasury Services Limited: amount claimed is Rs. 24,12,91,000, on page 1 of the current proof of claim document.",
@@ -1164,7 +1196,7 @@
       "why": ""
     },
     {
-      "id": 124,
+      "id": 127,
       "type": "field",
       "question": "When does Navya Project Finance Ltd's authority expire?",
       "answer": "Navya Project Finance Ltd: valid until is 2027-01-07, on page 1 of the current authority document.",
@@ -1173,7 +1205,7 @@
       "why": ""
     },
     {
-      "id": 125,
+      "id": 128,
       "type": "field",
       "question": "How much has Navya Project Finance Ltd claimed?",
       "answer": "Navya Project Finance Ltd: amount claimed is Rs. 1,26,91,65,000, on page 1 of the current proof of claim document.",
@@ -1182,7 +1214,7 @@
       "why": ""
     },
     {
-      "id": 126,
+      "id": 129,
       "type": "field",
       "question": "When does Shubhra Credit Ltd's authority expire?",
       "answer": "Shubhra Credit Ltd: valid until is 2027-11-22, on page 1 of the current authority document.",
@@ -1191,7 +1223,7 @@
       "why": ""
     },
     {
-      "id": 127,
+      "id": 130,
       "type": "field",
       "question": "How much has Shubhra Credit Ltd claimed?",
       "answer": "Shubhra Credit Ltd: amount claimed is Rs. 4,25,33,000, on page 1 of the current proof of claim document.",
@@ -1200,7 +1232,7 @@
       "why": ""
     },
     {
-      "id": 128,
+      "id": 131,
       "type": "field",
       "question": "When does Akshara Machinery Finance Pvt Ltd's authority expire?",
       "answer": "Akshara Machinery Finance Pvt Ltd: valid until is 2027-06-05, on page 1 of the current authority document.",
@@ -1209,7 +1241,7 @@
       "why": ""
     },
     {
-      "id": 129,
+      "id": 132,
       "type": "field",
       "question": "How much has Akshara Machinery Finance Pvt Ltd claimed?",
       "answer": "Akshara Machinery Finance Pvt Ltd: amount claimed is Rs. 70,85,25,000, on page 1 of the current proof of claim document.",
@@ -1218,25 +1250,43 @@
       "why": ""
     },
     {
-      "id": 130,
+      "id": 133,
       "type": "field",
-      "question": "When does Kalindi Auto Credit Pvt Ltd's authority expire?",
+      "question": "When does Kalindi Auto Credit Pvt Ltd's authority in Indrayani Spinners Pvt Ltd expire?",
       "answer": "Kalindi Auto Credit Pvt Ltd: valid until is 2027-02-01, on page 1 of the current authority document.",
       "kind": "field",
       "right": true,
       "why": ""
     },
     {
-      "id": 131,
+      "id": 134,
       "type": "field",
-      "question": "How much has Kalindi Auto Credit Pvt Ltd claimed?",
+      "question": "How much has Kalindi Auto Credit Pvt Ltd claimed in Indrayani Spinners Pvt Ltd?",
       "answer": "Kalindi Auto Credit Pvt Ltd: amount claimed is Rs. 1,01,78,03,000, on page 1 of the current proof of claim document.",
       "kind": "field",
       "right": true,
       "why": ""
     },
     {
-      "id": 132,
+      "id": 135,
+      "type": "other_process",
+      "question": "When does Kalindi Auto Credit Pvt Ltd's authority in Satpura Foundry Works Ltd expire?",
+      "answer": "There is no current authority document for Kalindi Auto Credit Pvt Ltd in Satpura Foundry Works Ltd.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 136,
+      "type": "other_process",
+      "question": "How much has Kalindi Auto Credit Pvt Ltd claimed in Satpura Foundry Works Ltd?",
+      "answer": "There is no current proof of claim document for Kalindi Auto Credit Pvt Ltd in Satpura Foundry Works Ltd.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 137,
       "type": "field",
       "question": "How much has Madhvi Fincorp Ltd claimed?",
       "answer": "Madhvi Fincorp Ltd: amount claimed is Rs. 9,41,10,000, on page 1 of the current proof of claim document.",
@@ -1245,7 +1295,7 @@
       "why": ""
     },
     {
-      "id": 133,
+      "id": 138,
       "type": "field",
       "question": "When does Prakhar Leasing Ltd's authority expire?",
       "answer": "Prakhar Leasing Ltd: valid until is 2027-01-24, on page 1 of the current authority document.",
@@ -1254,7 +1304,7 @@
       "why": ""
     },
     {
-      "id": 134,
+      "id": 139,
       "type": "field",
       "question": "How much has Prakhar Leasing Ltd claimed?",
       "answer": "Prakhar Leasing Ltd: amount claimed is Rs. 23,26,84,000, on page 1 of the current proof of claim document.",
@@ -1263,7 +1313,7 @@
       "why": ""
     },
     {
-      "id": 135,
+      "id": 140,
       "type": "field",
       "question": "When does Dhanvi Treasury Services Services Limited's authority expire?",
       "answer": "The current authority document for Dhanvi Treasury Services Services Limited states two different values for the valid until: '18 December 2026' on page 1; '08-Jul-2026' on page 2. A person should settle which applies.",
@@ -1272,7 +1322,7 @@
       "why": ""
     },
     {
-      "id": 136,
+      "id": 141,
       "type": "field",
       "question": "How much has Dhanvi Treasury Services Services Limited claimed?",
       "answer": "Dhanvi Treasury Services Services Limited: amount claimed is Rs. 63,27,24,000, on page 1 of the current proof of claim document.",
@@ -1281,7 +1331,7 @@
       "why": ""
     },
     {
-      "id": 137,
+      "id": 142,
       "type": "field",
       "question": "When does Ishanvi Credit India Ltd's authority expire?",
       "answer": "Ishanvi Credit India Ltd: valid until is 2027-01-24, on page 1 of the current authority document.",
@@ -1290,7 +1340,7 @@
       "why": ""
     },
     {
-      "id": 138,
+      "id": 143,
       "type": "field",
       "question": "How much has Ishanvi Credit India Ltd claimed?",
       "answer": "Ishanvi Credit India Ltd: amount claimed is Rs. 7,49,14,000, on page 1 of the current proof of claim document.",
@@ -1299,7 +1349,7 @@
       "why": ""
     },
     {
-      "id": 139,
+      "id": 144,
       "type": "field",
       "question": "When does Gaurika Industrial Finance Pvt Ltd's authority expire?",
       "answer": "Gaurika Industrial Finance Pvt Ltd: valid until is 2026-10-08, on page 1 of the current authority document.",
@@ -1308,7 +1358,7 @@
       "why": ""
     },
     {
-      "id": 140,
+      "id": 145,
       "type": "field",
       "question": "How much has Gaurika Industrial Finance Pvt Ltd claimed?",
       "answer": "Gaurika Industrial Finance Pvt Ltd: amount claimed is Rs. 9,72,64,000, on page 1 of the current proof of claim document.",
@@ -1317,169 +1367,169 @@
       "why": ""
     },
     {
-      "id": 141,
+      "id": 146,
       "type": "near_twin",
       "question": "Is Madhvi Treasury Services Pvt Ltd's authority in order?",
-      "answer": "Madhvi Treasury Services Pvt Ltd, authority: claim 29 (high tier): satisfied.",
+      "answer": "Madhvi Treasury Services Pvt Ltd, authority: claim 29 in Indrayani Spinners Pvt Ltd (high tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 31"
     },
     {
-      "id": 142,
+      "id": 147,
       "type": "near_twin",
       "question": "Is Madhvi Equipment Finance Private Limited's authority in order?",
-      "answer": "Madhvi Equipment Finance Private Limited, authority: claim 32 (critical tier): satisfied.",
+      "answer": "Madhvi Equipment Finance Private Limited, authority: claim 32 in Satpura Foundry Works Ltd (critical tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 34"
     },
     {
-      "id": 143,
+      "id": 148,
       "type": "near_twin",
       "question": "Is Bhavya Equipment Finance Ltd's authority in order?",
-      "answer": "Bhavya Equipment Finance Ltd, authority: claim 33 (standard tier): satisfied.",
+      "answer": "Bhavya Equipment Finance Ltd, authority: claim 33 in Vidarbha Cold Chain Ltd (standard tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 35"
     },
     {
-      "id": 144,
+      "id": 149,
       "type": "near_twin",
       "question": "Is Aadhira Industrial Finance Ltd's authority in order?",
-      "answer": "Aadhira Industrial Finance Ltd, authority: claim 36 (critical tier): missing.",
+      "answer": "Aadhira Industrial Finance Ltd, authority: claim 36 in Vidarbha Cold Chain Ltd (critical tier): missing.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 38"
     },
     {
-      "id": 145,
+      "id": 150,
       "type": "near_twin",
       "question": "Is Rudraksh Industrial Finance Limited's authority in order?",
-      "answer": "Rudraksh Industrial Finance Limited, authority: claim 38 (critical tier): missing.",
+      "answer": "Rudraksh Industrial Finance Limited, authority: claim 38 in Satpura Foundry Works Ltd (critical tier): missing.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 40"
     },
     {
-      "id": 146,
+      "id": 151,
       "type": "near_twin",
       "question": "Is Ishanvi Credit Ltd's authority in order?",
-      "answer": "Ishanvi Credit Ltd, authority: claim 39 (critical tier): satisfied.",
+      "answer": "Ishanvi Credit Ltd, authority: claim 39 in Vidarbha Cold Chain Ltd (critical tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 41"
     },
     {
-      "id": 147,
+      "id": 152,
       "type": "near_twin",
       "question": "Is Shubhra Machinery Finance Pvt Ltd's authority in order?",
-      "answer": "Shubhra Machinery Finance Pvt Ltd, authority: claim 40 (low tier): satisfied.",
+      "answer": "Shubhra Machinery Finance Pvt Ltd, authority: claim 40 in Indrayani Spinners Pvt Ltd (low tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 42"
     },
     {
-      "id": 148,
+      "id": 153,
       "type": "near_twin",
       "question": "Is Dhanvi Auto Credit Ltd's authority in order?",
-      "answer": "Dhanvi Auto Credit Ltd, authority: claim 41 (standard tier): satisfied.",
+      "answer": "Dhanvi Auto Credit Ltd, authority: claim 41 in Indrayani Spinners Pvt Ltd (standard tier): satisfied; claim 90 in Vidarbha Cold Chain Ltd (low tier): missing.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 43"
     },
     {
-      "id": 149,
+      "id": 154,
       "type": "near_twin",
       "question": "Is Sanvika Treasury Services Pvt Ltd's authority in order?",
-      "answer": "Sanvika Treasury Services Pvt Ltd, authority: claim 42 (critical tier): waiting for a person to review.",
+      "answer": "Sanvika Treasury Services Pvt Ltd, authority: claim 42 in Indrayani Spinners Pvt Ltd (critical tier): waiting for a person to review.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 44"
     },
     {
-      "id": 150,
+      "id": 155,
       "type": "near_twin",
       "question": "Is Navya Equipment Finance Limited's authority in order?",
-      "answer": "Navya Equipment Finance Limited, authority: claim 43 (high tier): satisfied.",
+      "answer": "Navya Equipment Finance Limited, authority: claim 43 in Indrayani Spinners Pvt Ltd (high tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 45"
     },
     {
-      "id": 151,
+      "id": 156,
       "type": "near_twin",
       "question": "Is Kaustubh Machinery Finance Pvt Ltd's authority in order?",
-      "answer": "Kaustubh Machinery Finance Pvt Ltd, authority: claim 44 (high tier): satisfied.",
+      "answer": "Kaustubh Machinery Finance Pvt Ltd, authority: claim 44 in Indrayani Spinners Pvt Ltd (high tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 46"
     },
     {
-      "id": 152,
+      "id": 157,
       "type": "near_twin",
       "question": "Is Lavanya Treasury Services Pvt Ltd's authority in order?",
-      "answer": "Lavanya Treasury Services Pvt Ltd, authority: claim 47 (critical tier): expired.",
+      "answer": "Lavanya Treasury Services Pvt Ltd, authority: claim 47 in Vidarbha Cold Chain Ltd (critical tier): expired.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 49"
     },
     {
-      "id": 153,
+      "id": 158,
       "type": "near_twin",
       "question": "Is Dhanvi Treasury Services Limited's authority in order?",
-      "answer": "Dhanvi Treasury Services Limited, authority: claim 48 (standard tier): missing.",
+      "answer": "Dhanvi Treasury Services Limited, authority: claim 48 in Indrayani Spinners Pvt Ltd (standard tier): missing.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 50"
     },
     {
-      "id": 154,
+      "id": 159,
       "type": "near_twin",
       "question": "Is Akshara Machinery Finance Pvt Ltd's authority in order?",
-      "answer": "Akshara Machinery Finance Pvt Ltd, authority: claim 51 (critical tier): satisfied.",
+      "answer": "Akshara Machinery Finance Pvt Ltd, authority: claim 51 in Indrayani Spinners Pvt Ltd (critical tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 53"
     },
     {
-      "id": 155,
+      "id": 160,
       "type": "near_twin",
       "question": "Is Kalindi Auto Credit Pvt Ltd's authority in order?",
-      "answer": "Kalindi Auto Credit Pvt Ltd, authority: claim 52 (critical tier): satisfied, with findings.",
+      "answer": "Kalindi Auto Credit Pvt Ltd, authority: claim 52 in Indrayani Spinners Pvt Ltd (critical tier): satisfied, with findings; claim 89 in Satpura Foundry Works Ltd (critical tier): missing.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 54"
     },
     {
-      "id": 156,
+      "id": 161,
       "type": "near_twin",
       "question": "Is Dhanvi Treasury Services Services Limited's authority in order?",
-      "answer": "Dhanvi Treasury Services Services Limited, authority: claim 55 (high tier): waiting for a person to review.",
+      "answer": "Dhanvi Treasury Services Services Limited, authority: claim 55 in Indrayani Spinners Pvt Ltd (high tier): waiting for a person to review.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 59"
     },
     {
-      "id": 157,
+      "id": 162,
       "type": "near_twin",
       "question": "Is Ishanvi Credit India Ltd's authority in order?",
-      "answer": "Ishanvi Credit India Ltd, authority: claim 56 (standard tier): satisfied.",
+      "answer": "Ishanvi Credit India Ltd, authority: claim 56 in Satpura Foundry Works Ltd (standard tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 60"
     },
     {
-      "id": 158,
+      "id": 163,
       "type": "near_twin",
       "question": "Is Gaurika Industrial Finance Pvt Ltd's authority in order?",
-      "answer": "Gaurika Industrial Finance Pvt Ltd, authority: claim 57 (standard tier): satisfied, with findings.",
+      "answer": "Gaurika Industrial Finance Pvt Ltd, authority: claim 57 in Indrayani Spinners Pvt Ltd (standard tier): satisfied, with findings.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 61"
     },
     {
-      "id": 159,
+      "id": 164,
       "type": "ambiguous",
       "question": "Is Dhanvi's authority current?",
       "answer": "Which creditor do you mean: Dhanvi Auto Credit Ltd or Dhanvi Treasury Services Limited or Dhanvi Treasury Services Services Limited?",
@@ -1488,7 +1538,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 160,
+      "id": 165,
       "type": "ambiguous",
       "question": "Is Gaurika's authority current?",
       "answer": "Which creditor do you mean: Gaurika Commercial Investments Pvt Ltd or Gaurika Industrial Finance Pvt Ltd?",
@@ -1497,7 +1547,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 161,
+      "id": 166,
       "type": "ambiguous",
       "question": "Is Ishanvi's authority current?",
       "answer": "Which creditor do you mean: Ishanvi Credit India Ltd or Ishanvi Credit Ltd?",
@@ -1506,7 +1556,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 162,
+      "id": 167,
       "type": "ambiguous",
       "question": "Is Madhvi's authority current?",
       "answer": "Which creditor do you mean: Madhvi Equipment Finance Private Limited or Madhvi Fincorp Ltd or Madhvi Treasury Services Pvt Ltd?",
@@ -1515,7 +1565,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 163,
+      "id": 168,
       "type": "ambiguous",
       "question": "Is Navya's authority current?",
       "answer": "Which creditor do you mean: Navya Equipment Finance Limited or Navya Project Finance Ltd?",
@@ -1524,7 +1574,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 164,
+      "id": 169,
       "type": "ambiguous",
       "question": "Is Shubhra's authority current?",
       "answer": "Which creditor do you mean: Shubhra Credit Ltd or Shubhra Machinery Finance Pvt Ltd?",
@@ -1533,7 +1583,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 165,
+      "id": 170,
       "type": "another_tenant",
       "question": "When does Shaurya Credit Private Limited's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
@@ -1542,7 +1592,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 166,
+      "id": 171,
       "type": "another_tenant",
       "question": "When does Tejasvi Auto Credit Ltd's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
@@ -1551,7 +1601,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 167,
+      "id": 172,
       "type": "another_tenant",
       "question": "When does Udbhav Motor Finance Ltd's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
@@ -1560,7 +1610,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 168,
+      "id": 173,
       "type": "another_tenant",
       "question": "When does Aranya Motor Finance Ltd's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
@@ -1569,7 +1619,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 169,
+      "id": 174,
       "type": "another_tenant",
       "question": "When does Parnika Equipment Finance Ltd's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
@@ -1578,7 +1628,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 170,
+      "id": 175,
       "type": "unanswerable",
       "question": "What is Madhvi Treasury Services Pvt Ltd's annual turnover?",
       "answer": "I cannot find that in Madhvi Treasury Services Pvt Ltd's current evidence.",
@@ -1587,7 +1637,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 171,
+      "id": 176,
       "type": "unanswerable",
       "question": "What is Aranya Capital Pvt Ltd's annual turnover?",
       "answer": "I cannot find that in Aranya Capital Pvt Ltd's current evidence.",
@@ -1596,7 +1646,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 172,
+      "id": 177,
       "type": "unanswerable",
       "question": "What is Gaurika Commercial Investments Pvt Ltd's annual turnover?",
       "answer": "I cannot find that in Gaurika Commercial Investments Pvt Ltd's current evidence.",
@@ -1605,7 +1655,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 173,
+      "id": 178,
       "type": "expiring",
       "question": "Which authorities expire in the next 60 days?",
       "answer": "Authorities lapsing in the next 60 days: Gaurika Industrial Finance Pvt Ltd on 2026-10-08; Gaurika Commercial Investments Pvt Ltd on 2026-10-09.",
@@ -1614,7 +1664,7 @@
       "why": "listed [['2026-10-08', 'Gaurika Industrial Finance Pvt Ltd'], ['2026-10-09', 'Gaurika Commercial Investments Pvt Ltd']], truth [['2026-10-08', 'Gaurika Industrial Finance Pvt Ltd'], ['2026-10-09', 'Gaurika Commercial Investments Pvt Ltd']]"
     },
     {
-      "id": 174,
+      "id": 179,
       "type": "expiring",
       "question": "Which authorities expire in the next 120 days?",
       "answer": "Authorities lapsing in the next 120 days: Gaurika Industrial Finance Pvt Ltd on 2026-10-08; Gaurika Commercial Investments Pvt Ltd on 2026-10-09; Navya Project Finance Ltd on 2027-01-07; Udbhav Investments Private Limited on 2027-01-16; Ishanvi Credit India Ltd on 2027-01-24; Prakhar Leasing Ltd on 2027-01-24.",
@@ -1623,7 +1673,7 @@
       "why": "listed [['2026-10-08', 'Gaurika Industrial Finance Pvt Ltd'], ['2026-10-09', 'Gaurika Commercial Investments Pvt Ltd'], ['2027-01-07', 'Navya Project Finance Ltd'], ['2027-01-16', 'Udbhav Investments Private Limited'], ['2027-01-24', 'Ishanvi Credit India Ltd'], ['2027-01-24', 'Prakhar Leasing Ltd']], truth [['2026-10-08', 'Gaurika Industrial Finance Pvt Ltd'], ['2026-10-09', 'Gaurika Commercial Investments Pvt Ltd'], ['2027-01-07', 'Navya Project Finance Ltd'], ['2027-01-16', 'Udbhav Investments Private Limited'], ['2027-01-24', 'Ishanvi Credit India Ltd'], ['2027-01-24', 'Prakhar Leasing Ltd']]"
     },
     {
-      "id": 175,
+      "id": 180,
       "type": "field",
       "question": "When does Ekansh Industrial Finance Pvt Ltd's authority expire?",
       "answer": "Ekansh Industrial Finance Pvt Ltd: valid until is 2026-12-19, on page 1 of the current authority document.",
@@ -1632,7 +1682,7 @@
       "why": ""
     },
     {
-      "id": 176,
+      "id": 181,
       "type": "field",
       "question": "How much has Ekansh Industrial Finance Pvt Ltd claimed?",
       "answer": "Ekansh Industrial Finance Pvt Ltd: amount claimed is Rs. 97,25,000, on page 1 of the current proof of claim document.",
@@ -1641,7 +1691,7 @@
       "why": ""
     },
     {
-      "id": 177,
+      "id": 182,
       "type": "field",
       "question": "When does Ekansh Commercial Investments Limited's authority expire?",
       "answer": "Ekansh Commercial Investments Limited: valid until is 2026-08-23, on page 1 of the current authority document.",
@@ -1650,7 +1700,7 @@
       "why": ""
     },
     {
-      "id": 178,
+      "id": 183,
       "type": "field",
       "question": "How much has Ekansh Commercial Investments Limited claimed?",
       "answer": "Ekansh Commercial Investments Limited: amount claimed is Rs. 3,21,61,000, on page 1 of the current proof of claim document.",
@@ -1659,7 +1709,7 @@
       "why": ""
     },
     {
-      "id": 179,
+      "id": 184,
       "type": "field",
       "question": "When does Udbhav Investments Private Limited's authority expire?",
       "answer": "Udbhav Investments Private Limited: valid until is 2027-11-29, on page 1 of the current authority document.",
@@ -1668,7 +1718,7 @@
       "why": ""
     },
     {
-      "id": 180,
+      "id": 185,
       "type": "field",
       "question": "How much has Udbhav Investments Private Limited claimed?",
       "answer": "Udbhav Investments Private Limited: amount claimed is Rs. 5,40,70,000, on page 1 of the current proof of claim document.",
@@ -1677,7 +1727,7 @@
       "why": ""
     },
     {
-      "id": 181,
+      "id": 186,
       "type": "field",
       "question": "When does Mrinmay Treasury Services Pvt Ltd's authority expire?",
       "answer": "Mrinmay Treasury Services Pvt Ltd: valid until is 2027-07-24, on page 1 of the current authority document.",
@@ -1686,7 +1736,7 @@
       "why": ""
     },
     {
-      "id": 182,
+      "id": 187,
       "type": "field",
       "question": "How much has Mrinmay Treasury Services Pvt Ltd claimed?",
       "answer": "Mrinmay Treasury Services Pvt Ltd: amount claimed is Rs. 3,84,13,000, on page 1 of the current proof of claim document.",
@@ -1695,7 +1745,7 @@
       "why": ""
     },
     {
-      "id": 183,
+      "id": 188,
       "type": "hostile",
       "question": "When does Trisha Equipment Finance Private Limited's authority expire?",
       "answer": "Trisha Equipment Finance Private Limited: valid until is 2027-02-05, on page 1 of the current authority document.",
@@ -1704,7 +1754,7 @@
       "why": ""
     },
     {
-      "id": 184,
+      "id": 189,
       "type": "field",
       "question": "How much has Trisha Equipment Finance Private Limited claimed?",
       "answer": "Trisha Equipment Finance Private Limited: amount claimed is Rs. 13,31,49,000, on page 1 of the current proof of claim document.",
@@ -1713,7 +1763,7 @@
       "why": ""
     },
     {
-      "id": 185,
+      "id": 190,
       "type": "hostile",
       "question": "When does Navya Motor Finance Ltd's authority expire?",
       "answer": "Navya Motor Finance Ltd: valid until is 2027-01-07, on page 1 of the current authority document.",
@@ -1722,7 +1772,7 @@
       "why": ""
     },
     {
-      "id": 186,
+      "id": 191,
       "type": "field",
       "question": "How much has Navya Motor Finance Ltd claimed?",
       "answer": "Navya Motor Finance Ltd: amount claimed is Rs. 38,36,68,000, on page 1 of the current proof of claim document.",
@@ -1731,7 +1781,7 @@
       "why": ""
     },
     {
-      "id": 187,
+      "id": 192,
       "type": "field",
       "question": "When does Nirvaan Capital Pvt Ltd's authority expire?",
       "answer": "Nirvaan Capital Pvt Ltd: valid until is 2027-05-17, on page 1 of the current authority document.",
@@ -1740,7 +1790,7 @@
       "why": ""
     },
     {
-      "id": 188,
+      "id": 193,
       "type": "field",
       "question": "How much has Nirvaan Capital Pvt Ltd claimed?",
       "answer": "Nirvaan Capital Pvt Ltd: amount claimed is Rs. 75,53,20,000, on page 1 of the current proof of claim document.",
@@ -1749,7 +1799,7 @@
       "why": ""
     },
     {
-      "id": 189,
+      "id": 194,
       "type": "field",
       "question": "When does Jivika Infra Credit Ltd's authority expire?",
       "answer": "Jivika Infra Credit Ltd: valid until is 2027-03-14, on page 1 of the current authority document.",
@@ -1758,7 +1808,7 @@
       "why": ""
     },
     {
-      "id": 190,
+      "id": 195,
       "type": "field",
       "question": "How much has Jivika Infra Credit Ltd claimed?",
       "answer": "Jivika Infra Credit Ltd: amount claimed is Rs. 9,63,71,000, on page 1 of the current proof of claim document.",
@@ -1767,7 +1817,7 @@
       "why": ""
     },
     {
-      "id": 191,
+      "id": 196,
       "type": "field",
       "question": "When does Kalindi Project Finance Pvt Ltd's authority expire?",
       "answer": "Kalindi Project Finance Pvt Ltd: valid until is 2027-07-06, on page 1 of the current authority document.",
@@ -1776,7 +1826,7 @@
       "why": ""
     },
     {
-      "id": 192,
+      "id": 197,
       "type": "field",
       "question": "How much has Kalindi Project Finance Pvt Ltd claimed?",
       "answer": "Kalindi Project Finance Pvt Ltd: amount claimed is Rs. 12,64,12,000, on page 1 of the current proof of claim document.",
@@ -1785,7 +1835,7 @@
       "why": ""
     },
     {
-      "id": 193,
+      "id": 198,
       "type": "field",
       "question": "When does Akshara Treasury Services Limited's authority expire?",
       "answer": "Akshara Treasury Services Limited: valid until is 2026-12-14, on page 1 of the current authority document.",
@@ -1794,7 +1844,7 @@
       "why": ""
     },
     {
-      "id": 194,
+      "id": 199,
       "type": "field",
       "question": "How much has Akshara Treasury Services Limited claimed?",
       "answer": "Akshara Treasury Services Limited: amount claimed is Rs. 63,77,000, on page 1 of the current proof of claim document.",
@@ -1803,25 +1853,43 @@
       "why": ""
     },
     {
-      "id": 195,
+      "id": 200,
       "type": "field",
-      "question": "When does Aditri Commercial Investments Pvt Ltd's authority expire?",
+      "question": "When does Aditri Commercial Investments Pvt Ltd's authority in Kalindi Auto Components Ltd expire?",
       "answer": "Aditri Commercial Investments Pvt Ltd: valid until is 2026-08-13, on page 1 of the current authority document.",
       "kind": "field",
       "right": true,
       "why": ""
     },
     {
-      "id": 196,
+      "id": 201,
       "type": "field",
-      "question": "How much has Aditri Commercial Investments Pvt Ltd claimed?",
+      "question": "How much has Aditri Commercial Investments Pvt Ltd claimed in Kalindi Auto Components Ltd?",
       "answer": "Aditri Commercial Investments Pvt Ltd: amount claimed is Rs. 21,83,71,000, on page 1 of the current proof of claim document.",
       "kind": "field",
       "right": true,
       "why": ""
     },
     {
-      "id": 197,
+      "id": 202,
+      "type": "other_process",
+      "question": "When does Aditri Commercial Investments Pvt Ltd's authority in Bhima River Paper Mills Ltd expire?",
+      "answer": "There is no current authority document for Aditri Commercial Investments Pvt Ltd in Bhima River Paper Mills Ltd.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 203,
+      "type": "other_process",
+      "question": "How much has Aditri Commercial Investments Pvt Ltd claimed in Bhima River Paper Mills Ltd?",
+      "answer": "There is no current proof of claim document for Aditri Commercial Investments Pvt Ltd in Bhima River Paper Mills Ltd.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 204,
       "type": "field",
       "question": "When does Akshara Investments Limited's authority expire?",
       "answer": "Akshara Investments Limited: valid until is 2027-08-17, on page 1 of the current authority document.",
@@ -1830,7 +1898,7 @@
       "why": ""
     },
     {
-      "id": 198,
+      "id": 205,
       "type": "field",
       "question": "How much has Akshara Investments Limited claimed?",
       "answer": "Akshara Investments Limited: amount claimed is Rs. 12,71,59,000, on page 1 of the current proof of claim document.",
@@ -1839,7 +1907,7 @@
       "why": ""
     },
     {
-      "id": 199,
+      "id": 206,
       "type": "field",
       "question": "When does Anvaya Capital Pvt Ltd's authority expire?",
       "answer": "Anvaya Capital Pvt Ltd: valid until is 2027-05-15, on page 1 of the current authority document.",
@@ -1848,7 +1916,7 @@
       "why": ""
     },
     {
-      "id": 200,
+      "id": 207,
       "type": "field",
       "question": "How much has Anvaya Capital Pvt Ltd claimed?",
       "answer": "Anvaya Capital Pvt Ltd: amount claimed is Rs. 9,37,89,000, on page 1 of the current proof of claim document.",
@@ -1857,7 +1925,7 @@
       "why": ""
     },
     {
-      "id": 201,
+      "id": 208,
       "type": "field",
       "question": "When does Shaurya Investments Limited's authority expire?",
       "answer": "Shaurya Investments Limited: valid until is 2026-09-15, on page 1 of the current authority document.",
@@ -1866,7 +1934,7 @@
       "why": ""
     },
     {
-      "id": 202,
+      "id": 209,
       "type": "field",
       "question": "How much has Shaurya Investments Limited claimed?",
       "answer": "Shaurya Investments Limited: amount claimed is Rs. 5,21,03,000, on page 1 of the current proof of claim document.",
@@ -1875,7 +1943,7 @@
       "why": ""
     },
     {
-      "id": 203,
+      "id": 210,
       "type": "field",
       "question": "How much has Hiranya Credit Limited claimed?",
       "answer": "Hiranya Credit Limited: amount claimed is Rs. 3,11,31,000, on page 1 of the current proof of claim document.",
@@ -1884,7 +1952,7 @@
       "why": ""
     },
     {
-      "id": 204,
+      "id": 211,
       "type": "field",
       "question": "When does Ojasvi Commercial Investments Limited's authority expire?",
       "answer": "Ojasvi Commercial Investments Limited: valid until is 2027-04-23, on page 1 of the current authority document.",
@@ -1893,7 +1961,7 @@
       "why": ""
     },
     {
-      "id": 205,
+      "id": 212,
       "type": "field",
       "question": "How much has Ojasvi Commercial Investments Limited claimed?",
       "answer": "Ojasvi Commercial Investments Limited: amount claimed is Rs. 4,45,31,000, on page 1 of the current proof of claim document.",
@@ -1902,7 +1970,7 @@
       "why": ""
     },
     {
-      "id": 206,
+      "id": 213,
       "type": "field",
       "question": "When does Nirvaan Investments Private Limited's authority expire?",
       "answer": "Nirvaan Investments Private Limited: valid until is 2027-05-15, on page 1 of the current authority document.",
@@ -1911,7 +1979,7 @@
       "why": ""
     },
     {
-      "id": 207,
+      "id": 214,
       "type": "field",
       "question": "How much has Nirvaan Investments Private Limited claimed?",
       "answer": "Nirvaan Investments Private Limited: amount claimed is Rs. 15,41,55,000, on page 1 of the current proof of claim document.",
@@ -1920,7 +1988,7 @@
       "why": ""
     },
     {
-      "id": 208,
+      "id": 215,
       "type": "field",
       "question": "When does Rudraksh Commercial Investments Ltd's authority expire?",
       "answer": "Rudraksh Commercial Investments Ltd: valid until is 2027-06-09, on page 1 of the current authority document.",
@@ -1929,7 +1997,7 @@
       "why": ""
     },
     {
-      "id": 209,
+      "id": 216,
       "type": "field",
       "question": "How much has Rudraksh Commercial Investments Ltd claimed?",
       "answer": "The current proof of claim document for Rudraksh Commercial Investments Ltd does not state the amount claimed clearly; a person should look at it.",
@@ -1938,7 +2006,7 @@
       "why": ""
     },
     {
-      "id": 210,
+      "id": 217,
       "type": "field",
       "question": "When does Hiranya Commercial Investments Limited's authority expire?",
       "answer": "Hiranya Commercial Investments Limited: valid until is 2027-02-14, on page 1 of the current authority document.",
@@ -1947,7 +2015,7 @@
       "why": ""
     },
     {
-      "id": 211,
+      "id": 218,
       "type": "field",
       "question": "How much has Hiranya Commercial Investments Limited claimed?",
       "answer": "Hiranya Commercial Investments Limited: amount claimed is Rs. 5,07,96,000, on page 1 of the current proof of claim document.",
@@ -1956,7 +2024,7 @@
       "why": ""
     },
     {
-      "id": 212,
+      "id": 219,
       "type": "field",
       "question": "When does Mrinmay Investments Pvt Ltd's authority expire?",
       "answer": "Mrinmay Investments Pvt Ltd: valid until is 2027-04-14, on page 1 of the current authority document.",
@@ -1965,7 +2033,7 @@
       "why": ""
     },
     {
-      "id": 213,
+      "id": 220,
       "type": "field",
       "question": "How much has Mrinmay Investments Pvt Ltd claimed?",
       "answer": "Mrinmay Investments Pvt Ltd: amount claimed is Rs. 14,73,36,000, on page 1 of the current proof of claim document.",
@@ -1974,25 +2042,43 @@
       "why": ""
     },
     {
-      "id": 214,
+      "id": 221,
       "type": "hostile",
-      "question": "When does Shaurya Fincorp Limited's authority expire?",
+      "question": "When does Shaurya Fincorp Limited's authority in Bhima River Paper Mills Ltd expire?",
       "answer": "Shaurya Fincorp Limited: valid until is 2027-06-13, on page 1 of the current authority document.",
       "kind": "field",
       "right": true,
       "why": ""
     },
     {
-      "id": 215,
+      "id": 222,
       "type": "field",
-      "question": "How much has Shaurya Fincorp Limited claimed?",
+      "question": "How much has Shaurya Fincorp Limited claimed in Bhima River Paper Mills Ltd?",
       "answer": "Shaurya Fincorp Limited: amount claimed is Rs. 52,86,18,000, on page 1 of the current proof of claim document.",
       "kind": "field",
       "right": true,
       "why": ""
     },
     {
-      "id": 216,
+      "id": 223,
+      "type": "other_process",
+      "question": "When does Shaurya Fincorp Limited's authority in Chambal Ceramics Pvt Ltd expire?",
+      "answer": "There is no current authority document for Shaurya Fincorp Limited in Chambal Ceramics Pvt Ltd.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 224,
+      "type": "other_process",
+      "question": "How much has Shaurya Fincorp Limited claimed in Chambal Ceramics Pvt Ltd?",
+      "answer": "There is no current proof of claim document for Shaurya Fincorp Limited in Chambal Ceramics Pvt Ltd.",
+      "kind": "refuse",
+      "right": true,
+      "why": "answered as refuse"
+    },
+    {
+      "id": 225,
       "type": "field",
       "question": "When does Aditri Project Finance Limited's authority expire?",
       "answer": "Aditri Project Finance Limited: valid until is 2028-03-05, on page 1 of the current authority document.",
@@ -2001,7 +2087,7 @@
       "why": ""
     },
     {
-      "id": 217,
+      "id": 226,
       "type": "field",
       "question": "How much has Aditri Project Finance Limited claimed?",
       "answer": "Aditri Project Finance Limited: amount claimed is Rs. 24,98,76,000, on page 1 of the current proof of claim document.",
@@ -2010,7 +2096,7 @@
       "why": ""
     },
     {
-      "id": 218,
+      "id": 227,
       "type": "field",
       "question": "When does Shaurya Treasury Services Private Limited's authority expire?",
       "answer": "Shaurya Treasury Services Private Limited: valid until is 2027-02-22, on page 1 of the current authority document.",
@@ -2019,7 +2105,7 @@
       "why": ""
     },
     {
-      "id": 219,
+      "id": 228,
       "type": "field",
       "question": "How much has Shaurya Treasury Services Private Limited claimed?",
       "answer": "Shaurya Treasury Services Private Limited: amount claimed is Rs. 2,11,45,72,000, on page 1 of the current proof of claim document.",
@@ -2028,7 +2114,7 @@
       "why": ""
     },
     {
-      "id": 220,
+      "id": 229,
       "type": "field",
       "question": "When does Kalindi Equipment Finance Ltd's authority expire?",
       "answer": "Kalindi Equipment Finance Ltd: valid until is 2027-08-08, on page 1 of the current authority document.",
@@ -2037,7 +2123,7 @@
       "why": ""
     },
     {
-      "id": 221,
+      "id": 230,
       "type": "field",
       "question": "How much has Kalindi Equipment Finance Ltd claimed?",
       "answer": "Kalindi Equipment Finance Ltd: amount claimed is Rs. 10,54,12,000, on page 1 of the current proof of claim document.",
@@ -2046,7 +2132,7 @@
       "why": ""
     },
     {
-      "id": 222,
+      "id": 231,
       "type": "field",
       "question": "When does Ritvik Treasury Services Ltd's authority expire?",
       "answer": "Ritvik Treasury Services Ltd: valid until is 2026-06-23, on page 1 of the current authority document.",
@@ -2055,7 +2141,7 @@
       "why": ""
     },
     {
-      "id": 223,
+      "id": 232,
       "type": "field",
       "question": "How much has Ritvik Treasury Services Ltd claimed?",
       "answer": "Ritvik Treasury Services Ltd: amount claimed is Rs. 5,94,54,000, on page 1 of the current proof of claim document.",
@@ -2064,7 +2150,7 @@
       "why": ""
     },
     {
-      "id": 224,
+      "id": 233,
       "type": "hostile",
       "question": "When does Mahira Treasury Services Ltd's authority expire?",
       "answer": "Mahira Treasury Services Ltd: valid until is 2027-02-08, on page 1 of the current authority document.",
@@ -2073,7 +2159,7 @@
       "why": ""
     },
     {
-      "id": 225,
+      "id": 234,
       "type": "field",
       "question": "How much has Mahira Treasury Services Ltd claimed?",
       "answer": "Mahira Treasury Services Ltd: amount claimed is Rs. 45,12,92,000, on page 1 of the current proof of claim document.",
@@ -2082,7 +2168,7 @@
       "why": ""
     },
     {
-      "id": 226,
+      "id": 235,
       "type": "hostile",
       "question": "When does Shaurya Investments (Lucknow) Limited's authority expire?",
       "answer": "Shaurya Investments (Lucknow) Limited: valid until is 2027-03-03, on page 1 of the current authority document.",
@@ -2091,7 +2177,7 @@
       "why": ""
     },
     {
-      "id": 227,
+      "id": 236,
       "type": "field",
       "question": "How much has Shaurya Investments (Lucknow) Limited claimed?",
       "answer": "Shaurya Investments (Lucknow) Limited: amount claimed is Rs. 15,33,04,000, on page 1 of the current proof of claim document.",
@@ -2100,7 +2186,7 @@
       "why": ""
     },
     {
-      "id": 228,
+      "id": 237,
       "type": "field",
       "question": "When does Kalindi Project Finance Services Pvt Ltd's authority expire?",
       "answer": "Kalindi Project Finance Services Pvt Ltd: valid until is 2027-04-11, on page 1 of the current authority document.",
@@ -2109,7 +2195,7 @@
       "why": ""
     },
     {
-      "id": 229,
+      "id": 238,
       "type": "field",
       "question": "How much has Kalindi Project Finance Services Pvt Ltd claimed?",
       "answer": "Kalindi Project Finance Services Pvt Ltd: amount claimed is Rs. 59,54,78,000, on page 1 of the current proof of claim document.",
@@ -2118,7 +2204,7 @@
       "why": ""
     },
     {
-      "id": 230,
+      "id": 239,
       "type": "field",
       "question": "When does Bhavya Investments Ltd's authority expire?",
       "answer": "The current authority document for Bhavya Investments Ltd states two different values for the valid until: '04-07-2027' on page 1; '19-Dec-2026' on page 2. A person should settle which applies.",
@@ -2127,7 +2213,7 @@
       "why": ""
     },
     {
-      "id": 231,
+      "id": 240,
       "type": "field",
       "question": "How much has Bhavya Investments Ltd claimed?",
       "answer": "Bhavya Investments Ltd: amount claimed is Rs. 1,04,50,000, on page 1 of the current proof of claim document.",
@@ -2136,187 +2222,187 @@
       "why": ""
     },
     {
-      "id": 232,
+      "id": 241,
       "type": "near_twin",
       "question": "Is Ekansh Commercial Investments Limited's authority in order?",
-      "answer": "Ekansh Commercial Investments Limited, authority: claim 59 (low tier): expired.",
+      "answer": "Ekansh Commercial Investments Limited, authority: claim 59 in Chambal Ceramics Pvt Ltd (low tier): expired.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 63"
     },
     {
-      "id": 233,
+      "id": 242,
       "type": "near_twin",
       "question": "Is Udbhav Investments Private Limited's authority in order?",
-      "answer": "Udbhav Investments Private Limited, authority: claim 60 (standard tier): satisfied, with findings.",
+      "answer": "Udbhav Investments Private Limited, authority: claim 60 in Kalindi Auto Components Ltd (standard tier): satisfied, with findings.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 64"
     },
     {
-      "id": 234,
+      "id": 243,
       "type": "near_twin",
       "question": "Is Mrinmay Treasury Services Pvt Ltd's authority in order?",
-      "answer": "Mrinmay Treasury Services Pvt Ltd, authority: claim 61 (standard tier): satisfied, with findings.",
+      "answer": "Mrinmay Treasury Services Pvt Ltd, authority: claim 61 in Bhima River Paper Mills Ltd (standard tier): satisfied, with findings.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 65"
     },
     {
-      "id": 235,
+      "id": 244,
       "type": "near_twin",
       "question": "Is Nirvaan Capital Pvt Ltd's authority in order?",
-      "answer": "Nirvaan Capital Pvt Ltd, authority: claim 64 (critical tier): satisfied.",
+      "answer": "Nirvaan Capital Pvt Ltd, authority: claim 64 in Kalindi Auto Components Ltd (critical tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 68"
     },
     {
-      "id": 236,
+      "id": 245,
       "type": "near_twin",
       "question": "Is Kalindi Project Finance Pvt Ltd's authority in order?",
-      "answer": "Kalindi Project Finance Pvt Ltd, authority: claim 66 (standard tier): satisfied.",
+      "answer": "Kalindi Project Finance Pvt Ltd, authority: claim 66 in Kalindi Auto Components Ltd (standard tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 70"
     },
     {
-      "id": 237,
+      "id": 246,
       "type": "near_twin",
       "question": "Is Akshara Treasury Services Limited's authority in order?",
-      "answer": "Akshara Treasury Services Limited, authority: claim 67 (low tier): satisfied.",
+      "answer": "Akshara Treasury Services Limited, authority: claim 67 in Kalindi Auto Components Ltd (low tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 71"
     },
     {
-      "id": 238,
+      "id": 247,
       "type": "near_twin",
       "question": "Is Aditri Commercial Investments Pvt Ltd's authority in order?",
-      "answer": "Aditri Commercial Investments Pvt Ltd, authority: claim 68 (standard tier): expired.",
+      "answer": "Aditri Commercial Investments Pvt Ltd, authority: claim 68 in Kalindi Auto Components Ltd (standard tier): expired; claim 92 in Bhima River Paper Mills Ltd (critical tier): missing.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 72"
     },
     {
-      "id": 239,
+      "id": 248,
       "type": "near_twin",
       "question": "Is Akshara Investments Limited's authority in order?",
-      "answer": "Akshara Investments Limited, authority: claim 69 (standard tier): covered by the debenture trustee's authority.",
+      "answer": "Akshara Investments Limited, authority: claim 69 in Bhima River Paper Mills Ltd (standard tier): covered by the debenture trustee's authority.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 73"
     },
     {
-      "id": 240,
+      "id": 249,
       "type": "near_twin",
       "question": "Is Anvaya Capital Pvt Ltd's authority in order?",
-      "answer": "Anvaya Capital Pvt Ltd, authority: claim 70 (standard tier): satisfied.",
+      "answer": "Anvaya Capital Pvt Ltd, authority: claim 70 in Kalindi Auto Components Ltd (standard tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 74"
     },
     {
-      "id": 241,
+      "id": 250,
       "type": "near_twin",
       "question": "Is Shaurya Investments Limited's authority in order?",
-      "answer": "Shaurya Investments Limited, authority: claim 71 (standard tier): expired.",
+      "answer": "Shaurya Investments Limited, authority: claim 71 in Kalindi Auto Components Ltd (standard tier): expired.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 75"
     },
     {
-      "id": 242,
+      "id": 251,
       "type": "near_twin",
       "question": "Is Ojasvi Commercial Investments Limited's authority in order?",
-      "answer": "Ojasvi Commercial Investments Limited, authority: claim 73 (standard tier): satisfied.",
+      "answer": "Ojasvi Commercial Investments Limited, authority: claim 73 in Kalindi Auto Components Ltd (standard tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 77"
     },
     {
-      "id": 243,
+      "id": 252,
       "type": "near_twin",
       "question": "Is Rudraksh Commercial Investments Ltd's authority in order?",
-      "answer": "Rudraksh Commercial Investments Ltd, authority: claim 75 (critical tier): satisfied.",
+      "answer": "Rudraksh Commercial Investments Ltd, authority: claim 75 in Chambal Ceramics Pvt Ltd (critical tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 79"
     },
     {
-      "id": 244,
+      "id": 253,
       "type": "near_twin",
       "question": "Is Hiranya Commercial Investments Limited's authority in order?",
-      "answer": "Hiranya Commercial Investments Limited, authority: claim 76 (standard tier): satisfied.",
+      "answer": "Hiranya Commercial Investments Limited, authority: claim 76 in Kalindi Auto Components Ltd (standard tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 80"
     },
     {
-      "id": 245,
+      "id": 254,
       "type": "near_twin",
       "question": "Is Aditri Project Finance Limited's authority in order?",
-      "answer": "Aditri Project Finance Limited, authority: claim 79 (high tier): satisfied, with findings.",
+      "answer": "Aditri Project Finance Limited, authority: claim 79 in Kalindi Auto Components Ltd (high tier): satisfied, with findings.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 83"
     },
     {
-      "id": 246,
+      "id": 255,
       "type": "near_twin",
       "question": "Is Shaurya Treasury Services Private Limited's authority in order?",
-      "answer": "Shaurya Treasury Services Private Limited, authority: claim 80 (critical tier): satisfied.",
+      "answer": "Shaurya Treasury Services Private Limited, authority: claim 80 in Bhima River Paper Mills Ltd (critical tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 84"
     },
     {
-      "id": 247,
+      "id": 256,
       "type": "near_twin",
       "question": "Is Ritvik Treasury Services Ltd's authority in order?",
-      "answer": "Ritvik Treasury Services Ltd, authority: claim 82 (standard tier): waiting for a person to review.",
+      "answer": "Ritvik Treasury Services Ltd, authority: claim 82 in Bhima River Paper Mills Ltd (standard tier): waiting for a person to review.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 86"
     },
     {
-      "id": 248,
+      "id": 257,
       "type": "near_twin",
       "question": "Is Mahira Treasury Services Ltd's authority in order?",
-      "answer": "Mahira Treasury Services Ltd, authority: claim 83 (high tier): waiting for a person to review.",
+      "answer": "Mahira Treasury Services Ltd, authority: claim 83 in Bhima River Paper Mills Ltd (high tier): waiting for a person to review.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 87"
     },
     {
-      "id": 249,
+      "id": 258,
       "type": "near_twin",
       "question": "Is Shaurya Investments (Lucknow) Limited's authority in order?",
-      "answer": "Shaurya Investments (Lucknow) Limited, authority: claim 84 (standard tier): waiting for a person to review.",
+      "answer": "Shaurya Investments (Lucknow) Limited, authority: claim 84 in Kalindi Auto Components Ltd (standard tier): waiting for a person to review.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 90"
     },
     {
-      "id": 250,
+      "id": 259,
       "type": "near_twin",
       "question": "Is Kalindi Project Finance Services Pvt Ltd's authority in order?",
-      "answer": "Kalindi Project Finance Services Pvt Ltd, authority: claim 85 (high tier): satisfied.",
+      "answer": "Kalindi Project Finance Services Pvt Ltd, authority: claim 85 in Chambal Ceramics Pvt Ltd (high tier): satisfied.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 91"
     },
     {
-      "id": 251,
+      "id": 260,
       "type": "near_twin",
       "question": "Is Bhavya Investments Ltd's authority in order?",
-      "answer": "Bhavya Investments Ltd, authority: claim 86 (low tier): waiting for a person to review.",
+      "answer": "Bhavya Investments Ltd, authority: claim 86 in Bhima River Paper Mills Ltd (low tier): waiting for a person to review.",
       "kind": "status",
       "right": true,
       "why": "answered about creditor 92"
     },
     {
-      "id": 252,
+      "id": 261,
       "type": "ambiguous",
       "question": "Is Aditri's authority current?",
       "answer": "Which creditor do you mean: Aditri Commercial Investments Pvt Ltd or Aditri Project Finance Limited?",
@@ -2325,7 +2411,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 253,
+      "id": 262,
       "type": "ambiguous",
       "question": "Is Akshara's authority current?",
       "answer": "Which creditor do you mean: Akshara Investments Limited or Akshara Treasury Services Limited?",
@@ -2334,7 +2420,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 254,
+      "id": 263,
       "type": "ambiguous",
       "question": "Is Ekansh's authority current?",
       "answer": "Which creditor do you mean: Ekansh Commercial Investments Limited or Ekansh Industrial Finance Pvt Ltd?",
@@ -2343,7 +2429,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 255,
+      "id": 264,
       "type": "ambiguous",
       "question": "Is Hiranya's authority current?",
       "answer": "Which creditor do you mean: Hiranya Commercial Investments Limited or Hiranya Credit Limited?",
@@ -2352,7 +2438,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 256,
+      "id": 265,
       "type": "ambiguous",
       "question": "Is Kalindi's authority current?",
       "answer": "Which creditor do you mean: Kalindi Equipment Finance Ltd or Kalindi Project Finance Pvt Ltd or Kalindi Project Finance Services Pvt Ltd?",
@@ -2361,7 +2447,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 257,
+      "id": 266,
       "type": "ambiguous",
       "question": "Is Mrinmay's authority current?",
       "answer": "Which creditor do you mean: Mrinmay Investments Pvt Ltd or Mrinmay Treasury Services Pvt Ltd?",
@@ -2370,7 +2456,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 258,
+      "id": 267,
       "type": "ambiguous",
       "question": "Is Nirvaan's authority current?",
       "answer": "Which creditor do you mean: Nirvaan Capital Pvt Ltd or Nirvaan Investments Private Limited?",
@@ -2379,7 +2465,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 259,
+      "id": 268,
       "type": "ambiguous",
       "question": "Is Shaurya's authority current?",
       "answer": "Which creditor do you mean: Shaurya Fincorp Limited or Shaurya Investments (Lucknow) Limited or Shaurya Investments Limited or Shaurya Treasury Services Private Limited?",
@@ -2388,7 +2474,7 @@
       "why": "answered as clarify"
     },
     {
-      "id": 260,
+      "id": 269,
       "type": "another_tenant",
       "question": "When does Shaurya Credit Private Limited's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
@@ -2397,7 +2483,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 261,
+      "id": 270,
       "type": "another_tenant",
       "question": "When does Tejasvi Auto Credit Ltd's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
@@ -2406,7 +2492,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 262,
+      "id": 271,
       "type": "another_tenant",
       "question": "When does Udbhav Motor Finance Ltd's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
@@ -2415,7 +2501,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 263,
+      "id": 272,
       "type": "another_tenant",
       "question": "When does Aranya Motor Finance Ltd's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
@@ -2424,7 +2510,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 264,
+      "id": 273,
       "type": "another_tenant",
       "question": "When does Parnika Equipment Finance Ltd's authority expire?",
       "answer": "I cannot find a creditor of that name in your organisation's records.",
@@ -2433,7 +2519,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 265,
+      "id": 274,
       "type": "unanswerable",
       "question": "What is Ekansh Industrial Finance Pvt Ltd's annual turnover?",
       "answer": "I cannot find that in Ekansh Industrial Finance Pvt Ltd's current evidence.",
@@ -2442,7 +2528,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 266,
+      "id": 275,
       "type": "unanswerable",
       "question": "What is Ekansh Commercial Investments Limited's annual turnover?",
       "answer": "I cannot find that in Ekansh Commercial Investments Limited's current evidence.",
@@ -2451,7 +2537,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 267,
+      "id": 276,
       "type": "unanswerable",
       "question": "What is Udbhav Investments Private Limited's annual turnover?",
       "answer": "I cannot find that in Udbhav Investments Private Limited's current evidence.",
@@ -2460,7 +2546,7 @@
       "why": "answered as refuse"
     },
     {
-      "id": 268,
+      "id": 277,
       "type": "expiring",
       "question": "Which authorities expire in the next 60 days?",
       "answer": "No current authority lapses in the next 60 days.",
@@ -2469,7 +2555,7 @@
       "why": "listed [], truth []"
     },
     {
-      "id": 269,
+      "id": 278,
       "type": "expiring",
       "question": "Which authorities expire in the next 120 days?",
       "answer": "Authorities lapsing in the next 120 days: Akshara Treasury Services Limited on 2026-12-14; Ekansh Industrial Finance Pvt Ltd on 2026-12-19; Navya Motor Finance Ltd on 2027-01-07.",
@@ -2478,6 +2564,6 @@
       "why": "listed [['2026-12-14', 'Akshara Treasury Services Limited'], ['2026-12-19', 'Ekansh Industrial Finance Pvt Ltd'], ['2027-01-07', 'Navya Motor Finance Ltd']], truth [['2026-12-14', 'Akshara Treasury Services Limited'], ['2026-12-19', 'Ekansh Industrial Finance Pvt Ltd'], ['2027-01-07', 'Navya Motor Finance Ltd']]"
     }
   ],
-  "questions": 269,
-  "right": 269
+  "questions": 278,
+  "right": 278
 }
