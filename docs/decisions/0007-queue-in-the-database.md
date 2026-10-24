@@ -23,6 +23,16 @@ cap, and never leave a status computed from a snapshot another worker was changi
   correct. OCR, the slow part, runs before and outside any transaction (`Engine.prefetch`), so workers overlap where
   it matters. On Postgres a tenant session takes a transaction-scoped advisory lock instead: tenants run in parallel.
 
+## Revised in v0.4: fencing
+An external review showed the lease was a timer, not a fence. Completion, failure and deferral updated the job by id
+alone, so a worker that stalled past its lease and came back could mark done a job another worker now held, and the
+killed-worker experiment never tested a worker coming back. Now every lease carries a fresh token; completing,
+failing, deferring and renewing need it, in the same UPDATE, and a worker whose token no longer matches gets
+`LeaseLost` and records nothing. Long work renews its lease with every OCR page (a heartbeat). A job whose lease ran
+out on every attempt is dead-lettered instead of being handed to the next worker. A reservation of OCR budget left by
+a worker that died is reconciled when another worker takes its stale reading lock over: it stays counted (it may
+have been paid for) and is marked abandoned instead of pending.
+
 ## Consequences
 - The load test shows the final statuses are identical whether one worker or several processed the burst, whether a
   spend cap stretched it over several days, and whether a worker was killed mid-job.

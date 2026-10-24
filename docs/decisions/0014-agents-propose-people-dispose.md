@@ -24,6 +24,12 @@ assume all three.
   expires after a week.
 - **Tool annotations say so**: reads are marked read-only, proposals as non-destructive.
 
+## Revised in v0.4: the key on every call, grants per agent
+An external review found the server authenticated its key once, when it was built: revoking the key stopped new
+servers but not one already running. The key is now authenticated again on every call, beside the grant check, so a
+revoked key stops working at once (`testamur keys revoke`). Grants can be made to every agent of a tenant or to one
+agent by name, so agents with different jobs (an investigator, a verifier) hold different tools.
+
 ## Consequences
 - An agent with every tool granted still cannot change a status by itself, cannot see another tenant, and cannot
   call a tool its tenant revoked a second ago.

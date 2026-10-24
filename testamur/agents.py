@@ -68,34 +68,57 @@ def authenticate(store: Store, key: str) -> tuple[int, str]:
         return row.tenant_id, row.name
 
 
-def grant(store: Store, tenant_id: int, tool: str, by: str) -> None:
+def revoke_key(store: Store, tenant_id: int, name: str, by: str) -> int:
+    """Revoke every live key of the named agent. Takes effect on the next call, on servers already running too."""
+    with store.tenant(tenant_id) as s:
+        rows = s.scalars(select(ApiKey).where(ApiKey.name == name, ApiKey.revoked_at.is_(None))).all()
+        for row in rows:
+            row.revoked_at = utcnow()
+        s.add(AuditRow(actor=by, action="agent_key_revoked", target=f"agent:{name}", detail={"keys": len(rows)}))
+        return len(rows)
+
+
+def grant(store: Store, tenant_id: int, tool: str, by: str, principal: str = "*") -> None:
+    """Grant a tool to every agent of the tenant ("*") or to one agent by name."""
     if tool not in TOOLS:
         raise KeyError(f"unknown tool {tool}")
     with store.tenant(tenant_id) as s:
-        row = s.scalar(select(ToolGrant).where(ToolGrant.tool == tool))
+        row = s.scalar(select(ToolGrant).where(ToolGrant.tool == tool, ToolGrant.principal == principal))
         if row is None:
-            s.add(ToolGrant(tool=tool, granted_by=by))
+            s.add(ToolGrant(tool=tool, principal=principal, granted_by=by))
         else:
             row.revoked_at, row.granted_by, row.granted_at = None, by, utcnow()
-        s.add(AuditRow(actor=by, action="tool_granted", target=f"tool:{tool}", detail={}))
+        s.add(AuditRow(actor=by, action="tool_granted", target=f"tool:{tool}", detail={"principal": principal}))
 
 
-def revoke(store: Store, tenant_id: int, tool: str, by: str) -> None:
+def revoke(store: Store, tenant_id: int, tool: str, by: str, principal: str = "*") -> None:
     with store.tenant(tenant_id) as s:
-        row = s.scalar(select(ToolGrant).where(ToolGrant.tool == tool, ToolGrant.revoked_at.is_(None)))
+        row = s.scalar(select(ToolGrant).where(ToolGrant.tool == tool, ToolGrant.principal == principal,
+                                               ToolGrant.revoked_at.is_(None)))
         if row is not None:
             row.revoked_at = utcnow()
-            s.add(AuditRow(actor=by, action="tool_revoked", target=f"tool:{tool}", detail={}))
+            s.add(AuditRow(actor=by, action="tool_revoked", target=f"tool:{tool}", detail={"principal": principal}))
 
 
-def granted(store: Store, tenant_id: int) -> set[str]:
+def granted(store: Store, tenant_id: int, principal: str | None = None) -> set[str]:
+    """The tools an agent may call: those granted to every agent of the tenant, and those granted to it by name."""
+    whom = ["*"] if principal is None else ["*", principal]
     with store.tenant(tenant_id) as s:
-        return {g.tool for g in s.scalars(select(ToolGrant).where(ToolGrant.revoked_at.is_(None)))}
+        return {g.tool for g in s.scalars(select(ToolGrant).where(ToolGrant.revoked_at.is_(None),
+                                                                  ToolGrant.principal.in_(whom)))}
 
 
-def require(store: Store, tenant_id: int, tool: str) -> None:
-    if tool not in granted(store, tenant_id):
-        raise PermissionError(f"the tool {tool} is not granted for this tenant")
+def require(store: Store, tenant_id: int, tool: str, principal: str | None = None) -> None:
+    if tool not in granted(store, tenant_id, principal):
+        raise PermissionError(f"the tool {tool} is not granted to this agent")
+
+
+def require_key(store: Store, api_key: str, tenant_id: int, agent: str, tool: str) -> None:
+    """Every call, not once per connection: the key must still be live and still be the same agent's, and the tool
+    still granted to it. A revoked key or tool stops working at once, on a server built before the revocation."""
+    if authenticate(store, api_key) != (tenant_id, agent):
+        raise PermissionError("the key no longer stands for this agent")
+    require(store, tenant_id, tool, agent)
 
 
 # ---------------------------------------------------------------------------------------------- reads

@@ -26,7 +26,9 @@ def build_server(engine: Engine, api_key: str) -> MCPServer:
     server = MCPServer(name="testamur", instructions=INSTRUCTIONS)
 
     def need(tool: str) -> None:
-        agents.require(engine.store, tenant_id, tool)       # every call: a revocation takes effect at once
+        # every call: the key is authenticated again and the grant checked again, so revoking either takes effect
+        # at once, on this server too
+        agents.require_key(engine.store, api_key, tenant_id, agent, tool)
 
     @server.tool(annotations=READ)
     def list_claims(cursor: int = 0, limit: int = 25) -> dict:
@@ -90,6 +92,6 @@ def build_server(engine: Engine, api_key: str) -> MCPServer:
                               {"document": document, "action": action, "creditor": creditor, "doc_type": doc_type},
                               reason)
 
-    for tool in set(agents.TOOLS) - agents.granted(engine.store, tenant_id):
+    for tool in set(agents.TOOLS) - agents.granted(engine.store, tenant_id, agent):
         server.remove_tool(tool)                           # an agent does not even see a tool it may not use
     return server

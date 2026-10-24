@@ -65,8 +65,10 @@ def test_the_same_file_twice_is_one_document_and_one_extraction(tiny, tmp_path):
 def test_a_transient_abstain_never_replaces_a_conclusive_verdict(tiny, tmp_path):
     out, world = tiny
     store = Store(f"sqlite:///{tmp_path / 'r.db'}")
+    load_registry(store, world)                    # the verdict's claim and document must exist: foreign keys
     engine = Engine(store, load_pack(), world.as_of, tmp_path / "blobs")
     with store.tenant(1) as s:
+        s.add(Document(id=7, sha256="ab" * 32, doc_type="authority_letter"))
         row = VerdictRow(claim_id=1, requirement_id="authority", check_id="auth_current", document_id=7,
                          verdict="PASS", severity="critical", tier="field", engine_version=engine.version)
         s.add(row)
@@ -82,6 +84,7 @@ def test_a_transient_abstain_never_replaces_a_conclusive_verdict(tiny, tmp_path)
 def test_a_hostile_document_is_never_shown_to_the_model(tiny, tmp_path):
     out, world = tiny
     store = Store(f"sqlite:///{tmp_path / 'x.db'}")
+    load_registry(store, world)
 
     class WouldPass:
         model_id = "scripted"

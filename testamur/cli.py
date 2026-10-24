@@ -342,24 +342,35 @@ def keys_create(name: str, db: str = "data/harness.db", tenant: int = 1):
     typer.echo(create_key(_engine(db).store, tenant, name))
 
 
+@keys.command("revoke")
+def keys_revoke(name: str, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
+    """Revoke an agent's keys; servers already running refuse its next call."""
+    from .agents import revoke_key
+    typer.echo(f"{revoke_key(_engine(db).store, tenant, name, by)} key(s) revoked")
+
+
+AGENT = typer.Option("*", "--agent", help="the agent the grant is for; * for every agent of the tenant")
+
+
 @tools_app.command("grant")
-def tools_grant(tool: str, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
+def tools_grant(tool: str, by: str = BY, agent: str = AGENT, db: str = "data/harness.db", tenant: int = 1):
     from .agents import grant
-    _decide(grant, _engine(db).store, tenant, tool, by)
-    typer.echo(f"{tool}: granted")
+    _decide(grant, _engine(db).store, tenant, tool, by, agent)
+    typer.echo(f"{tool}: granted to {agent}")
 
 
 @tools_app.command("revoke")
-def tools_revoke(tool: str, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
+def tools_revoke(tool: str, by: str = BY, agent: str = AGENT, db: str = "data/harness.db", tenant: int = 1):
     from .agents import revoke
-    revoke(_engine(db).store, tenant, tool, by)
-    typer.echo(f"{tool}: revoked")
+    revoke(_engine(db).store, tenant, tool, by, agent)
+    typer.echo(f"{tool}: revoked from {agent}")
 
 
 @tools_app.command("list")
-def tools_list(db: str = "data/harness.db", tenant: int = 1):
+def tools_list(agent: str = typer.Option(None, "--agent", help="what one agent may call"), db: str = "data/harness.db",
+               tenant: int = 1):
     from .agents import TOOLS, granted
-    have = granted(_engine(db).store, tenant)
+    have = granted(_engine(db).store, tenant, agent)
     for tool in TOOLS:
         typer.echo(f"{'granted' if tool in have else '-':8} {tool}")
 

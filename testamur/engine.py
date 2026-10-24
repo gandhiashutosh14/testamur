@@ -18,12 +18,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from . import __version__, budget
@@ -164,9 +165,15 @@ class Engine:
             return up.id
 
     # ------------------------------------------------------------------ processing
-    def prefetch(self, tenant_id: int, upload_id: int) -> int:
+    def prefetch(self, tenant_id: int, upload_id: int, heartbeat=None) -> int:
         """Run the slow, paid step (OCR) outside any long transaction, so concurrent workers overlap on it and only
-        the short bookkeeping that follows is serialised. Returns the OCR pages paid for (0 on a cache hit)."""
+        the short bookkeeping that follows is serialised. Returns the OCR pages paid for (0 on a cache hit).
+
+        The file is locked for the duration with an owner token: the lock is renewed before every OCR page (and
+        `heartbeat`, the caller's own lease renewal, is called with it), taken over only from a holder that stopped
+        renewing it, and released only by its current owner. A worker that finds its lock taken over stops paying
+        for pages another worker is now reading."""
+        token = uuid.uuid4().hex
         with self.store.tenant(tenant_id) as s:
             up = s.get(UploadRow, upload_id)
             key = self._extraction_key(tenant_id, up.sha256)
@@ -178,9 +185,16 @@ class Engine:
             if lock is not None and (now - lock.locked_at).total_seconds() < LOCK_SECONDS:
                 raise ReadingElsewhere(now + timedelta(seconds=5))
             if lock is None:
-                s.add(ReadingLock(sha256=sha, tenant_id=tenant_id, locked_at=now))
-            else:
-                lock.locked_at = now                 # a dead worker's lock: take it over
+                s.add(ReadingLock(sha256=sha, tenant_id=tenant_id, owner=token, locked_at=now))
+            else:                                    # a dead worker's lock: take it over, fenced by its owner
+                dead = lock.owner
+                if s.execute(update(ReadingLock).where(ReadingLock.sha256 == sha, ReadingLock.owner == dead)
+                             .values(owner=token, locked_at=now)).rowcount != 1:
+                    raise ReadingElsewhere(now + timedelta(seconds=5))
+                # what the dead worker reserved is reconciled with the takeover: counted (it may have been paid
+                # for), no longer pending
+                s.execute(update(UsageRow).where(UsageRow.reserved_by == dead, UsageRow.state == "reserved")
+                          .values(state="abandoned"))
 
         reservation: list[int] = []
 
@@ -188,22 +202,32 @@ class Engine:
             # check and reserve atomically, so two workers cannot both spend the last pages of a budget
             if pages:
                 with self.store.tenant(tenant_id) as s2:
-                    reservation.append(budget.reserve(s2, tenant_id, "ocr", pages, self.clock().date()).id)
+                    reservation.append(budget.reserve(s2, tenant_id, "ocr", pages, self.clock().date(), by=token).id)
+
+        def renew() -> None:
+            with self.store.tenant(tenant_id) as s2:
+                held = s2.execute(update(ReadingLock).where(ReadingLock.sha256 == sha, ReadingLock.owner == token)
+                                  .values(locked_at=self.clock())).rowcount
+            if held != 1:
+                raise ReadingElsewhere(self.clock() + timedelta(seconds=5))
+            if heartbeat is not None:
+                heartbeat()
         try:
-            ex = self.extractor.extract(Path(path).read_bytes(), mime, before_ocr=gate)
+            ex = self.extractor.extract(Path(path).read_bytes(), mime, before_ocr=gate, on_page=renew)
         except Exception:
             with self.store.tenant(tenant_id) as s:
                 if reservation:
                     s.execute(delete(UsageRow).where(UsageRow.id == reservation[0]))   # release
-                s.execute(delete(ReadingLock).where(ReadingLock.sha256 == sha))
+                s.execute(delete(ReadingLock).where(ReadingLock.sha256 == sha, ReadingLock.owner == token))
             raise
         with self.store.tenant(tenant_id) as s:
             if reservation:
-                s.get(UsageRow, reservation[0]).units = ex.ocr_pages             # settle to what was spent
+                row = s.get(UsageRow, reservation[0])
+                row.units, row.state = ex.ocr_pages, "spent"                   # settle to what was spent
             if s.get(ExtractionRow, key) is None:          # another worker may have finished it meanwhile
                 s.add(ExtractionRow(**key, payload=ex.model_dump(mode="json"), ocr_pages=ex.ocr_pages,
                                     seconds=ex.seconds))
-            s.execute(delete(ReadingLock).where(ReadingLock.sha256 == sha))
+            s.execute(delete(ReadingLock).where(ReadingLock.sha256 == sha, ReadingLock.owner == token))
             return ex.ocr_pages
 
     def process(self, tenant_id: int, upload_id: int) -> Outcome:
@@ -571,15 +595,18 @@ class Engine:
         is an input like the file itself, so re-deriving (a re-index, a new engine) never loses it."""
         ex = self._extraction(s, tenant_id, doc.sha256)
         decided = self._document_decisions(s, doc.id)
+        # screened before any model sees the text, classification included: a document that addresses automated
+        # readers is sorted by rules or by a person, never by a model (cleared or not)
+        hostile = hostile_spans(self.pack, ex)
         if "classify" in decided:
             cls = Classification(decided["classify"].doc_type, 1.0, "reviewer")
         else:
-            cls = classify(self.pack, up.filename, ex, model_fallback=self._classify_with_model(s, tenant_id))
+            fallback = None if hostile else self._classify_with_model(s, tenant_id)
+            cls = classify(self.pack, up.filename, ex, model_fallback=fallback)
             if cls.method == "model" and cls.scores.get(cls.doc_type, 0) < 0.2:
                 cls.doc_type, cls.method = None, "none"    # a model's label needs some support on the page
         doc.doc_type, doc.class_method, doc.class_score = cls.doc_type, cls.method, cls.score
         doc.identifiers = identifiers(ex)
-        hostile = hostile_spans(self.pack, ex)
         doc.hostile, doc.cleared = bool(hostile), "clear" in decided
         if hostile and not s.scalar(select(func.count()).select_from(AuditRow).where(
                 AuditRow.action == "security_finding", AuditRow.target == f"document:{doc.id}")):

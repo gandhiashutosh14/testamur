@@ -38,20 +38,60 @@ def test_a_lease_is_exclusive_until_it_expires(store):
 def test_failures_back_off_then_dead_letter(store):
     jobs.enqueue(store, 1, "process_upload", "a", max_attempts=2, now=T0)
     j = jobs.lease(store, "w", now=T0)
-    assert jobs.fail(store, j.id, "boom", now=T0) == "queued"
+    assert jobs.fail(store, j.id, j.token, "boom", now=T0) == "queued"
     assert jobs.lease(store, "w", now=T0) is None                       # backing off
     j = jobs.lease(store, "w", now=T0 + timedelta(seconds=10))
-    assert jobs.fail(store, j.id, "boom again", now=T0) == "dead"
+    assert jobs.fail(store, j.id, j.token, "boom again", now=T0) == "dead"
     assert jobs.counts(store) == {"dead": 1}
 
 
 def test_a_deferral_is_not_an_attempt(store):
     jobs.enqueue(store, 1, "process_upload", "a", max_attempts=1, now=T0)
     j = jobs.lease(store, "w", now=T0)
-    jobs.defer(store, j.id, T0 + timedelta(days=1), "over budget")
+    jobs.defer(store, j.id, j.token, T0 + timedelta(days=1), "over budget")
     assert jobs.lease(store, "w", now=T0 + timedelta(hours=1)) is None
     j = jobs.lease(store, "w", now=T0 + timedelta(days=1))
     assert j is not None and j.attempts == 1                            # still its first real attempt
+
+
+def test_a_worker_whose_lease_ran_out_cannot_finish_the_job_another_worker_holds(store):
+    """Worker A stalls past its lease; B takes the job. A's late completion, failure, deferral or heartbeat must not
+    touch B's lease: the token fences it."""
+    jobs.enqueue(store, 1, "process_upload", "a", now=T0)
+    a = jobs.lease(store, "A", lease_seconds=60, now=T0)
+    b = jobs.lease(store, "B", lease_seconds=60, now=T0 + timedelta(seconds=61))
+    assert b.id == a.id and b.token != a.token
+    late = T0 + timedelta(seconds=70)
+    for stale in (lambda: jobs.complete(store, a.id, a.token, now=late),
+                  lambda: jobs.fail(store, a.id, a.token, "late", now=late),
+                  lambda: jobs.defer(store, a.id, a.token, late, "late"),
+                  lambda: jobs.renew(store, a.id, a.token, 60, now=late)):
+        with pytest.raises(jobs.LeaseLost):
+            stale()
+    assert jobs.counts(store) == {"leased": 1}                          # still B's
+    jobs.complete(store, b.id, b.token, now=late)
+    assert jobs.counts(store) == {"done": 1}
+    with pytest.raises(jobs.LeaseLost):                                  # and once done, done
+        jobs.complete(store, b.id, b.token, now=late)
+
+
+def test_a_heartbeat_keeps_a_long_job_from_being_taken_over(store):
+    jobs.enqueue(store, 1, "process_upload", "a", now=T0)
+    a = jobs.lease(store, "A", lease_seconds=60, now=T0)
+    jobs.renew(store, a.id, a.token, 60, now=T0 + timedelta(seconds=50))     # still reading, page after page
+    assert jobs.lease(store, "B", now=T0 + timedelta(seconds=90)) is None   # the original lease would have run out
+    jobs.complete(store, a.id, a.token, now=T0 + timedelta(seconds=95))
+
+
+def test_a_job_whose_lease_keeps_running_out_is_dead_lettered(store):
+    """A job that kills every worker that takes it is parked for a person after max_attempts, not retried forever."""
+    jobs.enqueue(store, 1, "process_upload", "a", max_attempts=2, now=T0)
+    t = T0
+    for _ in range(2):
+        assert jobs.lease(store, "w", lease_seconds=60, now=t) is not None   # the worker dies holding it
+        t += timedelta(seconds=61)
+    assert jobs.lease(store, "w", lease_seconds=60, now=t) is None
+    assert jobs.counts(store) == {"dead": 1}
 
 
 def test_a_tenant_over_its_ocr_budget_pays_for_nothing(store, tmp_path):
@@ -119,6 +159,28 @@ def test_a_file_one_worker_is_reading_is_not_paid_for_again_by_another(store, tm
     assert engine.prefetch(1, first) == 0                            # and never again
     with store.tenant(1) as s:
         assert s.query(ReadingLock).count() == 0 and s.query(ExtractionRow).count() == 1
+
+
+def test_a_dead_workers_reservation_is_reconciled_when_its_lock_is_taken_over(store, tmp_path):
+    """Worker A reserved OCR pages and died before settling them: the worker that takes its lock over marks the
+    reservation abandoned (still counted against the budget, no longer pending)."""
+    import hashlib
+    with store.system() as s:
+        s.add_all([Tenant(id=1, name="T"), Matter(id=1, tenant_id=1, name="U", commencement=T0.date(), announced=T0.date(), claims_due=T0.date())])
+    rng = random.Random(4)
+    data = render_pdf(DocContent([[("title", "LETTER OF AUTHORITY"), ("kv", "Financial creditor", "X"),
+                                   ("kv", "Valid until", "31.03.2027")]]), rng)
+    now = [T0]
+    engine = Engine(store, load_pack(), T0.date(), tmp_path / "blobs", clock=lambda: now[0])
+    upload = engine.ingest(1, 1, "a.pdf", data, "staff_upload", T0)
+    with store.tenant(1) as s:
+        s.add(ReadingLock(sha256=hashlib.sha256(data).hexdigest(), tenant_id=1, owner="worker-a", locked_at=T0))
+        s.add(UsageRow(day=T0.date(), provider="ocr", units=3, state="reserved", reserved_by="worker-a"))
+    now[0] = T0 + timedelta(seconds=LOCK_SECONDS + 1)
+    engine.prefetch(1, upload)
+    with store.tenant(1) as s:
+        assert [(u.units, u.state) for u in s.query(UsageRow)] == [(3, "abandoned")]
+        assert s.query(ReadingLock).count() == 0
 
 
 def test_concurrent_workers_never_lease_the_same_job(store):

@@ -315,16 +315,20 @@ asset_terms:
   vehicle_finance: ["vehicles", "motor vehicles"]
   inter_corporate_deposit: ["current assets", "receivables"]
 
-# Text that addresses an automated reader rather than a person. Found inside a document, it marks the document as
-# hostile: model-tier checks on it abstain and a security finding is raised.
+# Text that addresses an automated reader rather than a person. Found inside a document (read after folding Unicode
+# look-alikes and removing invisible characters), it marks the document as hostile: no model reads it, not even to
+# sort it, and a security finding is raised. A screen catches the instructions it knows; it is one signal among the
+# others (excerpts only, fixed answer schemas, read-only agents, a person deciding), not a defence on its own.
 injection_markers:
-  - "ignore (all |any )?(previous|prior|above) instructions"
+  - "ignore (all |any |the )?(previous|prior|above|earlier) (instructions|directions|rules)"
   - "automated (reviewer|review|system|reader|checker)"
   - "(answer|respond|reply) (yes|no|pass|true)\\b"
   - "system prompt"
   - "you are (an|a) (ai|assistant|language model)"
-  - "disregard (the|all|any)"
+  - "disregard (the|all|any|previous|prior|earlier)"
   - "mark (this|the) (document|certificate|check|claim) as (compliant|valid|passed|verified|admitted)"
+  - "note to (the |any )?(ai|model|assistant|llm|language model)"
+  - "(new|updated|revised) instructions? (for|to) (the |any )?(ai|model|assistant|reviewer)"
 
 # How much error each severity may carry (the share of the engine's PASS verdicts a person would overturn), the share
 # of conclusive verdicts people audit to measure it, and the confidence of the bounds. A critical check with any

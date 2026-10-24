@@ -22,9 +22,11 @@ ALLOWED_SKIPS: dict[str, str] = {
     **({} if PG_URL else {
         "tests/test_postgres.py::test_the_engine_gives_the_same_statuses_on_postgres":
             "needs a Postgres server: runs in the postgres CI job",
+        "tests/test_postgres.py::test_row_level_security_refuses_other_tenants_rows_to_any_statement":
+            "needs a Postgres server: runs in the postgres CI job",
     }),
 }
-MIN_TESTS = 163
+MIN_TESTS = 193
 
 
 def pytest_collection_finish(session):

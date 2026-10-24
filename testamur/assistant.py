@@ -29,6 +29,7 @@ from .model import Extraction, Status, Verdict
 from .modeltier import passages, quote_in
 from .store import Claim, Creditor, Document, RequirementState
 from .textnorm import format_inr, name_similarity, normalize_name
+from .understand import screen_text
 
 LABELS = {"proof_of_claim": "proof of claim", "authority": "authority", "security_interest": "security interest",
           "bank_details": "bank details", "evidence_of_debt": "facility agreement"}
@@ -312,7 +313,7 @@ class Assistant:
         for d in docs:
             for p in self._extraction(s, d).pages:
                 for text in passages([line.text for line in p.lines]):
-                    if not any(h.search(text) for h in hostile):
+                    if not any(h.search(screen_text(text)) for h in hostile):
                         chunks.append((d, p.number, text))
         if not chunks:
             return []
