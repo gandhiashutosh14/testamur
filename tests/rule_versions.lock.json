@@ -1,0 +1,82 @@
+{
+ "both_signed": {
+  "source": "b73cea1bf63377c6",
+  "version": 1
+ },
+ "channel_in": {
+  "source": "c31a816bfbeb16a7",
+  "version": 1
+ },
+ "clause_present": {
+  "source": "b4b8a039dd47e48b",
+  "version": 1
+ },
+ "date_covers": {
+  "source": "452bbb3797b2e18c",
+  "version": 1
+ },
+ "date_not_before": {
+  "source": "d25ffd7597f40f4f",
+  "version": 2
+ },
+ "grants_power": {
+  "source": "a820dd2fe0344c51",
+  "version": 1
+ },
+ "gstin_checksum": {
+  "source": "618875c75962884e",
+  "version": 1
+ },
+ "ifsc_valid": {
+  "source": "702b6ed86d6db25b",
+  "version": 1
+ },
+ "in_allowlist": {
+  "source": "e1baaa8ee88e0640",
+  "version": 1
+ },
+ "in_effect": {
+  "source": "8dc2c5dab1e17c3f",
+  "version": 1
+ },
+ "lei_checksum": {
+  "source": "215d88379f857cfb",
+  "version": 1
+ },
+ "matches_record": {
+  "source": "45510fa0767f285e",
+  "version": 1
+ },
+ "money_at_least": {
+  "source": "60cffe6415624b7c",
+  "version": 1
+ },
+ "money_within_record": {
+  "source": "037f8cb382d85de3",
+  "version": 1
+ },
+ "name_matches": {
+  "source": "f836f74ad66f41ef",
+  "version": 1
+ },
+ "pan_in_gstin": {
+  "source": "dc65ce0aee2e3df5",
+  "version": 1
+ },
+ "received_by_due_date": {
+  "source": "5db3aa74d2ecd2a2",
+  "version": 1
+ },
+ "scope_mentions": {
+  "source": "4a57231911f4f045",
+  "version": 1
+ },
+ "within_days": {
+  "source": "01302cb003023490",
+  "version": 1
+ },
+ "words_match_figures": {
+  "source": "468ee027b40630fa",
+  "version": 1
+ }
+}

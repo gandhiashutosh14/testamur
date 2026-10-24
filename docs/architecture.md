@@ -20,29 +20,36 @@ differ by one word, amounts in words that disagree with the figures, bank letter
 changed, and documents that contain text written for whatever automated system reads them.
 
 The output is a **status per claim and requirement**, each backed by **verdicts with evidence**: the page and
-line the engine read, the rule it applied, and what to do about a failure.
+line the engine read, the rule it applied, and what to do about a failure; and, decided apart from it, **what the
+evidence permits** for each claim (to vote, to be paid). Evidence counts in the process it was filed in: a creditor
+with claims in two processes is judged in each on that process's papers.
 
 ## Pipeline
 
 ```mermaid
 flowchart TD
     U["Upload: file + matter + channel (+ the creditor who uploaded it)"] --> H["Hash the bytes; store once per tenant"]
-    H -->|seen before| R["New upload event only: re-check how and when it arrived"]
-    H -->|new| X["Extract: text layer, OCR only for image pages (cached)"]
-    X --> C["Classify: title + labels; a model only if ambiguous"]
+    H -->|seen in this matter| R["New upload event only: re-check how and when it arrived"]
+    H -->|new in this matter| X["Extract: text layer, OCR only for image pages (cached per tenant)"]
+    X --> Z["Screen for text aimed at automated readers, before any model"]
+    Z --> C["Classify: title + labels; a model only if ambiguous and not hostile"]
     C --> F["Read fields with page and line; keep conflicts and unreadable values"]
     F --> M["Match: identifiers, then names in the matter; abstain on doubt"]
     M --> K["For each claim and requirement this document bears on"]
     R --> K
-    K --> D["Pick the current document (the creditor's own beats a trustee's; newest wins)"]
+    K --> D["Pick the current document in the claim's own process (the creditor's own beats a trustee's; newest wins)"]
     D --> V["Checks, cheapest tier first: metadata, field rules, model"]
     V --> S["Status by policy; audit row on every change"]
+    S --> P["Permissions: what the evidence lets the claim do (vote, be paid)"]
 ```
 
 ### Intake and deduplication
-Files are content-addressed (SHA-256) **per tenant**. A re-upload of the same bytes adds an upload event and nothing
-else: no second extraction, classification or match. Sharing the store across tenants would save little and would
-tell one tenant that another holds the same file, so it is not done ([ADR 0004](decisions/0004-per-tenant-dedup.md)).
+Files are content-addressed (SHA-256) **per tenant**: bytes and their reading are stored and paid for once. Sharing
+the store across tenants would save little and would tell one tenant that another holds the same file, so it is not
+done ([ADR 0004](decisions/0004-per-tenant-dedup.md)). A **document** is the file as evidence in one process: one per
+(tenant, matter, file). A re-upload of the same bytes in the same process adds an upload event and nothing else; the
+same bytes filed in another process are another document, judged there against that process's dates and debtor
+([ADR 0015](decisions/0015-evidence-belongs-to-its-process.md)).
 
 ### Extraction: the cost ladder starts here
 Born-digital PDFs carry their text; reading it costs microseconds. Only pages without a usable text layer go to OCR
@@ -60,7 +67,11 @@ would merge neighbouring lines; rows are grouped with the page turned straight, 
 A document type is recognised by its title and by the labels it always carries ("Name of the financial creditor",
 "Total amount of claim", "Date of default").
 The filename is a weak signal because filenames lie. Only when the rules are ambiguous is a model asked, and its
-answer is accepted only above a confidence threshold *and* if the page shows some support for that type.
+answer is accepted only above a confidence threshold *and* if the page shows some support for that type. A document
+that carries text aimed at automated readers is screened before this step and is never shown to the model, not even to
+be sorted; the screen folds look-alike letters and removes invisible characters first. It catches the instructions it
+knows: it is one signal, and the rest of the design (excerpts only, fixed answer schemas, read-only agents, people
+deciding) is what contains the ones it misses.
 
 ### Reading fields: never guess a value
 Each field is read after its label, from the start of a line, so "Earlier authority valid until" is never read as
@@ -71,8 +82,10 @@ all. Dates are day-first, as Indian documents write them. If a document states a
 (an amendment page contradicting the letter), the field is a conflict, and every check that needs it abstains.
 
 ### Matching: whose document is this?
-1. Identifiers that validate decide outright: an LEI or a GSTIN by its check characters, a CIN by its structure, a
-   bank account as an IFSC with its account number.
+1. Identifiers that validate decide: an LEI or a GSTIN by its check characters, a CIN by its structure, a bank account
+   as an IFSC with its account number. For evidence of one process, the creditor found must have a claim in the process
+   the file was filed in (or act as trustee for a holder who has); otherwise the file is possibly misfiled, and a
+   person says where it belongs.
 2. Otherwise the name is compared with the creditors with a claim in the process the file was uploaded to (plus the
    debenture trustees acting for them). Legal forms are ignored ("Pvt Ltd", "Private Limited", "(P) Ltd"), but no
    other word is: "Shree Anvaya Fincorp Ltd" is not "Anvaya Fincorp Ltd". A clear winner decides; an exact legal-name
@@ -88,7 +101,7 @@ REVIEW instead of being judged on older evidence as if the new file did not exis
 | Tier | What it reads | Examples | Cost |
 |---|---|---|---|
 | metadata | facts known before reading: upload channel, dates, the claim record | received by the last date for claims; bank details arrived through a verified channel | free |
-| field | a value read from the page, with a deterministic rule | default within three years of commencement; claim within the books; words agree with figures; GSTIN check character and the PAN inside it; IFSC of the bank named; account on file; authority current and covering voting; charge over the debtor, by a Registrar, covering the facility | near free |
+| field | a value read from the page, with a deterministic rule | the form's corporate debtor is this process's; default within three years of commencement (outside them, a question for a person); claim within the books; words agree with figures; GSTIN check character and the PAN inside it; IFSC of the bank named; account on file; authority in effect, current, and granting the vote in plain words; charge over the debtor, by a Registrar, covering the facility; the loan's borrower is the debtor | near free |
 | model | located passages of an agreement, judged by a language model | money was disbursed; interest is payable; security is created for the lender; the lender may assign | paid per call |
 
 Checks are evaluated only for the **current** document behind a requirement: a superseded authority is never paid
@@ -126,6 +139,24 @@ Five statuses *vouch* for the creditor (SATISFIED, SATISFIED_WITH_FINDINGS, COVE
 VERIFIED_OUT_OF_BAND, NOT_REQUIRED). Reporting one of them when the truth is otherwise is the error the gates hold at
 zero.
 
+A rule that states only the usual case of the law says so in the pack (`illustrative`, with the date its wording was
+reviewed and its basis) and leaves the exceptions to a person: a default outside three years abstains, because a
+written acknowledgement could extend limitation, instead of failing on the date alone.
+
+### What the evidence permits
+Whether a document suffices and what the claim may do are separate decisions
+([ADR 0016](decisions/0016-what-a-document-suffices-for.md)). An authority that lets the representative file but
+not vote is good enough as a document (a major finding: SATISFIED_WITH_FINDINGS), and still no vote is counted. The
+pack lists each action's conditions: to vote, a proof of claim, an authority in a vouching status and the voting check
+PASS; a payout, a proof of claim and bank details without any finding. The engine stores a permission per claim and
+action with the unmet conditions named, reports changes through the outbox, and the harness gates a vote or payout
+permitted when the truth withholds it at zero. The engine recommends; votes and payments are made elsewhere and are
+simulated here.
+
+The voting check reads the clause that names the power, not the word: "is not authorised to vote", "may not vote",
+"voting rights are withdrawn" fail; "subject to the approval of the board", "only on", a later date, or a grant beside
+a restriction go to a person; no clause naming the power fails.
+
 ### People in the loop
 The engine's abstentions become a **review queue**, derived from the data each time it is read, most consequential
 first:
@@ -140,8 +171,9 @@ first:
 Decisions are **inputs, not edits** ([ADR 0009](decisions/0009-decisions-are-inputs.md)): the engine derives each
 document and status from the file plus the decisions about it, so a re-index or a new engine version applies them
 again. The engine's own verdict is kept beside each decision, which is what accuracy is measured from. A check
-decision is bound to the rule it was made under (the check's definition and the pack tables it reads); change the rule
-and the engine judges again. A cleared hostile document may vouch, but its text is still never shown to the model.
+decision is bound to the rule it was made under (the check's definition, the pack tables it reads and the rule's own
+version, which a test holds to the rule's code); change the rule and the engine judges again. A cleared hostile
+document may vouch, but its text is still never shown to the model.
 
 ```bash
 testamur queue --db data/harness.db --tenant 1
@@ -184,16 +216,17 @@ flowchart LR
     O --> D["Dispatcher: one transaction per event"]
     D --> T["Task: chase the creditor, or follow up"]
     D --> R["Reminder to the creditor (one a week at most)"]
-    D --> H["Hold: votes not counted, nothing paid; placed and released"]
+    D --> H["Hold per action: votes not counted, or nothing paid; placed and released"]
     D --> W[("webhook messages")]
     W -->|"signed, retried, stable id"| B["The firm's systems: verify, process once"]
 ```
 
-Every status change writes an event in the same transaction as the change; the dispatcher turns each event into
-work in one transaction with its dispatched mark, so a crash re-handles it from scratch and the database keeps every
-action single (one open task per requirement, one open hold per claim, unique keys on reminders and messages).
-Webhook messages leave after the transaction, signed (Standard Webhooks), retried with backoff and declared dead
-after eight attempts; their id is stable, so the receiver processes each once
+Every status or permission change writes an event in the same transaction as the change; the dispatcher turns each
+event into work in one transaction with its dispatched mark, so a crash re-handles it from scratch and the database
+keeps every action single (one open task per requirement, one open hold per claim and action, unique keys on reminders
+and messages). Webhook messages leave after the transaction, signed (Standard Webhooks), retried with backoff and
+declared dead after eight attempts: delivery is at least once, and the id is stable, so a receiver that keeps the ids
+it has processed acts on each once (the simulated receiver keeps them in memory)
 ([ADR 0011](decisions/0011-findings-become-work-through-an-outbox.md)). The first workflow automated is the chase
 for a creditor's lapsing authority: frequent, decided by rules, reversible, and due before every vote
 ([ADR 0012](decisions/0012-the-first-workflow.md)). Verdicts that depend on the date carry the date they were judged
@@ -209,8 +242,10 @@ testamur actionsim --world data/world --days 60        # days pass; creditors an
 Staff ask in their own words; the assistant answers from the engine's records wherever it can (standing, dates,
 amounts, findings), so it inherits the engine's readings and people's decisions, and it cites the page and line it
 read ([`assistant.py`](../testamur/assistant.py), [ADR 0013](decisions/0013-the-assistant-answers-from-the-records.md)).
-Filters come before ranking: the tenant (the session), the creditor (the capitalised name in the question, compared
-whole, asked back when a first word fits several), and the current document behind each requirement. Every quote
+Filters come before ranking: the tenant (the session), the process when the question names its debtor, the creditor
+(the capitalised name in the question, compared whole, asked back when a first word fits several), and the current
+document behind each requirement of each claim; a creditor with current documents in two processes is asked which one
+is meant, and a claim with no evidence of its own is never answered from another process's. Every quote
 must be found on the cited page. What the engine could not settle is said as such. Free-text questions use hybrid
 retrieval (BM25 and character trigrams, fused by reciprocal rank) over current passages, never over passages that
 address automated readers.
@@ -224,11 +259,14 @@ testamur golden --world data/world --db data/harness.db       # the golden set, 
 A firm's own agents connect over the Model Context Protocol ([`mcp_server.py`](../testamur/mcp_server.py),
 [`agents.py`](../testamur/agents.py), [ADR 0014](decisions/0014-agents-propose-people-dispose.md)). A key belongs
 to one named agent of one tenant and is stored as a hash; every tool runs in that tenant's session. The tenant's
-catalogue decides which tools exist for its agents: only granted tools are listed, and the grant is checked on every
-call. Reads (claims, a requirement with its checks, the review queue, open tasks, the assistant) paginate with
-a fixed number of queries per page. There are no write tools: an agent proposes a check verdict, a field reading or
-a document decision, and a person confirms or declines it; a confirmed proposal is applied under the person's name
-with the agent's beside it, once.
+catalogue decides which tools exist for its agents, for all of them or one by name: only granted tools are listed, and
+the key and the grant are both checked on every call, so revoking either takes effect at once. Reads (claims, a
+requirement with its checks, the review queue, open tasks, the assistant) paginate with a fixed number of queries per
+page. There are no write tools: an agent proposes a check verdict, a field reading or a document decision, bound to
+the evidence it was made on, and a person confirms or declines it. Confirmation is one transaction that derives the
+binding again (a proposal made on evidence that has since changed is refused as stale), applies the change under the
+person's name with the agent's beside it, and writes its audit and outbox event; the effect carries the proposal's id
+under a unique key, so it exists once.
 
 ```bash
 testamur keys create assistant-bot --tenant 1                  # shown once; stored as a hash
@@ -243,15 +281,23 @@ Verdicts are stored per claim, requirement, check, document and engine version. 
 a provider error) is recorded as a transient ABSTAIN, retried on the next pass, and never overwrites a conclusive
 verdict for the same document.
 
-### Tenant isolation, enforced by the session
-Every tenant-owned row carries `tenant_id`. A session opened for a tenant adds that tenant's filter to every read
-automatically and refuses to flush a row of another tenant; a session with no tenant cannot read tenant data at all
-([ADR 0003](decisions/0003-tenant-isolation-in-the-session.md)). Background work receives the tenant explicitly; there
-is no ambient tenant to forget.
+### Tenant isolation, enforced by the session and the database
+Every tenant-owned row carries `tenant_id`. A session opened for a tenant adds that tenant's filter to every ORM
+statement it runs, bulk UPDATE and DELETE included, refuses what the filter cannot reach (textual and Core SQL, bulk
+INSERT and upserts, bulk updates by primary key, an UPDATE that would move rows to another tenant), and refuses to
+flush or delete a row of another tenant; a session with no tenant cannot touch tenant data at all
+([ADR 0003](decisions/0003-tenant-isolation-in-the-session.md)). Under it, references between tenant rows are foreign
+keys on (tenant_id, id), and on Postgres row-level security under a restricted application role refuses other
+tenants' rows to any statement. Background work receives the tenant explicitly; there is no ambient tenant to
+forget.
 
 ### Cost and idempotency
 - One extraction per (tenant, file, extractor version).
-- One model call per (tenant, model, exact prompt): a ledger at the provider boundary answers repeats for free.
+- One model call per (tenant, model, exact prompt), answered again for free only by the same weights: each answer
+  carries the model's fingerprint (a hash of the GGUF file and the runtime), so new weights under an old file name are
+  asked afresh.
+- Verdicts are cached per engine version, which includes a fingerprint of the code that turns evidence into verdicts,
+  so a code change is a new engine even without a version bump.
 - Usage rows per tenant and day (OCR pages, model tokens, cached or not), the basis for spend gates.
 - A cassette records model calls for exact, free replay in CI; a replay-only cassette fails loudly on any call it
   has not seen.
@@ -273,8 +319,11 @@ flowchart LR
 ```
 
 - **Queue** ([`jobs.py`](../testamur/jobs.py), [ADR 0007](decisions/0007-queue-in-the-database.md)): a table in the
-  same database; claim by an atomic `UPDATE ... RETURNING` with a lease (visibility timeout); retries with backoff;
-  a dead-letter state after the last attempt; deferral that does not count as an attempt; idempotent enqueue.
+  same database; claim by an atomic `UPDATE ... RETURNING` with a lease (visibility timeout) carrying a fresh token;
+  completing, failing, deferring or renewing needs the token, so a worker that stalled past its lease cannot finish a
+  job another worker holds; long work renews its lease with every OCR page; retries with backoff; a dead-letter state
+  after the last attempt, or after the lease ran out on every attempt; deferral that does not count as an attempt;
+  idempotent enqueue. The reading lock on a file is fenced the same way.
 - **Spend gates** ([`budget.py`](../testamur/budget.py)): per-tenant daily caps for OCR pages and model tokens,
   checked before money is spent, with the allowed amount reserved in the same transaction and settled afterwards.
   Cache hits are always free.
@@ -303,16 +352,19 @@ cost (a re-index pays for nothing) and about how much it hands to people (deferr
 
 ## What is deliberately not here yet
 
-- **Operational creditors and information utilities.** This pack covers financial creditors' claims; invoices and
-  demand notices (Form B) and records of default from an information utility would be the next documents.
+- **Operational creditors and information utilities.** This pack covers financial creditors' claims. A small second
+  pack for operational creditors (Form B and invoices) lives in the tests, to show the engine runs another domain from
+  its pack alone; a full one, and records of default from an information utility, would be the next documents. What
+  stays domain-specific outside the pack: the assistant's question words, and the world generator with its truth.
 - **Real agreements.** The clause tier is measured on synthetic clauses; an evaluation on expert-labelled public
   contracts is the next measurement.
-- **A web API and sign-in for people.** People work through the command line; agents through the tool server.
+- **A web API and sign-in for people.** People work through the command line; agents through the tool server. A
+  service with authenticated reviewers is the next release.
 - **A generative layer in the assistant.** It answers from records and quotes passages; a model could phrase answers
   behind the same citation check.
 - **Per-tenant policy.** One domain pack serves every tenant; budgets, audit rates and action policy are pack-wide.
-- **The law beyond the pack.** Limitation is checked as three years from the default; acknowledgements that extend it
-  (section 18 of the Limitation Act) are a person's call, and the hint says so.
+- **The law beyond the pack.** The checks are illustrative rules, not a statement of the law; where a rule states only
+  the usual case (limitation as three years from the default) it abstains on the rest and a person decides.
 - **The outside world.** Reminders are written, not e-mailed; webhooks are signed and retried, but the receivers in
   the simulations are simulated.
 - **Production operations.** Postgres runs in CI, not under load; there is no deployment, backup or monitoring

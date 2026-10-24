@@ -53,10 +53,12 @@ def check(session: Session, tenant_id: int, provider: str, wanted: float, today:
                              retry_at=datetime.combine(today + timedelta(days=1), time(0, 0)))
 
 
-def reserve(session: Session, tenant_id: int, provider: str, amount: float, today: date) -> UsageRow:
-    """Check and reserve in one transaction. Settle the returned row to the actual amount, or delete it to release."""
+def reserve(session: Session, tenant_id: int, provider: str, amount: float, today: date,
+            by: str | None = None) -> UsageRow:
+    """Check and reserve in one transaction. Settle the returned row to the actual amount, or delete it to release.
+    `by` names the holder (a lock token), so a reservation its holder abandoned can be found and reconciled."""
     check(session, tenant_id, provider, amount, today)
-    row = UsageRow(day=today, provider=provider, units=amount, cached=False)
+    row = UsageRow(day=today, provider=provider, units=amount, cached=False, state="reserved", reserved_by=by)
     session.add(row)
     session.flush()
     return row

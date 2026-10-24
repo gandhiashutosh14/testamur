@@ -29,12 +29,18 @@ bank_codes:
   Coromandel Union Bank: CRUX
   Sindhu Co-operative Bank: SNDX
 
+# For each document type: how to recognise it, the fields to read, whose it is (name_field), which of several is
+# current (key_date, the latest; otherwise the first to arrive), and where it counts as evidence (evidence_scope:
+# "matter", only in the process it was filed in; "creditor", for every claim of the creditor in the firm).
 doc_types:
   claim_form:
     title_keywords: ["proof of claim by financial creditors", "form c", "proof of claim"]
     filename_aliases: ["form c", "claim", "proof of claim", "poc"]
     key_labels: ["name of the financial creditor", "total amount of claim", "date of default"]
+    name_field: creditor_name
+    evidence_scope: matter
     fields:
+      debtor_name: {labels: ["in the matter of", "name of the corporate debtor"], type: text}
       creditor_name: {labels: ["name of the financial creditor", "name of financial creditor"], type: text}
       cin: {labels: ["cin", "corporate identity number"], type: text}
       pan: {labels: ["pan", "permanent account number"], type: text}
@@ -48,6 +54,9 @@ doc_types:
     title_keywords: ["letter of authority", "authority letter", "certificate of authorisation"]
     filename_aliases: ["authority", "authorisation", "loa", "board resolution"]
     key_labels: ["financial creditor", "authorised representative", "valid until"]
+    name_field: creditor_name
+    key_date: effective_date
+    evidence_scope: matter
     fields:
       creditor_name: {labels: ["financial creditor", "name of the creditor"], type: text}
       representative: {labels: ["authorised representative", "authorized representative"], type: text}
@@ -60,6 +69,9 @@ doc_types:
     title_keywords: ["certificate of registration of charge", "registration of charge", "certificate of charge"]
     filename_aliases: ["charge", "chg", "roc", "security"]
     key_labels: ["charge id", "charge holder", "amount secured"]
+    name_field: charge_holder
+    key_date: registration_date
+    evidence_scope: matter
     fields:
       charge_holder: {labels: ["charge holder", "chargeholder", "in favour of"], type: text}
       company: {labels: ["company", "name of the company"], type: text}
@@ -72,6 +84,9 @@ doc_types:
     title_keywords: ["bank account confirmation", "confirmation of bank details", "bank mandate"]
     filename_aliases: ["bank", "account", "mandate", "cancelled cheque"]
     key_labels: ["account holder", "account number", "ifsc"]
+    name_field: account_holder
+    key_date: letter_date
+    evidence_scope: creditor        # an account confirmation is the creditor's, whichever process it was filed in
     fields:
       bank_name: {labels: ["bank"], type: text}
       account_holder: {labels: ["account holder", "name of the account holder"], type: text}
@@ -82,6 +97,8 @@ doc_types:
     title_keywords: ["facility agreement", "loan agreement", "term loan agreement"]
     filename_aliases: ["agreement", "loan", "facility", "signed"]
     key_labels: ["lender", "borrower", "facility amount"]
+    name_field: lender
+    evidence_scope: matter
     fields:
       lender: {labels: ["lender"], type: text}
       borrower: {labels: ["borrower"], type: text}
@@ -98,6 +115,12 @@ checks:
     severity: minor
     rule: received_by_due_date
     hint: "The claim arrived {days_late} days after the last date for claims ({due_date}). A late claim is verified separately and the reason for the delay recorded (regulations 12 and 13)."
+  claim_against_debtor:
+    tier: field
+    severity: critical
+    rule: name_matches
+    params: {field: debtor_name, against: debtor, pass_at: 92, fail_below: 80}
+    hint: "The form is a claim against '{found}', not against '{expected}': it belongs to another process. Ask {creditor} for a proof of claim in this one."
   claim_name_matches:
     tier: field
     severity: critical
@@ -120,8 +143,16 @@ checks:
     tier: field
     severity: critical
     rule: date_not_before
-    params: {field: default_date, anchor: commencement, offset_years: -3}
-    hint: "The default on {found} is more than three years before the insolvency commencement date ({anchor}). Admit it only if a written acknowledgement of the debt within limitation is on file (Limitation Act, section 18)."
+    params:
+      field: default_date
+      anchor: commencement
+      offset_years: -3
+      beyond: abstain
+      question: "the default is more than three years before the insolvency commencement date; the debt may still be within limitation if it was acknowledged in writing (Limitation Act, section 18), so a person checks the acknowledgements on file"
+    hint: "The default is more than three years before the insolvency commencement date. Admit it only if a written acknowledgement of the debt within limitation is on file (Limitation Act, section 18)."
+    illustrative: true
+    reviewed: "2026-10-24"
+    basis: "Three years from default is the usual period (Limitation Act 1963, art. 137, applied to the Code by section 238A); acknowledgements and other exceptions are for a person. Not legal advice."
   claim_dated_after_announcement:
     tier: field
     severity: minor
@@ -152,6 +183,12 @@ checks:
     rule: name_matches
     params: {field: creditor_name, against: filing_party, pass_at: 92, fail_below: 80}
     hint: "The authority is issued by '{found}', not '{expected}'. Ask {creditor} for an authority issued in its own name."
+  auth_in_effect:
+    tier: field
+    severity: critical
+    rule: in_effect
+    params: {field: effective_date, fallback: issue_date}
+    hint: "The authority takes effect only on {found}; until then the representative cannot act for {creditor}."
   auth_current:
     tier: field
     severity: critical
@@ -172,10 +209,10 @@ checks:
     hint: "The authority was issued {found}; ask for a current one."
   auth_covers_voting:
     tier: field
-    severity: major
-    rule: scope_mentions
+    severity: major            # the document is good for filing without it; the vote gate below needs it to PASS
+    rule: grants_power
     params: {field: powers, terms: ["vote", "voting"]}
-    hint: "The authority does not mention voting: a representative who may only file the claim cannot vote for {creditor} in the committee of creditors."
+    hint: "The authority does not plainly grant the power to vote: a representative who may only file the claim cannot vote for {creditor} in the committee of creditors."
   charge_holder_matches:
     tier: field
     severity: critical
@@ -236,6 +273,12 @@ checks:
     rule: within_days
     params: {field: letter_date, days: 180}
     hint: "The bank letter is dated {found}; ask for one from the last six months."
+  facility_borrower_is_debtor:
+    tier: field
+    severity: critical
+    rule: name_matches
+    params: {field: borrower, against: debtor, pass_at: 92, fail_below: 80}
+    hint: "The agreement's borrower is '{found}', not the corporate debtor '{expected}': it evidences a debt in another process."
   facility_signed:
     tier: field
     severity: critical
@@ -284,12 +327,14 @@ requirements:
   proof_of_claim:
     doc_type: claim_form
     applies_to: {}
-    checks: [received_by_due_date, claim_name_matches, claim_within_books, claim_words_match, claim_not_time_barred,
-             claim_dated_after_announcement, claim_gstin_valid, claim_pan_in_gstin, claim_lei_valid]
+    checks: [received_by_due_date, claim_against_debtor, claim_name_matches, claim_within_books, claim_words_match,
+             claim_not_time_barred, claim_dated_after_announcement, claim_gstin_valid, claim_pan_in_gstin,
+             claim_lei_valid]
   authority:
     doc_type: authority_letter
     applies_to: {}
-    checks: [auth_creditor_matches, auth_current, auth_renewal_due, auth_issued_recently, auth_covers_voting]
+    checks: [auth_creditor_matches, auth_in_effect, auth_current, auth_renewal_due, auth_issued_recently,
+             auth_covers_voting]
     trustee_cover: true        # a debenture trustee's authority covers the holders it lists (section 21(6A)(a))
   security_interest:
     doc_type: charge_certificate
@@ -303,7 +348,8 @@ requirements:
   evidence_of_debt:
     doc_type: facility_agreement
     applies_to: {tiers: [critical, high, standard]}
-    checks: [facility_signed, clause_disbursement, clause_interest, clause_security, clause_assignment]
+    checks: [facility_borrower_is_debtor, facility_signed, clause_disbursement, clause_interest, clause_security,
+             clause_assignment]
     check_applies:
       clause_security: {claim_types: [secured]}
 
@@ -315,16 +361,20 @@ asset_terms:
   vehicle_finance: ["vehicles", "motor vehicles"]
   inter_corporate_deposit: ["current assets", "receivables"]
 
-# Text that addresses an automated reader rather than a person. Found inside a document, it marks the document as
-# hostile: model-tier checks on it abstain and a security finding is raised.
+# Text that addresses an automated reader rather than a person. Found inside a document (read after folding Unicode
+# look-alikes and removing invisible characters), it marks the document as hostile: no model reads it, not even to
+# sort it, and a security finding is raised. A screen catches the instructions it knows; it is one signal among the
+# others (excerpts only, fixed answer schemas, read-only agents, a person deciding), not a defence on its own.
 injection_markers:
-  - "ignore (all |any )?(previous|prior|above) instructions"
+  - "ignore (all |any |the )?(previous|prior|above|earlier) (instructions|directions|rules)"
   - "automated (reviewer|review|system|reader|checker)"
   - "(answer|respond|reply) (yes|no|pass|true)\\b"
   - "system prompt"
   - "you are (an|a) (ai|assistant|language model)"
-  - "disregard (the|all|any)"
+  - "disregard (the|all|any|previous|prior|earlier)"
   - "mark (this|the) (document|certificate|check|claim) as (compliant|valid|passed|verified|admitted)"
+  - "note to (the |any )?(ai|model|assistant|llm|language model)"
+  - "(new|updated|revised) instructions? (for|to) (the |any )?(ai|model|assistant|reviewer)"
 
 # How much error each severity may carry (the share of the engine's PASS verdicts a person would overturn), the share
 # of conclusive verdicts people audit to measure it, and the confidence of the bounds. A critical check with any
@@ -334,16 +384,33 @@ audit:
   audit_rate: {critical: 0.10, major: 0.05, minor: 0.02}
   confidence: 0.95
 
+# What the evidence permits, decided separately from whether each document is good enough. A requirement's status says
+# whether a document suffices; an action needs more: a finding that is only a finding for the document ("the
+# authority does not grant the vote", a major check) is a bar for the vote. Each action lists every condition it needs;
+# one unmet withholds the action and says which. The engine only recommends: votes and payments are made elsewhere, by
+# a person, and are simulated here.
+permissions:
+  vote:
+    description: "the representative may cast the creditor's votes in the committee of creditors"
+    requires:
+      - {requirement: proof_of_claim, statuses: [SATISFIED, SATISFIED_WITH_FINDINGS, VERIFIED_OUT_OF_BAND]}
+      - {requirement: authority, statuses: [SATISFIED, SATISFIED_WITH_FINDINGS, COVERED_BY_TRUSTEE, VERIFIED_OUT_OF_BAND]}
+      - {check: auth_covers_voting, verdicts: [PASS]}
+  payout:
+    description: "a distribution may be paid to the account on file"
+    requires:
+      - {requirement: proof_of_claim, statuses: [SATISFIED, SATISFIED_WITH_FINDINGS, VERIFIED_OUT_OF_BAND]}
+      - {requirement: bank_details, statuses: [SATISFIED, VERIFIED_OUT_OF_BAND]}   # payment details without findings
+
 # What a finding turns into. The representative's authority is chased with the creditor (a task and a reminder, at
 # most one a week); any other unmet requirement becomes a follow-up task for the resolution professional's team; while
-# the authority or the bank details are expired or not satisfied, the claim is on hold: its votes are not counted and
-# nothing is paid to it. Due dates by the claim's tier.
+# an action is withheld, the claim is on hold for it: its votes are not counted, or nothing is paid to it. Due dates by
+# the claim's tier.
 actions:
   chase_requirements: [authority]
   chase_statuses: [MISSING, EXPIRED, NOT_SATISFIED]
   chase_findings: [auth_renewal_due]
   follow_up_statuses: [MISSING, EXPIRED, NOT_SATISFIED]
-  hold_requirements: [authority, bank_details]
-  hold_statuses: [EXPIRED, NOT_SATISFIED]
+  hold_permissions: [vote, payout]
   notify_cooldown_days: 7
   task_due_days: {critical: 2, high: 3, standard: 5, low: 7}

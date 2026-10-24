@@ -11,9 +11,14 @@ The policy (the pack's `actions` section):
 - **Chase the creditor** for a representative's authority that is missing, expired, not satisfied or due for renewal:
   a task with a due date set by the claim's tier, and a reminder to the creditor, at most one per cooldown.
 - **Follow up**: any other unmet requirement becomes a task for the resolution professional's team.
-- **Hold**: while the authority or the bank details are expired or not satisfied, the claim is on hold: its votes
-  are not counted and nothing is paid to it. The hold is released by itself when they are put right.
+- **Hold**: while the evidence does not permit an action (the pack's `permissions`: to vote needs a proof of claim,
+  a current authority and a plain grant of the vote; a payout needs a proof of claim and bank details without
+  findings), the claim is on hold for that action: its votes are not counted, or nothing is paid to it. A finding
+  that is only a finding for the document (an authority that does not grant the vote) is a bar for the action. The
+  hold is released by itself when the evidence permits the action.
 - A task closes by itself when its requirement is met again.
+
+Votes, payments and e-mail are simulated: the dispatcher writes what would be sent and announces it by webhook.
 """
 from __future__ import annotations
 
@@ -32,12 +37,12 @@ from sqlalchemy.orm import Session
 from .pack import Pack
 from .store import (
     Claim,
+    ClaimPermission,
     Creditor,
     Delivery,
     Hold,
     Notification,
     OutboxEvent,
-    RequirementState,
     Store,
     Task,
     WebhookEndpoint,
@@ -84,6 +89,13 @@ def _superseded(s: Session, ev: OutboxEvent) -> bool:
 
 
 def _act(s: Session, pack: Pack, ev: OutboxEvent, now: datetime) -> Counter:
+    if ev.kind == "claim.permission_changed":
+        out = _hold(s, pack, ev, ev.payload["claim"], ev.payload["action"], now)
+        _announce(s, ev, "claim.permission_changed", ev.payload, now)
+        return out
+    if ev.kind != "requirement.status_changed":          # a person's decision on a proposal: announced, nothing more
+        _announce(s, ev, ev.kind, ev.payload, now)
+        return Counter({ev.kind: 1})
     policy, p, out = pack.actions, ev.payload, Counter()
     eid, rid, to = p["claim"], p["requirement"], p["to"]
     e = s.get(Claim, eid)
@@ -113,7 +125,6 @@ def _act(s: Session, pack: Pack, ev: OutboxEvent, now: datetime) -> Counter:
     elif task is not None:
         task.status, task.closed_at, task.closed_reason = "done", now, f"requirement now {to.lower()}"
         out["task_closed"] += 1
-    out.update(_hold(s, pack, ev, eid, now))
     _announce(s, ev, "requirement.status_changed", p, now)
     return out
 
@@ -131,23 +142,22 @@ def _remind(s: Session, policy, ev: OutboxEvent, creditor: Creditor, eid: int, r
     return "creditor_reminded"
 
 
-def _hold(s: Session, pack: Pack, ev: OutboxEvent, eid: int, now: datetime) -> Counter:
-    """A hold mirrors the claim's current statuses, whatever order events arrive in."""
-    policy, out = pack.actions, Counter()
-    holding = sorted(st.requirement_id for st in s.scalars(select(RequirementState).where(
-        RequirementState.claim_id == eid)) if st.requirement_id in policy.hold_requirements
-        and st.status in policy.hold_statuses)
-    hold = s.scalar(select(Hold).where(Hold.claim_id == eid, Hold.released_at.is_(None)))
-    if holding and hold is None:
-        s.add(Hold(claim_id=eid, requirements=holding, placed_at=now))
-        _announce(s, ev, "hold.placed", {"claim": eid, "requirements": holding}, now)
+def _hold(s: Session, pack: Pack, ev: OutboxEvent, eid: int, action: str, now: datetime) -> Counter:
+    """A hold mirrors the claim's current permission for the action, whatever order events arrive in."""
+    out = Counter()
+    perm = s.get(ClaimPermission, {"claim_id": eid, "action": action, "tenant_id": ev.tenant_id})
+    withheld = perm is not None and not perm.granted and action in pack.actions.hold_permissions
+    hold = s.scalar(select(Hold).where(Hold.claim_id == eid, Hold.action == action, Hold.released_at.is_(None)))
+    if withheld and hold is None:
+        s.add(Hold(claim_id=eid, action=action, reasons=list(perm.unmet), placed_at=now))
+        _announce(s, ev, "hold.placed", {"claim": eid, "action": action, "reasons": perm.unmet}, now)
         out["hold_placed"] += 1
-    elif hold is not None and not holding:
+    elif hold is not None and not withheld:
         hold.released_at = now
-        _announce(s, ev, "hold.released", {"claim": eid}, now)
+        _announce(s, ev, "hold.released", {"claim": eid, "action": action}, now)
         out["hold_released"] += 1
-    elif hold is not None and hold.requirements != holding:
-        hold.requirements = holding
+    elif hold is not None and hold.reasons != perm.unmet:
+        hold.reasons = list(perm.unmet)
     return out
 
 

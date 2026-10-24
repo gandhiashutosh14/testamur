@@ -8,6 +8,7 @@ states twice with different values, are reported as missing or conflicting, neve
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -151,9 +152,22 @@ def identifiers(ex: Extraction) -> dict[str, list[str]]:
     return {k: sorted(v) for k, v in found.items() if v}
 
 
+def screen_text(text: str) -> str:
+    """Text as the injection screen reads it: compatibility forms folded (full-width and styled letters become plain
+    ones), invisible format characters (zero-width spaces and joiners) removed, whitespace collapsed. An instruction
+    split by a zero-width space reads the same to a model as to a person; the screen must read it the same way too."""
+    folded = unicodedata.normalize("NFKC", text)
+    visible = "".join(ch for ch in folded if unicodedata.category(ch) != "Cf")
+    return re.sub(r"\s+", " ", visible)
+
+
 def hostile_spans(pack: Pack, ex: Extraction) -> list[str]:
-    """Text that addresses an automated reader. Documents are untrusted input."""
-    text = " ".join(line.text for p in ex.pages for line in p.lines)
+    """Text that addresses an automated reader. Documents are untrusted input.
+
+    A pattern screen is one signal, not a defence: it catches the instructions it knows. What contains the ones it
+    misses is everything else: models see only located excerpts and answer in a fixed schema that must quote the
+    document, agents can only read and propose, and a person decides."""
+    text = screen_text(" ".join(line.text for p in ex.pages for line in p.lines))
     hits = []
     for pat in pack.injection_patterns():
         for m in pat.finditer(text):

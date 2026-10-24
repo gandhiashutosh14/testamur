@@ -87,15 +87,16 @@ def test_a_corrected_reading_is_judged_by_the_rules_and_survives_a_reindex(env):
     with pytest.raises(ValueError):
         engine.correct_field(1, doc_id, "default_date", "some time last year", "reviewer@firm")
     engine.correct_field(1, doc_id, "default_date", "01.01.2019", "reviewer@firm", note="annexure 2, ledger")
-    assert _status(store, 1, eid, "proof_of_claim") == Status.NOT_SATISFIED
+    # a default outside the usual three years: the rules send it to a person (an acknowledgement could save it)
+    assert _status(store, 1, eid, "proof_of_claim") == Status.NEEDS_REVIEW
     _rerun(world, engine)
-    assert _status(store, 1, eid, "proof_of_claim") == Status.NOT_SATISFIED
+    assert _status(store, 1, eid, "proof_of_claim") == Status.NEEDS_REVIEW
     with store.tenant(1) as s:
         fix = s.scalars(select(FieldCorrection)).one()
         assert fix.machine_raw and fix.machine_raw != fix.raw
         row = s.scalar(select(VerdictRow).where(VerdictRow.claim_id == eid,
                                                 VerdictRow.check_id == "claim_not_time_barred"))
-        assert row.verdict == "FAIL" and row.evidence[0]["source"] == "reviewer"
+        assert row.verdict == "ABSTAIN" and row.evidence[0]["source"] == "reviewer"
 
 
 def test_assigning_a_document_settles_it_and_a_reindex_keeps_it(env):

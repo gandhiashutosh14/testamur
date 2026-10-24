@@ -262,6 +262,22 @@ class _Builder:
             ec = next(e for e in self.claims if e.creditor_id == c.id).matter_id
             if ed.matter_id == ec:
                 ed.matter_id = next(m.id for m in matters if m.id != ec)
+        # Some creditors claim in two processes of the same firm. The second claim starts with no evidence of its own:
+        # the trap is the first process's evidence standing in for it. Drawn from a stream of their own, so every
+        # other part of the world (and every document's bytes) is the same with or without them.
+        self._primary = list(self.claims)
+        extra = random.Random(f"{self.seed}:second-claims")
+        main, self.rng = self.rng, extra
+        try:
+            for tenant in self.tenants:
+                pool = sorted((x for x in self.creditors if x.tenant_id == tenant.id and not x.is_trustee),
+                              key=lambda x: x.id)
+                for s in extra.sample(pool, k=min(2, len(pool))):
+                    first = self._claim_of(s).matter_id
+                    self._claim(s, extra.choice([m.id for m in self.matters if m.tenant_id == tenant.id
+                                                 and m.id != first]))
+        finally:
+            self.rng = main
 
     # ------------------------------------------------------------------ documents
     def _claim_of(self, s: Creditor) -> Claim:
@@ -561,7 +577,8 @@ class _Builder:
                ("para", "I confirm that the particulars above are true and that the documents relied on are attached."),
                ("kv", "Signed by", f"{rng.choice(nm.PEOPLE)}, Authorised Signatory")]
         truth = UploadTruth(doc_type="claim_form", owner_creditor_id=s.id, scenario_creditor_id=s.id,
-                            fields={"creditor_name": name, "gstin": gstin, "pan": pan, "lei": lei or "",
+                            fields={"debtor_name": m.name, "creditor_name": name, "gstin": gstin, "pan": pan,
+                                    "lei": lei or "",
                                     "gstin_valid": str(gstin_valid(gstin)),
                                     "lei_valid": str(lei_valid(lei)) if lei else "",
                                     "amount_claimed": str(amount), "amount_in_words": str(words_amount),
@@ -602,8 +619,8 @@ class _Builder:
                ("kv", "Signed for the Borrower",
                 f"{borrower_person}, Director, {_fmt_date(effective, rng)}" if signed else "")]
         truth = UploadTruth(doc_type="facility_agreement", owner_creditor_id=s.id, scenario_creditor_id=s.id,
-                            fields={"lender": s.legal_name}, injection=injection, clauses=present, signed=signed,
-                            format="auto", variant=variant)
+                            fields={"lender": s.legal_name, "borrower": m.name}, injection=injection, clauses=present,
+                            signed=signed, format="auto", variant=variant)
         return self._add_upload(s, s.tenant_id, "facility_agreement", DocContent([p1]), truth, self._when(s),
                                 channel=rng.choice(["staff_upload", "staff_upload", "email_ingest"]), single_page=False)
 
@@ -698,15 +715,19 @@ class _Builder:
         for u in picked:
             owner = u.truth.owner_creditor_id
             acting_for = {owner} | {c.id for c in self.creditors if c.trustee_id == owner}
-            in_scope = {e.matter_id for e in self.claims if e.creditor_id in acting_for}   # a trustee: its holders'
+            # a trustee: its holders'. The first claims only, as the world had before second claims existed
+            in_scope = {e.matter_id for e in self._primary if e.creditor_id in acting_for}
             others = [m.id for m in self.matters if m.tenant_id == u.tenant_id and m.id not in in_scope]
             if not others or u.declared_creditor_id is not None:
                 continue
             u.matter_id = rng.choice(others)
             u.truth.variant += "+misfiled"
-            # identifiers on the page let a careful engine place it anyway; a name alone does not
-            if u.truth.doc_type not in ("bank_mandate", "claim_form", "facility_agreement"):
-                u.truth.expect = "abstain"
+            # Evidence of one process does not count in another: a careful engine sends it to a person (identifiers
+            # or not), unless the owner happens to have a claim in the process it landed in, where it is evidence
+            # (and its checks find it names another debtor). A bank account confirmation counts in every process.
+            if self.pack.doc_types[u.truth.doc_type].evidence_scope == "matter":
+                lands = any(e.matter_id == u.matter_id for e in self.claims if e.creditor_id in acting_for)
+                u.truth.expect = "match" if lands else "abstain"
         # a document sent to the wrong tenant: it names a creditor that tenant does not have
         if len(self.tenants) > 1:
             u = rng.choice([x for x in originals if x.tenant_id == 1 and x.truth.doc_type == "claim_form"])

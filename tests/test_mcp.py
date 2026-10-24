@@ -50,6 +50,31 @@ def test_an_agent_sees_and_calls_only_the_tools_its_tenant_granted(env):
         build_server(engine, "tsk_not_a_key")
 
 
+def test_a_revoked_key_stops_working_on_a_server_already_running(env):
+    """Authentication is checked on every call, not once when the server was built."""
+    world, store, engine = env
+    server = build_server(engine, _agent(store, "list_claims"))
+    assert not _call(server, "list_claims", {}).is_error
+    assert agents.revoke_key(store, 1, "agent-a", "admin@firm") == 1
+    assert _call(server, "list_claims", {}).is_error
+    with pytest.raises(PermissionError):
+        build_server(engine, agents.create_key(store, 2, "agent-a") + "x")
+
+
+def test_a_tool_granted_to_one_agent_is_not_another_agents(env):
+    """Grants per agent: an investigator and a verifier of the same tenant hold different tools."""
+    world, store, engine = env
+    investigator = agents.create_key(store, 1, "investigator")
+    verifier = agents.create_key(store, 1, "verifier")
+    agents.grant(store, 1, "review_queue", "admin@firm", principal="investigator")
+    agents.grant(store, 1, "list_claims", "admin@firm")                      # every agent of the tenant
+    inv, ver = build_server(engine, investigator), build_server(engine, verifier)
+    assert _tools(inv) == ["list_claims", "review_queue"] and _tools(ver) == ["list_claims"]
+    assert _call(ver, "review_queue", {}).is_error and not _call(inv, "review_queue", {}).is_error
+    agents.revoke(store, 1, "review_queue", "admin@firm", principal="investigator")
+    assert _call(inv, "review_queue", {}).is_error
+
+
 def test_reads_stay_inside_the_tenant_and_page_with_a_fixed_number_of_queries(env):
     world, store, engine = env
     server = build_server(engine, _agent(store, "list_claims", "get_requirement"))

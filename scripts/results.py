@@ -54,21 +54,33 @@ def render() -> str:
                                      m["security"], m["cost"])
         det = ck["metadata"]["agree"] + ck["field"]["agree"], ck["metadata"]["n"] + ck["field"]["n"]
         mod = ck["model"]
+        conf = st.get("confusion", {})
+        reviews = sum(n for k, n in conf.items() if k.endswith("-> NEEDS_REVIEW"))
+        expected = conf.get("NEEDS_REVIEW -> NEEDS_REVIEW", 0)
+        model_fp = [f"{cid} ({c['severity']})" for cid, c in m["checks"]["per_check"].items()
+                    if c["tier"] == "model" and c["false_pass"]]
+        perm = m.get("permissions")
         out += ["", f"### Getting it right ([report](reports/harness-full-seed11.md), commit `{_commit(h)}`)", "",
                 "| Measure | Result |", "|---|---|",
                 f"| Requirement statuses exactly right | {st['exact']} of {st['requirement_instances']} "
                 f"({_pct(st['exact_rate'])}) |",
-                f"| Handed to a person instead (NEEDS_REVIEW) | {st.get('deferred_to_review', 0)} "
+                f"| Handed to a person where the truth did not need one | {st.get('deferred_to_review', 0)} "
                 f"({_pct(st['deferral_rate'])}) |",
+                f"| All statuses waiting for a person (NEEDS_REVIEW), the truth's own included | {reviews} "
+                f"({expected} expected by the truth) |",
                 f"| Vouching kept, a non-critical doubt shown as a finding | {st.get('abstention_as_finding', 0)} |",
-                f"| **Vouching when the truth says otherwise** | **{st.get('false_vouching', 0)}** |",
+                f"| **Vouching when the truth says otherwise** | **{st.get('false_vouching', 0)}** |"] + (
+                [f"| **Vote or payout permitted when the truth withholds it** | **{perm.get('false_grant', 0)}** of "
+                 f"{perm['pairs']} claim-action pairs |"] if perm else []) + [
                 f"| Raising an alarm when the truth is fine | {st.get('false_alarm', 0)} |",
                 f"| Field and metadata judgements agreeing with the truth | {det[0]:,} of {det[1]:,} |",
                 f"| Agreement-clause judgements, local model on CPU: agree / abstain / false PASS | {mod['agree']} / "
-                f"{mod['abstained']} / {mod['false_pass']} of {mod['n']} |",
+                f"{mod['abstained']} / {mod['false_pass']} of {mod['n']}"
+                + (f" (false PASS on {', '.join(model_fp)})" if model_fp else "") + " |",
                 f"| Documents classified right | {cl['correct']} of {cl['documents']} |",
                 f"| Documents attached to the wrong creditor | {mt.get('wrong_match', 0)} |",
-                f"| Planted instructions detected; model PASS on such documents | {sec['detected']} of "
+                f"| Planted instructions caught by the screen (it knows the patterns it was given); model PASS on "
+                f"such documents | {sec['detected']} of "
                 f"{sec['injected_documents']}; {sec['model_pass_on_hostile_documents']} |",
                 f"| Re-index of every document: new OCR pages, new model calls | "
                 f"{int(cost['reindex']['new_ocr_pages'])}, {int(cost['reindex']['new_model_calls'])} |"]
@@ -84,7 +96,10 @@ def render() -> str:
         machine = lt["meta"].get("machine")
         if machine:
             out += ["", f"On {machine} with {lt['meta']['cpu_count']} CPUs; the workers share them, so OCR, which uses "
-                    "every core it is given, scales little past two."]
+                    "every core it is given, scales little past two. The load test measures reading and the queue with "
+                    "the clause model off" + (f"; the first pass of the full world with the model on took "
+                                              f"{h['metrics']['cost']['first_pass_seconds']:,.0f} s on one worker."
+                                              if h else ".")]
         b, c = lt.get("budget"), lt.get("crash")
         if b:
             out += ["", f"With a cap of {b['ocr_pages_per_day']} OCR pages a day for one tenant, "
@@ -107,7 +122,8 @@ def render() -> str:
         decisions = sum(v for k, v in q["effort"].items() if k not in ("left", "did_not_land"))
         out += ["", f"### When it is not sure ([review simulation](reports/review-sim-full-seed11.md), "
                 f"commit `{_commit(rs)}`)", "",
-                f"A simulated reviewer who knows the truth worked the whole review queue: {decisions} decisions ("
+                f"A simulated reviewer who knows the truth (an oracle: this measures the machinery around people, "
+                f"not people) worked the whole review queue: {decisions} decisions ("
                 + ", ".join(f"{v} {k}" for k, v in sorted(q["effort"].items())) + f"). Afterwards "
                 f"{q['after'].get('exact', 0)} of {q['pairs']} statuses were exactly right, and a full re-index changed "
                 f"{q['changed_by_reindex']}.", "",
@@ -142,8 +158,8 @@ def render() -> str:
                             "detection.")
     cal = _load("calibration-matching.json")
     if cal:
-        rows = [f"down to {c['threshold']:g} at a {c['alpha']:.0%} wrong-attachment rate" for c in cal["calibration"]
-                if c["threshold"] is not None]
+        rows = [f"down to {c['threshold']:g} at {c['alpha']:.0%} wrong among the documents it attaches"
+                for c in cal["calibration"] if c["threshold"] is not None]
         n = cal["calibration"][0]["n"]
         val = cal.get("validation") or {}
         today = next((v for v in val.get("results", []) if v["threshold"] == 92.0), None)
@@ -158,16 +174,17 @@ def render() -> str:
         inv, tot = act["invariants"], act["totals"]
         out += ["", f"### From finding to action ([simulation](reports/action-sim-full-seed11.md), commit "
                 f"`{_commit(act)}`)", "",
-                f"{act['days']} simulated days: {inv['events']} status changes, each reported once and dispatched; "
+                f"{act['days']} simulated days: {inv['events']} status and permission changes, each reported once and "
+                f"dispatched; "
                 f"tasks " + ", ".join(f"{k} {v}" for k, v in sorted(act["tasks"].items())) +
                 (f"; a creditor chase closed a median {act['days_to_close_chase_median']} days after it opened"
                  if act.get("days_to_close_chase_median") is not None else "") +
                 f"; {act['reminders_written']} reminders (one a week at most); holds placed {tot.get('hold_placed', 0)}, "
                 f"released {tot.get('hold_released', 0)}; {sum(act['deliveries'].values())} webhook messages "
                 f"({', '.join(f'{k} {v}' for k, v in sorted(act['deliveries'].items()))}) to a receiver that was down "
-                f"{act['outage']:.0%} of the time, each processed once "
+                f"{act['outage']:.0%} of the time, delivered at least once and processed once by its id "
                 f"({sum(r['duplicates_ignored'] for r in act['receivers'].values())} repeats ignored). At most one open "
-                "task per requirement and one open hold per claim throughout" +
+                "task per requirement and one open hold per claim and action throughout" +
                 ("; a dispatcher killed mid-event left nothing half done." if act.get("crash") else ".")]
     g = _load("assistant-golden-full-seed11.json")
     if g:
@@ -178,7 +195,8 @@ def render() -> str:
         leaked = sum(c.get("leaked", 0) for c in bt.values())
         out += ["", f"### The assistant ([golden set](reports/assistant-golden-full-seed11.md), commit "
                 f"`{_commit(g)}`)", "",
-                f"{g['right']} of {g['questions']} questions answered right: field lookups with citations "
+                f"{g['right']} of {g['questions']} generated questions, in the categories the assistant supports, "
+                f"answered right: field lookups with citations "
                 f"({f.get('right', 0)} of {f.get('n', 0)}, including {f.get('unsettled', 0)} the engine had not settled, "
                 f"answered as such), near-twin names, shared first words asked back, another tenant's creditors, "
                 f"unanswerable questions, hostile documents and lists of lapsing authorities. Wrong values, wrong versions or wrong "
@@ -196,10 +214,12 @@ def render() -> str:
     mutants = len(re.findall(r'^    \("', (ROOT / "scripts" / "prove_tests_fire.py").read_text(encoding="utf-8"),
                              re.M))
     out += ["", "### Delivery", "",
-            f"At least {floor.group(1) if floor else '?'} tests (a run that collects fewer, or skips one without a "
-            f"stated reason, fails); {mutants} safety rules broken on purpose, one at a time, each caught by the "
-            "tests; the harness gates on every push; the same queue, tenancy and engine tests on Postgres; the pipeline "
-            "itself checked by zizmor and actionlint; one required check that passes only when every job did "
+            f"{floor.group(1) if floor else '?'} tests (a run that collects fewer, or skips one without a stated reason, "
+            f"fails; the Postgres-only tests skip locally and run in their own job); {mutants} hand-picked safety rules "
+            "broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation "
+            "score); the harness gates on every push; queue, tenancy, row-level security, approvals and the engine "
+            "tested on Postgres; the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, "
+            "that passes only when every job did, meant to be the required check on main "
             "([how a change ships](docs/delivery.md))."]
     return "\n".join(out)
 

@@ -1,14 +1,14 @@
 # Load test: full world, seed 11
 
-Commit `6b2b49d`, command `testamur loadtest --world data/world_full11 --out data/load_full11 --workers 1,2,4 --budget-pages 40 --report reports/loadtest-full-seed11.md`, 4 logical CPUs on a GitHub-hosted runner. Every upload is enqueued at once; worker processes drain the queue; the clause model is off (OCR is the cost being measured).
+Commit `f16af51`, command `testamur loadtest --world data/world_full11 --out data/load_full11 --workers 1,2,4 --budget-pages 40 --report reports/loadtest-full-seed11.md`, 4 logical CPUs on a GitHub-hosted runner. Every upload is enqueued at once; worker processes drain the queue; the clause model is off (OCR is the cost being measured).
 
 ## Scaling
 
 | Workers | Uploads | Wall time | Uploads/min | OCR pages | OCR pages/min | Job latency p50 / p95 | Dead | Statuses identical to 1 worker |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 412 | 294.7 s | 83.9 | 175 | 35.6 | 169.0 s / 283.8 s | 0 | yes |
-| 2 | 412 | 240.0 s | 103.0 | 175 | 43.7 | 137.9 s / 228.4 s | 0 | yes |
-| 4 | 412 | 224.9 s | 109.9 | 175 | 46.7 | 125.3 s / 215.0 s | 0 | yes |
+| 1 | 412 | 162.4 s | 152.3 | 175 | 64.7 | 93.4 s / 155.9 s | 0 | yes |
+| 2 | 412 | 129.9 s | 190.3 | 175 | 80.8 | 73.2 s / 121.0 s | 0 | yes |
+| 4 | 412 | 109.7 s | 225.4 | 175 | 95.7 | 61.4 s / 102.4 s | 0 | yes |
 
 ## Spend gate
 

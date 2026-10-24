@@ -1,15 +1,16 @@
 {
   "meta": {
-    "generated": "2026-10-10 13:19 UTC",
-    "commit": "6b2b49d",
+    "generated": "2026-10-24 18:51 UTC",
+    "commit": "f16af51",
     "command": "testamur harness --world data/world --db data/harness.db --report reports/harness-small-seed7-linux.md --model-path models/Qwen3-4B-Instruct-2507-Q4_K_M.gguf --cassette reports/cassettes/small-seed7-linux.jsonl",
     "world_seed": 7,
     "world_size": "small",
     "as_of": "2026-10-01",
-    "pack": "ec1a0adbe9ad",
-    "engine": "0.3.0+pack.ec1a0adbe9ad",
+    "pack": "71025b0fab31",
+    "engine": "0.4.0+code.c03965071d+pack.71025b0fab31",
     "model": "llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
     "model_mode": "live",
+    "model_fingerprint": "gguf:3605803b982cb64a|llama-cpp-python 0.3.36|ctx 4096",
     "ocr": "2+rapidocr-3.10.0",
     "uploads": 119,
     "python": "3.11.17"
@@ -29,8 +30,8 @@
       }
     },
     "matching": {
-      "matched_correctly": 104,
-      "abstained_as_expected": 4,
+      "matched_correctly": 103,
+      "abstained_as_expected": 5,
       "wrong_match_examples": []
     },
     "checks": {
@@ -68,6 +69,17 @@
           "false_fail": 0,
           "false_pass_upper95": 0.49
         },
+        "auth_in_effect": {
+          "tier": "field",
+          "severity": "critical",
+          "n": 22,
+          "agree": 22,
+          "false_pass": 0,
+          "truth_negative": 0,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": null
+        },
         "auth_issued_recently": {
           "tier": "field",
           "severity": "minor",
@@ -93,8 +105,8 @@
         "bank_account_on_file": {
           "tier": "field",
           "severity": "critical",
-          "n": 18,
-          "agree": 18,
+          "n": 20,
+          "agree": 20,
           "false_pass": 0,
           "truth_negative": 3,
           "abstained": 0,
@@ -104,19 +116,19 @@
         "bank_channel_verified": {
           "tier": "metadata",
           "severity": "critical",
-          "n": 18,
-          "agree": 18,
+          "n": 20,
+          "agree": 20,
           "false_pass": 0,
-          "truth_negative": 9,
+          "truth_negative": 10,
           "abstained": 0,
           "false_fail": 0,
-          "false_pass_upper95": 0.299
+          "false_pass_upper95": 0.278
         },
         "bank_holder_matches": {
           "tier": "field",
           "severity": "critical",
-          "n": 18,
-          "agree": 18,
+          "n": 20,
+          "agree": 20,
           "false_pass": 0,
           "truth_negative": 0,
           "abstained": 0,
@@ -126,19 +138,19 @@
         "bank_ifsc_valid": {
           "tier": "field",
           "severity": "critical",
-          "n": 18,
-          "agree": 18,
+          "n": 20,
+          "agree": 20,
           "false_pass": 0,
-          "truth_negative": 2,
+          "truth_negative": 3,
           "abstained": 0,
           "false_fail": 0,
-          "false_pass_upper95": 0.658
+          "false_pass_upper95": 0.562
         },
         "bank_letter_recent": {
           "tier": "field",
           "severity": "minor",
-          "n": 18,
-          "agree": 18,
+          "n": 20,
+          "agree": 20,
           "false_pass": 0,
           "truth_negative": 1,
           "abstained": 0,
@@ -148,8 +160,8 @@
         "charge_amount_covers": {
           "tier": "field",
           "severity": "major",
-          "n": 15,
-          "agree": 15,
+          "n": 16,
+          "agree": 16,
           "false_pass": 0,
           "truth_negative": 2,
           "abstained": 0,
@@ -159,8 +171,8 @@
         "charge_covers_assets": {
           "tier": "field",
           "severity": "major",
-          "n": 15,
-          "agree": 15,
+          "n": 16,
+          "agree": 16,
           "false_pass": 0,
           "truth_negative": 1,
           "abstained": 0,
@@ -170,8 +182,8 @@
         "charge_holder_matches": {
           "tier": "field",
           "severity": "critical",
-          "n": 15,
-          "agree": 15,
+          "n": 16,
+          "agree": 16,
           "false_pass": 0,
           "truth_negative": 0,
           "abstained": 0,
@@ -181,8 +193,8 @@
         "charge_on_debtor": {
           "tier": "field",
           "severity": "critical",
-          "n": 15,
-          "agree": 15,
+          "n": 16,
+          "agree": 16,
           "false_pass": 0,
           "truth_negative": 0,
           "abstained": 0,
@@ -192,8 +204,19 @@
         "charge_registrar_recognised": {
           "tier": "field",
           "severity": "major",
-          "n": 15,
-          "agree": 15,
+          "n": 16,
+          "agree": 16,
+          "false_pass": 0,
+          "truth_negative": 0,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": null
+        },
+        "claim_against_debtor": {
+          "tier": "field",
+          "severity": "critical",
+          "n": 23,
+          "agree": 23,
           "false_pass": 0,
           "truth_negative": 0,
           "abstained": 0,
@@ -291,8 +314,8 @@
         "clause_assignment": {
           "tier": "model",
           "severity": "minor",
-          "n": 21,
-          "agree": 18,
+          "n": 20,
+          "agree": 17,
           "false_pass": 0,
           "truth_negative": 3,
           "abstained": 3,
@@ -302,41 +325,52 @@
         "clause_disbursement": {
           "tier": "model",
           "severity": "critical",
-          "n": 21,
+          "n": 20,
           "agree": 20,
+          "false_pass": 0,
+          "truth_negative": 0,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": null
+        },
+        "clause_interest": {
+          "tier": "model",
+          "severity": "major",
+          "n": 20,
+          "agree": 19,
           "false_pass": 0,
           "truth_negative": 1,
           "abstained": 1,
           "false_fail": 0,
           "false_pass_upper95": 0.793
         },
-        "clause_interest": {
-          "tier": "model",
-          "severity": "major",
-          "n": 21,
-          "agree": 19,
-          "false_pass": 0,
-          "truth_negative": 2,
-          "abstained": 2,
-          "false_fail": 0,
-          "false_pass_upper95": 0.658
-        },
         "clause_security": {
           "tier": "model",
           "severity": "critical",
-          "n": 21,
-          "agree": 20,
+          "n": 20,
+          "agree": 19,
           "false_pass": 0,
           "truth_negative": 2,
           "abstained": 1,
           "false_fail": 0,
           "false_pass_upper95": 0.658
         },
+        "facility_borrower_is_debtor": {
+          "tier": "field",
+          "severity": "critical",
+          "n": 20,
+          "agree": 20,
+          "false_pass": 0,
+          "truth_negative": 0,
+          "abstained": 0,
+          "false_fail": 0,
+          "false_pass_upper95": null
+        },
         "facility_signed": {
           "tier": "field",
           "severity": "critical",
-          "n": 21,
-          "agree": 21,
+          "n": 20,
+          "agree": 20,
           "false_pass": 0,
           "truth_negative": 3,
           "abstained": 0,
@@ -357,27 +391,27 @@
       },
       "by_tier": {
         "field": {
-          "n": 462,
-          "agree": 462,
+          "n": 539,
+          "agree": 539,
           "false_pass": 0,
-          "truth_negative": 36,
+          "truth_negative": 37,
           "abstained": 0,
           "false_fail": 0
         },
         "metadata": {
-          "n": 41,
-          "agree": 41,
+          "n": 43,
+          "agree": 43,
           "false_pass": 0,
-          "truth_negative": 13,
+          "truth_negative": 14,
           "abstained": 0,
           "false_fail": 0
         },
         "model": {
-          "n": 84,
-          "agree": 77,
+          "n": 80,
+          "agree": 75,
           "false_pass": 0,
-          "truth_negative": 8,
-          "abstained": 7,
+          "truth_negative": 6,
+          "abstained": 5,
           "false_fail": 0
         }
       },
@@ -385,27 +419,30 @@
       "critical_false_pass": 0
     },
     "status": {
-      "requirement_instances": 125,
-      "exact": 121,
+      "requirement_instances": 145,
+      "exact": 142,
       "deferred_to_review": 3,
-      "other_mismatch": 1,
-      "exact_rate": 0.968,
-      "deferral_rate": 0.024,
+      "exact_rate": 0.9793,
+      "deferral_rate": 0.0207,
       "confusion": {
         "COVERED_BY_TRUSTEE -> COVERED_BY_TRUSTEE": 2,
         "EXPIRED -> EXPIRED": 2,
-        "EXPIRED -> NEEDS_REVIEW": 1,
-        "MISSING -> MISSING": 9,
+        "MISSING -> MISSING": 26,
+        "MISSING -> NEEDS_REVIEW": 2,
         "NEEDS_REVIEW -> NEEDS_REVIEW": 4,
-        "NOT_REQUIRED -> NOT_REQUIRED": 11,
-        "NOT_SATISFIED -> NEEDS_REVIEW": 2,
-        "NOT_SATISFIED -> NOT_SATISFIED": 13,
-        "SATISFIED -> SATISFIED": 50,
-        "SATISFIED_WITH_FINDINGS -> SATISFIED": 1,
+        "NOT_REQUIRED -> NOT_REQUIRED": 12,
+        "NOT_SATISFIED -> NEEDS_REVIEW": 1,
+        "NOT_SATISFIED -> NOT_SATISFIED": 14,
+        "SATISFIED -> SATISFIED": 52,
         "SATISFIED_WITH_FINDINGS -> SATISFIED_WITH_FINDINGS": 26,
         "VERIFIED_OUT_OF_BAND -> VERIFIED_OUT_OF_BAND": 4
       },
       "false_vouching_examples": []
+    },
+    "permissions": {
+      "pairs": 58,
+      "exact": 58,
+      "false_grant_examples": []
     },
     "security": {
       "injected_documents": 2,
@@ -414,12 +451,12 @@
     },
     "cost": {
       "ocr_pages": 51.0,
-      "model_calls": 135.0,
-      "model_tokens": 68423.0,
-      "model_seconds": 146.835858147,
-      "first_pass_seconds": 228.5,
+      "model_calls": 129.0,
+      "model_tokens": 65561.0,
+      "model_seconds": 2506.163116030001,
+      "first_pass_seconds": 2575.3,
       "reindex": {
-        "seconds": 1.9,
+        "seconds": 1.7,
         "new_ocr_pages": 0.0,
         "new_model_calls": 0.0
       },
@@ -429,6 +466,13 @@
   "gates": [
     {
       "gate": "status false vouching",
+      "value": 0,
+      "op": "<=",
+      "limit": 0,
+      "ok": true
+    },
+    {
+      "gate": "vote or payout permitted when the truth withholds it",
       "value": 0,
       "op": "<=",
       "limit": 0,
@@ -457,7 +501,7 @@
     },
     {
       "gate": "status deferral rate",
-      "value": 0.024,
+      "value": 0.0207,
       "op": "<=",
       "limit": 0.25,
       "ok": true

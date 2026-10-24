@@ -284,7 +284,7 @@ def tasks(db: str = "data/harness.db", tenant: int = 1, show_closed: bool = Fals
         for t in s.scalars(q):
             typer.echo(f"{t.status:10} due {t.due_at:%Y-%m-%d} {t.kind:15} {t.title}")
         for h in s.scalars(select(Hold).where(Hold.released_at.is_(None))):
-            typer.echo(f"HOLD       claim {h.claim_id} since {h.placed_at:%Y-%m-%d}: {', '.join(h.requirements)}")
+            typer.echo(f"HOLD {h.action:6} claim {h.claim_id} since {h.placed_at:%Y-%m-%d}: {'; '.join(h.reasons)}")
 
 
 @app.command()
@@ -342,24 +342,35 @@ def keys_create(name: str, db: str = "data/harness.db", tenant: int = 1):
     typer.echo(create_key(_engine(db).store, tenant, name))
 
 
+@keys.command("revoke")
+def keys_revoke(name: str, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
+    """Revoke an agent's keys; servers already running refuse its next call."""
+    from .agents import revoke_key
+    typer.echo(f"{revoke_key(_engine(db).store, tenant, name, by)} key(s) revoked")
+
+
+AGENT = typer.Option("*", "--agent", help="the agent the grant is for; * for every agent of the tenant")
+
+
 @tools_app.command("grant")
-def tools_grant(tool: str, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
+def tools_grant(tool: str, by: str = BY, agent: str = AGENT, db: str = "data/harness.db", tenant: int = 1):
     from .agents import grant
-    _decide(grant, _engine(db).store, tenant, tool, by)
-    typer.echo(f"{tool}: granted")
+    _decide(grant, _engine(db).store, tenant, tool, by, agent)
+    typer.echo(f"{tool}: granted to {agent}")
 
 
 @tools_app.command("revoke")
-def tools_revoke(tool: str, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
+def tools_revoke(tool: str, by: str = BY, agent: str = AGENT, db: str = "data/harness.db", tenant: int = 1):
     from .agents import revoke
-    revoke(_engine(db).store, tenant, tool, by)
-    typer.echo(f"{tool}: revoked")
+    revoke(_engine(db).store, tenant, tool, by, agent)
+    typer.echo(f"{tool}: revoked from {agent}")
 
 
 @tools_app.command("list")
-def tools_list(db: str = "data/harness.db", tenant: int = 1):
+def tools_list(agent: str = typer.Option(None, "--agent", help="what one agent may call"), db: str = "data/harness.db",
+               tenant: int = 1):
     from .agents import TOOLS, granted
-    have = granted(_engine(db).store, tenant)
+    have = granted(_engine(db).store, tenant, agent)
     for tool in TOOLS:
         typer.echo(f"{'granted' if tool in have else '-':8} {tool}")
 
@@ -368,14 +379,17 @@ def tools_list(db: str = "data/harness.db", tenant: int = 1):
 def proposals_list(db: str = "data/harness.db", tenant: int = 1):
     from .agents import pending_proposals
     for p in pending_proposals(_engine(db).store, tenant):
-        typer.echo(f"{p['proposal']:5} by {p['by']}: {p['summary']} (expires {p['expires']})")
+        typer.echo(f"{p['proposal']:5} by {p['by']}: {p['summary']} (digest {p['digest']}, expires {p['expires']})")
 
 
 @proposals.command("confirm")
-def proposals_confirm(proposal: int, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
-    """Apply an agent's proposal, under your name with the agent's beside it."""
+def proposals_confirm(proposal: int, by: str = BY,
+                      digest: str = typer.Option(None, help="the digest you were shown; refused if it differs"),
+                      db: str = "data/harness.db", tenant: int = 1):
+    """Apply an agent's proposal, under your name with the agent's beside it, if its evidence is still what it was
+    made on (otherwise it is marked stale and nothing changes)."""
     from .agents import decide
-    typer.echo(_decide(decide, _engine(db), tenant, proposal, by, True))
+    typer.echo(_decide(decide, _engine(db), tenant, proposal, by, True, None, digest))
 
 
 @proposals.command("decline")

@@ -7,12 +7,15 @@
 - **Reads** paginate with a cursor and run a fixed number of queries per page, however many rows a tenant has: an
   agent can call a tool far more often than a person clicks, so a query per row would not survive.
 - **Writes are proposals.** An agent proposes a decision (a check verdict, a field reading, a document decision); a
-  person confirms or declines it. A confirmed proposal is applied through the same engine call a person would make,
-  under the person's name with the agent's recorded beside it, and audited. Proposals expire after a week.
+  person confirms or declines it. A proposal is bound to the evidence it was made on; confirming it applies it in one
+  transaction with its own state change, audit and outbox event, through the same engine call a person would make,
+  under the person's name with the agent's recorded beside it. A proposal whose evidence changed is refused as stale.
+  Proposals expire after a week.
 """
 from __future__ import annotations
 
 import hashlib
+import json
 import secrets
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -28,7 +31,10 @@ from .store import (
     Claim,
     Creditor,
     Document,
+    DocumentReview,
+    FieldCorrection,
     Hold,
+    OutboxEvent,
     Proposal,
     RequirementState,
     Store,
@@ -68,34 +74,57 @@ def authenticate(store: Store, key: str) -> tuple[int, str]:
         return row.tenant_id, row.name
 
 
-def grant(store: Store, tenant_id: int, tool: str, by: str) -> None:
+def revoke_key(store: Store, tenant_id: int, name: str, by: str) -> int:
+    """Revoke every live key of the named agent. Takes effect on the next call, on servers already running too."""
+    with store.tenant(tenant_id) as s:
+        rows = s.scalars(select(ApiKey).where(ApiKey.name == name, ApiKey.revoked_at.is_(None))).all()
+        for row in rows:
+            row.revoked_at = utcnow()
+        s.add(AuditRow(actor=by, action="agent_key_revoked", target=f"agent:{name}", detail={"keys": len(rows)}))
+        return len(rows)
+
+
+def grant(store: Store, tenant_id: int, tool: str, by: str, principal: str = "*") -> None:
+    """Grant a tool to every agent of the tenant ("*") or to one agent by name."""
     if tool not in TOOLS:
         raise KeyError(f"unknown tool {tool}")
     with store.tenant(tenant_id) as s:
-        row = s.scalar(select(ToolGrant).where(ToolGrant.tool == tool))
+        row = s.scalar(select(ToolGrant).where(ToolGrant.tool == tool, ToolGrant.principal == principal))
         if row is None:
-            s.add(ToolGrant(tool=tool, granted_by=by))
+            s.add(ToolGrant(tool=tool, principal=principal, granted_by=by))
         else:
             row.revoked_at, row.granted_by, row.granted_at = None, by, utcnow()
-        s.add(AuditRow(actor=by, action="tool_granted", target=f"tool:{tool}", detail={}))
+        s.add(AuditRow(actor=by, action="tool_granted", target=f"tool:{tool}", detail={"principal": principal}))
 
 
-def revoke(store: Store, tenant_id: int, tool: str, by: str) -> None:
+def revoke(store: Store, tenant_id: int, tool: str, by: str, principal: str = "*") -> None:
     with store.tenant(tenant_id) as s:
-        row = s.scalar(select(ToolGrant).where(ToolGrant.tool == tool, ToolGrant.revoked_at.is_(None)))
+        row = s.scalar(select(ToolGrant).where(ToolGrant.tool == tool, ToolGrant.principal == principal,
+                                               ToolGrant.revoked_at.is_(None)))
         if row is not None:
             row.revoked_at = utcnow()
-            s.add(AuditRow(actor=by, action="tool_revoked", target=f"tool:{tool}", detail={}))
+            s.add(AuditRow(actor=by, action="tool_revoked", target=f"tool:{tool}", detail={"principal": principal}))
 
 
-def granted(store: Store, tenant_id: int) -> set[str]:
+def granted(store: Store, tenant_id: int, principal: str | None = None) -> set[str]:
+    """The tools an agent may call: those granted to every agent of the tenant, and those granted to it by name."""
+    whom = ["*"] if principal is None else ["*", principal]
     with store.tenant(tenant_id) as s:
-        return {g.tool for g in s.scalars(select(ToolGrant).where(ToolGrant.revoked_at.is_(None)))}
+        return {g.tool for g in s.scalars(select(ToolGrant).where(ToolGrant.revoked_at.is_(None),
+                                                                  ToolGrant.principal.in_(whom)))}
 
 
-def require(store: Store, tenant_id: int, tool: str) -> None:
-    if tool not in granted(store, tenant_id):
-        raise PermissionError(f"the tool {tool} is not granted for this tenant")
+def require(store: Store, tenant_id: int, tool: str, principal: str | None = None) -> None:
+    if tool not in granted(store, tenant_id, principal):
+        raise PermissionError(f"the tool {tool} is not granted to this agent")
+
+
+def require_key(store: Store, api_key: str, tenant_id: int, agent: str, tool: str) -> None:
+    """Every call, not once per connection: the key must still be live and still be the same agent's, and the tool
+    still granted to it. A revoked key or tool stops working at once, on a server built before the revocation."""
+    if authenticate(store, api_key) != (tenant_id, agent):
+        raise PermissionError("the key no longer stands for this agent")
+    require(store, tenant_id, tool, agent)
 
 
 # ---------------------------------------------------------------------------------------------- reads
@@ -112,10 +141,13 @@ def list_claims(store: Store, tenant_id: int, cursor: int = 0, limit: int = 25) 
         states: dict[int, dict] = defaultdict(dict)
         for st in s.scalars(select(RequirementState).where(RequirementState.claim_id.in_(ids))):
             states[st.claim_id][st.requirement_id] = st.status
-        held = {h.claim_id for h in s.scalars(select(Hold).where(Hold.claim_id.in_(ids),
-                                                                     Hold.released_at.is_(None)))}
+        held: dict[int, list[str]] = defaultdict(list)
+        for h in s.scalars(select(Hold).where(Hold.claim_id.in_(ids), Hold.released_at.is_(None))
+                           .order_by(Hold.action)):
+            held[h.claim_id].append(h.action)
     items = [{"claim": e.id, "creditor": names.get(e.creditor_id), "tier": e.tier, "type": e.claim_type,
-              "statuses": states.get(e.id, {}), "on_hold": e.id in held} for e in engs]
+              "statuses": states.get(e.id, {}), "on_hold": bool(held.get(e.id)), "held_for": held.get(e.id, [])}
+             for e in engs]
     return {"items": items, "next_cursor": ids[-1] if len(ids) == limit else None}
 
 
@@ -159,17 +191,23 @@ def ask(engine: Engine, tenant_id: int, question: str) -> dict:
 
 # ---------------------------------------------------------------------------------------------- proposals
 
+class StaleProposal(ValueError):
+    """The proposal is not the one the person was shown, or the evidence it was made on has changed."""
+
+
 def propose(engine: Engine, tenant_id: int, agent: str, kind: str, args: dict, reason: str) -> dict:
-    """Record what an agent wants changed, checked for sense first; nothing is changed."""
-    summary = _summary(engine, tenant_id, kind, args)
+    """Record what an agent wants changed, checked for sense first and bound to the evidence it was made on; nothing
+    is changed."""
     with engine.store.tenant(tenant_id) as s:
-        p = Proposal(kind=kind, args={**args, "reason": reason}, summary=summary, proposed_by=agent,
-                     expires_at=utcnow() + PROPOSAL_TTL)
+        binding, summary = _binding(engine, s, kind, args)
+        full = {**args, "reason": reason}
+        p = Proposal(kind=kind, args=full, binding=binding, binding_digest=_digest(kind, full, binding),
+                     summary=summary, proposed_by=agent, expires_at=utcnow() + PROPOSAL_TTL)
         s.add(p)
         s.flush()
         s.add(AuditRow(actor=f"agent:{agent}", action="proposal_created", target=f"proposal:{p.id}",
-                       detail={"kind": kind, "args": args, "reason": reason}))
-        return {"proposal": p.id, "status": "proposed", "summary": summary,
+                       detail={"kind": kind, "args": args, "reason": reason, "binding": binding}))
+        return {"proposal": p.id, "status": "proposed", "summary": summary, "digest": p.binding_digest,
                 "next": f"a person confirms or declines it: testamur proposals confirm {p.id} --by NAME"}
 
 
@@ -179,92 +217,143 @@ def proposal_status(store: Store, tenant_id: int, proposal: int) -> dict:
         if p is None:
             raise KeyError(f"no proposal {proposal} for this tenant")
         status = "expired" if p.status == "proposed" and p.expires_at < utcnow() else p.status
-        return {"proposal": p.id, "status": status, "summary": p.summary, "decided_by": p.decided_by,
-                "outcome": p.outcome}
+        return {"proposal": p.id, "status": status, "summary": p.summary, "digest": p.binding_digest,
+                "binding": p.binding, "decided_by": p.decided_by, "outcome": p.outcome}
 
 
 def decide(engine: Engine, tenant_id: int, proposal: int, person: str, confirm: bool,
-           now: datetime | None = None) -> str:
-    """A person confirms or declines an agent's proposal. Confirmed, it is applied by the engine under the person's
-    name with the agent's beside it; the agent cannot do this step."""
+           now: datetime | None = None, seen: str | None = None, fail_at: str | None = None) -> str:
+    """A person confirms or declines an agent's proposal; the agent cannot do this step.
+
+    One transaction does all of it: the proposal is claimed (locked on Postgres; SQLite transactions are serialised),
+    its evidence is derived again and compared with what it was bound to, the change is applied by the engine under the
+    person's name with the agent's beside it, the proposal is marked, audited and announced through the outbox. A crash
+    anywhere before the commit leaves nothing; after it, everything, and a second confirmation is refused. The effect
+    carries the proposal's id under a unique key, so it cannot exist twice whatever happens to the proposal row.
+
+    `seen` is the binding digest the person was shown: a different one is refused. A proposal whose evidence changed
+    since it was made (a newer document, a correction, a changed rule, another engine) is marked stale and nothing is
+    applied. `fail_at` crashes on purpose at a step, for tests."""
     now = now or utcnow()
     with engine.store.tenant(tenant_id) as s:
-        p = s.get(Proposal, proposal)
+        claim = select(Proposal).where(Proposal.id == proposal)
+        p = s.scalar(claim.with_for_update() if engine.store.dialect == "postgresql" else claim)
         if p is None:
             raise KeyError(f"no proposal {proposal} for this tenant")
         if p.status != "proposed":
             raise ValueError(f"proposal {proposal} is already {p.status}")
+        if seen is not None and seen != p.binding_digest:
+            raise StaleProposal(f"proposal {proposal} is not the one you were shown")
         if p.expires_at < now:
-            p.status = "expired"
+            p.status, p.decided_at, p.outcome = "expired", now, "expired before anyone decided"
+            s.add(AuditRow(actor=person, action="proposal_expired", target=f"proposal:{p.id}", detail={}))
             return "expired"
-        kind, args, agent = p.kind, dict(p.args), p.proposed_by
         if not confirm:
             p.status, p.decided_by, p.decided_at, p.outcome = "declined", person, now, "declined"
             s.add(AuditRow(actor=person, action="proposal_declined", target=f"proposal:{p.id}", detail={}))
             return "declined"
-    who, note = f"{person} (proposed by agent {agent})", args.get("reason", "")
-    if kind == "check_verdict":
-        outcome = str(engine.review_check(tenant_id, args["claim"], args["requirement"], args["check"],
-                                          args["verdict"], who, note))
-    elif kind == "field_reading":
-        engine.correct_field(tenant_id, args["document"], args["field"], args["value"], who, note)
-        outcome = "field corrected"
-    elif kind == "document_decision":
-        action = args["action"]
-        if action == "assign":
-            engine.assign(tenant_id, args["document"], args["creditor"], who, note)
-        elif action == "reject":
-            engine.reject(tenant_id, args["document"], who, note)
-        elif action == "clear":
-            engine.clear(tenant_id, args["document"], who, note)
-        else:
-            engine.classify_document(tenant_id, args["document"], args["doc_type"], who, note)
-        outcome = f"document {action}"
-    else:
-        raise ValueError(f"unknown proposal kind {kind}")
-    with engine.store.tenant(tenant_id) as s:
-        p = s.get(Proposal, proposal)
+        args = {k: v for k, v in p.args.items() if k != "reason"}
+        try:
+            current, _ = _binding(engine, s, p.kind, args)
+        except (KeyError, ValueError):
+            current = None
+        if current != p.binding:
+            p.status, p.decided_by, p.decided_at = "stale", person, now
+            p.outcome = "the evidence changed after the proposal was made; nothing was applied: propose again"
+            s.add(AuditRow(actor=person, action="proposal_stale", target=f"proposal:{p.id}",
+                           detail={"bound": p.binding, "now": current}))
+            return "stale"
+        who = f"{person} (proposed by agent {p.proposed_by})"
+        outcome = _apply(engine, s, tenant_id, p, who, p.args.get("reason", ""))
+        if fail_at == "after_effect":
+            raise RuntimeError("crashed after the effect, before the proposal was marked")
         p.status, p.decided_by, p.decided_at, p.outcome = "applied", person, now, outcome
         s.add(AuditRow(actor=person, action="proposal_applied", target=f"proposal:{p.id}",
-                       detail={"agent": agent, "kind": kind, "outcome": outcome}))
+                       detail={"agent": p.proposed_by, "kind": p.kind, "outcome": outcome,
+                               "digest": p.binding_digest}))
+        s.add(OutboxEvent(key=f"proposal:{p.id}", kind="proposal.applied",
+                          payload={"proposal": p.id, "kind": p.kind, "by": person, "agent": p.proposed_by,
+                                   "outcome": outcome, "digest": p.binding_digest}))
+        if fail_at == "before_commit":
+            raise RuntimeError("crashed before the commit")
+    if fail_at == "after_commit":
+        raise RuntimeError("crashed after the commit")
     return outcome
 
 
-def _summary(engine: Engine, tenant_id: int, kind: str, args: dict) -> str:
-    """Check a proposal makes sense before it is recorded, and say in words what it would do."""
-    with engine.store.tenant(tenant_id) as s:
-        if kind == "check_verdict":
-            if Verdict(args["verdict"]) not in (Verdict.PASS, Verdict.FAIL):
-                raise ValueError("a check verdict is PASS or FAIL")
-            if args["check"] not in engine.pack.requirements[args["requirement"]].checks:
-                raise KeyError(f"requirement {args['requirement']} has no check {args['check']}")
-            st = s.get(RequirementState, {"claim_id": args["claim"], "requirement_id": args["requirement"],
-                                          "tenant_id": tenant_id})
-            if st is None or st.document_id is None:
-                raise KeyError("no document is being judged for this claim and requirement")
-            return (f"set {args['check']} to {args['verdict']} for claim {args['claim']} "
-                    f"({args['requirement']}, document {st.document_id})")
-        doc = s.get(Document, args.get("document"))
-        if doc is None:
-            raise KeyError(f"no document {args.get('document')} for this tenant")
-        if kind == "field_reading":
-            return f"read {args['field']} on document {doc.id} as {args['value']!r}"
-        if kind == "document_decision":
-            if args["action"] not in ("assign", "reject", "clear", "classify"):
-                raise ValueError("a document decision is assign, reject, clear or classify")
-            if args["action"] == "assign":
-                sup = s.get(Creditor, args.get("creditor"))
-                if sup is None:
-                    raise KeyError(f"no creditor {args.get('creditor')} for this tenant")
-                return f"assign document {doc.id} to {sup.legal_name}"
-            return f"{args['action']} document {doc.id}" + (f" as {args['doc_type']}" if args.get("doc_type") else "")
+def _apply(engine: Engine, s, tenant_id: int, p: Proposal, who: str, note: str) -> str:
+    args = p.args
+    if p.kind == "check_verdict":
+        return str(engine.review_check_in(s, tenant_id, args["claim"], args["requirement"], args["check"],
+                                          args["verdict"], who, note, proposal_id=p.id,
+                                          document_id=p.binding["document"]))
+    if p.kind == "field_reading":
+        engine.correct_field_in(s, tenant_id, args["document"], args["field"], args["value"], who, note,
+                                proposal_id=p.id)
+        return "field corrected"
+    if p.kind == "document_decision":
+        engine.document_decision_in(s, tenant_id, args["document"], args["action"], who, note,
+                                    doc_type=args.get("doc_type"), creditor_id=args.get("creditor"), proposal_id=p.id)
+        return f"document {args['action']}"
+    raise ValueError(f"unknown proposal kind {p.kind}")
+
+
+def _digest(kind: str, args: dict, binding: dict) -> str:
+    raw = json.dumps({"kind": kind, "args": args, "binding": binding}, sort_keys=True, default=str)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def _binding(engine: Engine, s, kind: str, args: dict) -> tuple[dict, str]:
+    """What a proposal is about, as it stands now (the evidence a person is shown and confirms), and what it would do
+    in words. Raises if it makes no sense."""
+    if kind == "check_verdict":
+        if Verdict(args["verdict"]) not in (Verdict.PASS, Verdict.FAIL):
+            raise ValueError("a check verdict is PASS or FAIL")
+        if args["check"] not in engine.pack.requirements[args["requirement"]].checks:
+            raise KeyError(f"requirement {args['requirement']} has no check {args['check']}")
+        st = s.get(RequirementState, {"claim_id": args["claim"], "requirement_id": args["requirement"],
+                                      "tenant_id": s.info["tenant_id"]})
+        if st is None or st.document_id is None:
+            raise KeyError("no document is being judged for this claim and requirement")
+        doc, e = s.get(Document, st.document_id), s.get(Claim, args["claim"])
+        binding = {"claim": e.id, "matter": e.matter_id, "requirement": args["requirement"], "check": args["check"],
+                   "document": doc.id, "sha256": doc.sha256, "evidence": st.evidence_digest,
+                   "rule": engine.pack.rule_digest(args["check"]), "engine": engine.version}
+        return binding, (f"set {args['check']} to {args['verdict']} for claim {args['claim']} "
+                         f"({args['requirement']}, document {doc.id})")
+    doc = s.get(Document, args.get("document"))
+    if doc is None:
+        raise KeyError(f"no document {args.get('document')} for this tenant")
+    base = {"document": doc.id, "matter": doc.matter_id, "sha256": doc.sha256, "engine": doc.engine_version}
+    if kind == "field_reading":
+        if doc.doc_type is None or args["field"] not in engine.pack.doc_types[doc.doc_type].fields:
+            raise KeyError(f"document {doc.id} has no field {args['field']}")
+        corrections = [c.id for c in s.scalars(select(FieldCorrection).where(
+            FieldCorrection.document_id == doc.id, FieldCorrection.field == args["field"]).order_by(FieldCorrection.id))]
+        binding = {**base, "field": args["field"], "reading": (doc.fields or {}).get(args["field"]),
+                   "conflicts": (doc.conflicts or {}).get(args["field"]), "corrections": corrections}
+        return binding, f"read {args['field']} on document {doc.id} as {args['value']!r}"
+    if kind == "document_decision":
+        if args["action"] not in ("assign", "reject", "clear", "classify"):
+            raise ValueError("a document decision is assign, reject, clear or classify")
+        decisions = [d.id for d in s.scalars(select(DocumentReview).where(DocumentReview.document_id == doc.id)
+                                             .order_by(DocumentReview.id))]
+        binding = {**base, "state": doc.state, "doc_type": doc.doc_type, "creditor": doc.creditor_id,
+                   "hostile": doc.hostile, "cleared": doc.cleared, "decisions": decisions}
+        if args["action"] == "assign":
+            sup = s.get(Creditor, args.get("creditor"))
+            if sup is None:
+                raise KeyError(f"no creditor {args.get('creditor')} for this tenant")
+            return binding, f"assign document {doc.id} to {sup.legal_name}"
+        return binding, f"{args['action']} document {doc.id}" + (f" as {args['doc_type']}" if args.get("doc_type")
+                                                                  else "")
     raise ValueError(f"unknown proposal kind {kind}")
 
 
 def pending_proposals(store: Store, tenant_id: int) -> list[dict]:
     with store.tenant(tenant_id) as s:
         return [{"proposal": p.id, "kind": p.kind, "summary": p.summary, "by": p.proposed_by,
-                 "expires": p.expires_at.isoformat(timespec="minutes")}
+                 "digest": p.binding_digest, "expires": p.expires_at.isoformat(timespec="minutes")}
                 for p in s.scalars(select(Proposal).where(Proposal.status == "proposed").order_by(Proposal.id))]
 
 

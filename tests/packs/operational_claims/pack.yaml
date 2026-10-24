@@ -1,0 +1,63 @@
+# A second, deliberately small domain pack: operational creditors' claims (Form B) with the invoices behind them. It
+# exists to show the engine runs another domain from its pack alone (tests/test_second_domain.py); it is not a
+# complete treatment of operational claims.
+name: operational_claims
+version: 1
+
+doc_types:
+  claim_form_b:
+    title_keywords: ["form b", "proof of claim by operational creditors"]
+    key_labels: ["name of the operational creditor", "total amount of claim"]
+    name_field: creditor_name
+    fields:
+      debtor_name: {labels: ["in the matter of"], type: text}
+      creditor_name: {labels: ["name of the operational creditor"], type: text}
+      amount_claimed: {labels: ["total amount of claim"], type: money}
+  invoice:
+    title_keywords: ["tax invoice"]
+    key_labels: ["invoice number", "invoice date", "invoice amount"]
+    name_field: issued_by
+    key_date: invoice_date
+    fields:
+      issued_by: {labels: ["issued by"], type: text}
+      billed_to: {labels: ["billed to"], type: text}
+      invoice_date: {labels: ["invoice date"], type: date}
+      invoice_amount: {labels: ["invoice amount"], type: money}
+
+checks:
+  form_b_against_debtor:
+    tier: field
+    severity: critical
+    rule: name_matches
+    params: {field: debtor_name, against: debtor, pass_at: 92, fail_below: 80}
+  form_b_creditor:
+    tier: field
+    severity: critical
+    rule: name_matches
+    params: {field: creditor_name, against: creditor, pass_at: 92, fail_below: 80}
+  form_b_within_books:
+    tier: field
+    severity: major
+    rule: money_within_record
+    params: {field: amount_claimed, record: book_balance, tolerance: 0.0}
+  invoice_issued_by_creditor:
+    tier: field
+    severity: critical
+    rule: name_matches
+    params: {field: issued_by, against: creditor, pass_at: 92, fail_below: 80}
+  invoice_billed_to_debtor:
+    tier: field
+    severity: critical
+    rule: name_matches
+    params: {field: billed_to, against: debtor, pass_at: 92, fail_below: 80}
+
+requirements:
+  proof_of_operational_claim:
+    doc_type: claim_form_b
+    checks: [form_b_against_debtor, form_b_creditor, form_b_within_books]
+  invoices:
+    doc_type: invoice
+    checks: [invoice_issued_by_creditor, invoice_billed_to_debtor]
+
+injection_markers:
+  - "ignore (all |any |the )?(previous|prior|above) instructions"

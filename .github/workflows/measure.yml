@@ -62,7 +62,11 @@ jobs:
         run: |
           mkdir -p reports/cassettes
           MODEL=()
-          if [ "$MODEL_MODE" = record ]; then MODEL=(--model-path "models/$MODEL_FILE"); fi
+          if [ "$MODEL_MODE" = record ]; then
+            # a recording is made whole, by one model: every record carries the weights' fingerprint
+            rm -f reports/cassettes/full-seed11.jsonl
+            MODEL=(--model-path "models/$MODEL_FILE")
+          fi
           testamur harness --world data/world_full11 --db data/harness_full11.db \
             --report reports/harness-full-seed11.md "${MODEL[@]}" \
             --cassette reports/cassettes/full-seed11.jsonl || echo "harness gates failed: see the report" >> "$GITHUB_STEP_SUMMARY"
@@ -149,7 +153,10 @@ jobs:
         run: |
           mkdir -p reports/cassettes
           MODEL=()
-          if [ "$MODEL_MODE" = record ]; then MODEL=(--model-path "models/$MODEL_FILE"); fi
+          if [ "$MODEL_MODE" = record ]; then
+            rm -f reports/cassettes/small-seed7-linux.jsonl
+            MODEL=(--model-path "models/$MODEL_FILE")
+          fi
           testamur harness --world data/world --db data/harness.db --report reports/harness-small-seed7-linux.md \
             "${MODEL[@]}" --cassette reports/cassettes/small-seed7-linux.jsonl \
             || echo "harness gates failed: see the report" >> "$GITHUB_STEP_SUMMARY"

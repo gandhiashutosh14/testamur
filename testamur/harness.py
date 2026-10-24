@@ -29,6 +29,7 @@ from .pack import load_pack
 from .store import (
     Attestation,
     Claim,
+    ClaimPermission,
     Creditor,
     Document,
     Matter,
@@ -39,7 +40,7 @@ from .store import (
     UsageRow,
     VerdictRow,
 )
-from .synth.truth import truth_statuses
+from .synth.truth import truth_permissions, truth_statuses
 from .synth.world import World, load_world
 
 
@@ -162,6 +163,7 @@ def run(world_dir: str | Path, db_path: str | Path, model: ModelClient | None, *
             "command": command or " ".join(sys.argv), "world_seed": world.seed, "world_size": world.size,
             "as_of": world.as_of.isoformat(), "pack": pack.digest, "engine": engine.version,
             "model": getattr(model, "model_id", None) or "none", "model_mode": _model_mode(model),
+            "model_fingerprint": getattr(model, "fingerprint", None) if model is not None else None,
             "ocr": engine.extractor.version,
             "uploads": len(world.uploads), "python": sys.version.split()[0]}
     return Report(meta, metrics)
@@ -174,11 +176,20 @@ def _model_mode(model) -> str:
     return "replay" if getattr(model, "inner", "live") is None else "live"
 
 
+def instances(world: World) -> list:
+    """Each file as evidence in each process it was filed in (the unit the engine judges), stood for by its first
+    upload there: a copy filed in the same process is the same document, a copy filed in another is another."""
+    groups: dict[tuple[int, int, int], list] = {}
+    for u in world.uploads:
+        groups.setdefault((u.tenant_id, u.matter_id, u.truth.duplicate_of or u.id), []).append(u)
+    return sorted((min(ups, key=lambda u: (u.uploaded_at, u.id)) for ups in groups.values()), key=lambda u: u.id)
+
+
 def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]:
-    by_sha: dict[str, Document] = {}
+    by_key: dict[tuple[int, int, str], Document] = {}
     with store.system() as s:
         for d in s.scalars(select(Document)).all():
-            by_sha[f"{d.tenant_id}:{d.sha256}"] = d
+            by_key[(d.tenant_id, d.matter_id, d.sha256)] = d
         states = {(r.claim_id, r.requirement_id): r for r in s.scalars(select(RequirementState)).all()}
         verdicts = defaultdict(dict)
         for v in s.scalars(select(VerdictRow)).all():
@@ -186,9 +197,9 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
     up_doc: dict[int, Document] = {}
     for u in world.uploads:
         sha = sha256((world_dir / u.file).read_bytes()).hexdigest()
-        up_doc[u.id] = by_sha[f"{u.tenant_id}:{sha}"]
+        up_doc[u.id] = by_key[(u.tenant_id, u.matter_id, sha)]
 
-    originals = [u for u in world.uploads if u.truth.duplicate_of is None]
+    originals = instances(world)
     # classification
     cls = Counter()
     for u in originals:
@@ -275,12 +286,26 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
         else:
             outcome["other_mismatch"] += 1
     n_status = sum(outcome.values())
+    # permissions: what the evidence lets a claim do (vote, be paid); a grant the truth withholds is the dangerous one
+    with store.system() as s:
+        granted = {(p.claim_id, p.action): p.granted for p in s.scalars(select(ClaimPermission))}
+    perm = Counter()
+    false_grant_examples = []
+    for key, ok in truth_permissions(world, truth, pack).items():
+        got = granted.get(key, False)
+        if got == ok:
+            perm["exact"] += 1
+        elif got:
+            perm["false_grant"] += 1
+            false_grant_examples.append({"claim": key[0], "action": key[1]})
+        else:
+            perm["false_withhold"] += 1
     # security
     injected = [u for u in originals if u.truth.injection]
     detected = sum(1 for u in injected if up_doc[u.id].hostile)
     hostile_model_pass = 0
     for (_eid, _rid, did), rows in verdicts.items():
-        d = next((x for x in by_sha.values() if x.id == did), None)
+        d = next((x for x in by_key.values() if x.id == did), None)
         if d is not None and d.hostile:
             hostile_model_pass += sum(1 for r in rows.values() if r.tier == Tier.MODEL and r.verdict == Verdict.PASS)
     return {
@@ -297,6 +322,7 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
                    "deferral_rate": round(outcome["deferred_to_review"] / max(1, n_status), 4),
                    "confusion": {f"{t} -> {e}": n for (t, e), n in sorted(status_conf.items())},
                    "false_vouching_examples": false_vouching},
+        "permissions": {"pairs": sum(perm.values()), **dict(perm), "false_grant_examples": false_grant_examples[:20]},
         "security": {"injected_documents": len(injected), "detected": detected,
                      "model_pass_on_hostile_documents": hostile_model_pass},
     }
@@ -308,6 +334,8 @@ def apply_gates(report: Report, gates_file: str | Path) -> None:
     injected = m["security"]["injected_documents"]
     rows = [
         ("status false vouching", m["status"].get("false_vouching", 0), "<=", g["status_false_vouching_max"]),
+        ("vote or payout permitted when the truth withholds it", m["permissions"].get("false_grant", 0), "<=",
+         g["permission_false_grant_max"]),
         ("critical check false passes", m["checks"]["critical_false_pass"], "<=", g["critical_check_false_pass_max"]),
         ("documents matched to the wrong creditor", m["matching"].get("wrong_match", 0), "<=", g["wrong_match_max"]),
         ("classification accuracy", m["classification"]["accuracy"], ">=", g["classification_accuracy_min"]),
@@ -345,8 +373,10 @@ def render(r: Report) -> str:
            f"**{'PASSED' if r.passed else 'FAILED'}**: {sum(g['ok'] for g in r.gates)} of {len(r.gates)} gates. "
            f"Generated {meta['generated']} at commit `{meta['commit']}` with `{meta['command']}`.", "",
            f"Engine `{meta['engine']}`, OCR `{meta['ocr']}`, model `{meta['model']}`"
-           f"{' (answers replayed from a recording)' if meta.get('model_mode') == 'replay' else ''}, as-of date {meta['as_of']}, "
-           f"Python {meta['python']}. {meta['uploads']} uploads, {cl['documents']} distinct documents.", "",
+           + (f" (`{meta['model_fingerprint']}`)" if meta.get("model_fingerprint") else "")
+           + (" (answers replayed from a recording)" if meta.get("model_mode") == "replay" else "")
+           + f", as-of date {meta['as_of']}, Python {meta['python']}. {meta['uploads']} uploads, "
+           f"{cl['documents']} distinct documents.", "",
            "## Gates", "", "| Gate | Value | Limit | Result |", "|---|---|---|---|"]
     for g in r.gates:
         val = g["value"] if isinstance(g["value"], int) else round(float(g["value"]), 4)
@@ -359,6 +389,13 @@ def render(r: Report) -> str:
             f"{st.get('false_vouching', 0)}. False alarm: {st.get('false_alarm', 0)}. Other mismatch: "
             f"{st.get('other_mismatch', 0)}.", "", "| Truth -> engine | Count |", "|---|---|"]
     out += [f"| {k} | {v} |" for k, v in st["confusion"].items()]
+    pm = m.get("permissions", {})
+    if pm:
+        out += ["", "## Permissions", "",
+                f"{pm['pairs']} claim-action pairs (to vote, to be paid), decided apart from whether each document "
+                f"suffices. Exact: {pm.get('exact', 0)}. Permitted when the truth withholds it: "
+                f"{pm.get('false_grant', 0)}. Withheld when the truth permits it (a person is asked instead): "
+                f"{pm.get('false_withhold', 0)}."]
     out += ["", "## Checks", "", "By tier (only where the engine and the truth judged the same document):", "",
             "| Tier | Judgements | Agree | False PASS | Truth negatives | Abstained | False FAIL |",
             "|---|---|---|---|---|---|---|"]

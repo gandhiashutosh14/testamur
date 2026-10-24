@@ -29,14 +29,65 @@
   expect: FAIL
 - id: powers-that-exclude-voting
   check: auth_covers_voting
-  why: the powers name voting only to exclude it
+  why: the powers name voting only to exclude it, and grant no vote anywhere else
   lines: ["Powers: To attend meetings of the committee of creditors, excluding voting on any resolution plan"]
-  expect: ABSTAIN
+  expect: FAIL
 - id: powers-save-for-voting
   check: auth_covers_voting
-  why: '"save for" is an exclusion too'
+  why: '"save for" withholds the vote'
   lines: ["Powers: To represent the creditor in every matter save for voting"]
+  expect: FAIL
+- id: assets-named-only-to-exclude-them
+  doc_type: charge_certificate
+  check: charge_covers_assets
+  why: the charge names the working-capital facility's assets only to exclude them
+  lines: ["Assets charged: All movable fixed assets of the company, excluding stock and book debts"]
   expect: ABSTAIN
+- id: not-authorised-to-vote
+  check: auth_covers_voting
+  why: the external review's case; the word "vote" is there, the grant is not
+  lines: ["Powers: The representative is not authorised to vote on any resolution."]
+  expect: FAIL
+- id: may-not-vote
+  check: auth_covers_voting
+  why: a prohibition
+  lines: ["Powers: To file the claim and attend meetings; the representative may not vote"]
+  expect: FAIL
+- id: no-authority-to-vote
+  check: auth_covers_voting
+  why: '"no authority" withholds it'
+  lines: ["Powers: No authority to vote is conferred by this letter"]
+  expect: FAIL
+- id: voting-rights-withdrawn
+  check: auth_covers_voting
+  why: a revoked grant is no grant
+  lines: ["Powers: Voting rights under the earlier letter are withdrawn"]
+  expect: FAIL
+- id: vote-subject-to-approval
+  check: auth_covers_voting
+  why: the grant waits on an approval a rule cannot see
+  lines: ["Powers: To vote at meetings of the committee of creditors, subject to the prior approval of the board"]
+  expect: ABSTAIN
+- id: vote-only-on-some-matters
+  check: auth_covers_voting
+  why: a partial power; a person reads whether it covers the vote at hand
+  lines: ["Powers: To vote only on resolutions about the extension of the process"]
+  expect: ABSTAIN
+- id: vote-but-not-on-a-plan
+  check: auth_covers_voting
+  why: the restriction follows the grant without repeating the word
+  lines: ["Powers: To attend and vote, but not on a resolution plan"]
+  expect: ABSTAIN
+- id: vote-from-a-later-date
+  check: auth_covers_voting
+  why: the grant starts on a date in the text; the effective-date check cannot see it
+  lines: ["Powers: To vote at meetings of the committee of creditors from 1 December 2026"]
+  expect: ABSTAIN
+- id: authority-effective-next-month
+  check: auth_in_effect
+  why: valid until next year, but in force only from next month
+  lines: ["Effective from: 01.11.2026", "Valid until: 31.10.2027", "Date of issue: 20.09.2026"]
+  expect: FAIL
 - id: decoy-earlier-validity
   check: auth_current
   why: the only date that looks like a validity belongs to last year's authority
@@ -114,9 +165,10 @@
 - id: default-a-day-outside-limitation
   doc_type: claim_form
   check: claim_not_time_barred
-  why: three years before 1 May 2026 is 1 May 2023; a default on 30 April 2023 is outside limitation
+  why: three years before 1 May 2026 is 1 May 2023; a default on 30 April 2023 is outside the usual period, which a
+    written acknowledgement could extend, so a person decides (never a PASS)
   lines: ["Date of default: 30.04.2023"]
-  expect: FAIL
+  expect: ABSTAIN
 - id: default-written-month-first
   doc_type: claim_form
   check: claim_not_time_barred

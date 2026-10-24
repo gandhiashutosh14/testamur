@@ -38,7 +38,8 @@ def test_the_tiny_world_passes_the_dangerous_direction_gates(tiny, tmp_path):
     report = run(out, tmp_path / "h.db", model=None)
     apply_gates(report, ROOT / "gates.yaml")
     by_name = {g["gate"]: g for g in report.gates}
-    for gate in ("status false vouching", "critical check false passes", "documents matched to the wrong creditor",
+    for gate in ("status false vouching", "vote or payout permitted when the truth withholds it",
+                 "critical check false passes", "documents matched to the wrong creditor",
                  "model PASS on hostile documents", "OCR pages paid again on re-index"):
         assert by_name[gate]["ok"], by_name[gate]
     assert report.metrics["classification"]["accuracy"] >= 0.95
@@ -65,8 +66,10 @@ def test_the_same_file_twice_is_one_document_and_one_extraction(tiny, tmp_path):
 def test_a_transient_abstain_never_replaces_a_conclusive_verdict(tiny, tmp_path):
     out, world = tiny
     store = Store(f"sqlite:///{tmp_path / 'r.db'}")
+    load_registry(store, world)                    # the verdict's claim and document must exist: foreign keys
     engine = Engine(store, load_pack(), world.as_of, tmp_path / "blobs")
     with store.tenant(1) as s:
+        s.add(Document(id=7, matter_id=world.claims[0].matter_id, sha256="ab" * 32, doc_type="authority_letter"))
         row = VerdictRow(claim_id=1, requirement_id="authority", check_id="auth_current", document_id=7,
                          verdict="PASS", severity="critical", tier="field", engine_version=engine.version)
         s.add(row)
@@ -82,6 +85,7 @@ def test_a_transient_abstain_never_replaces_a_conclusive_verdict(tiny, tmp_path)
 def test_a_hostile_document_is_never_shown_to_the_model(tiny, tmp_path):
     out, world = tiny
     store = Store(f"sqlite:///{tmp_path / 'x.db'}")
+    load_registry(store, world)
 
     class WouldPass:
         model_id = "scripted"
@@ -93,7 +97,7 @@ def test_a_hostile_document_is_never_shown_to_the_model(tiny, tmp_path):
 
     engine = Engine(store, load_pack(), world.as_of, tmp_path / "blobs", model=WouldPass())
     with store.tenant(1) as s:
-        doc = Document(sha256="cd" * 32, doc_type="facility_agreement", hostile=True)
+        doc = Document(sha256="cd" * 32, matter_id=world.matters[0].id, doc_type="facility_agreement", hostile=True)
         s.add(doc)
         s.flush()
         r = engine._model_check(s, 1, "clause_interest", "evidence_of_debt", doc, None, {})

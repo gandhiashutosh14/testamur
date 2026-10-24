@@ -26,6 +26,7 @@ from .actions import Receiver, deliver, dispatch, new_secret, send_reminders
 from .harness import git_stamp, process_world
 from .store import (
     Claim,
+    ClaimPermission,
     Creditor,
     Delivery,
     Hold,
@@ -119,11 +120,11 @@ def _snapshot(store, world) -> dict:
 def _closing(store, world) -> dict:
     with store.system() as s:
         tasks = s.scalars(select(Task)).all()
-        versions = s.scalar(select(func.coalesce(func.sum(RequirementState.version), 0)))
+        versions = s.scalar(select(func.coalesce(func.sum(RequirementState.version), 0))) +             s.scalar(select(func.coalesce(func.sum(ClaimPermission.version), 0)))
         events = s.scalar(select(func.count()).select_from(OutboxEvent))
         undispatched = s.scalar(select(func.count()).select_from(OutboxEvent).where(OutboxEvent.dispatched_at.is_(None)))
         open_tasks = Counter((t.tenant_id, t.claim_id, t.requirement_id) for t in tasks if t.status == "open")
-        open_holds = Counter((h.tenant_id, h.claim_id) for h in s.scalars(select(Hold).where(
+        open_holds = Counter((h.tenant_id, h.claim_id, h.action) for h in s.scalars(select(Hold).where(
             Hold.released_at.is_(None))))
         deliveries = Counter(d.status for d in s.scalars(select(Delivery)))
         attempts = s.scalar(select(func.coalesce(func.sum(Delivery.attempts), 0)))
@@ -136,7 +137,7 @@ def _closing(store, world) -> dict:
             "invariants": {"events_equal_status_changes": events == versions, "events": events,
                            "undispatched_events": undispatched,
                            "max_open_tasks_per_requirement": max(open_tasks.values(), default=0),
-                           "max_open_holds_per_claim": max(open_holds.values(), default=0)}}
+                           "max_open_holds_per_claim_and_action": max(open_holds.values(), default=0)}}
 
 
 def render(r: dict, meta: dict) -> str:
@@ -170,7 +171,8 @@ def render(r: dict, meta: dict) -> str:
     out += ["", "## Invariants", "",
             f"- At most one open task per requirement: {inv['max_open_tasks_per_requirement'] <= 1} "
             f"(max {inv['max_open_tasks_per_requirement']}).",
-            f"- At most one open hold per claim: {inv['max_open_holds_per_claim'] <= 1}.",
+            f"- At most one open hold per claim and action: {inv['max_open_holds_per_claim_and_action'] <= 1} "
+            f"(max {inv['max_open_holds_per_claim_and_action']}).",
             "- Each webhook message processed once by the receiver: "
             + str(all(x["processed"] == x["unique"] for x in r["receivers"].values())) + ".",
             ("- The dispatcher, killed in the middle of an event on the first dispatch, left no partial work: the "

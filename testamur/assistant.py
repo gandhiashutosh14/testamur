@@ -6,10 +6,12 @@ page and line of the current document. A question about what an agreement says i
 verdict and from retrieval over the current documents' passages. Every quote it gives is checked to be really on
 the cited page; anything it cannot support, it does not say, and with nothing left it says it cannot find it.
 
-Filters come before ranking, never after: the tenant (the session cannot see any other), the creditor (resolved by
-name inside the tenant, asking back when two names are equally close), and the current document behind each
-requirement (a superseded authority is never cited). Document text is data, never instructions: passages that
-address automated readers are never quoted, and an answer drawn from such a document says so.
+Filters come before ranking, never after: the tenant (the session cannot see any other), the process when the
+question names one (by its corporate debtor), the creditor (resolved by name inside the tenant, asking back when two
+names are equally close), and the current document behind each requirement of each claim (a superseded authority is
+never cited, and a creditor's evidence in one process never answers for another: a creditor with current documents
+in two processes is asked which one is meant). Document text is data, never instructions: passages that address
+automated readers are never quoted, and an answer drawn from such a document says so.
 """
 from __future__ import annotations
 
@@ -22,13 +24,14 @@ import bm25s
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .engine import KEY_DATE, Engine
+from .engine import Engine
 from .match import ACCEPT as ACCEPT_NAME
 from .match import EXACT as EXACT_NAME
 from .model import Extraction, Status, Verdict
 from .modeltier import passages, quote_in
-from .store import Claim, Creditor, Document, RequirementState
+from .store import Claim, Creditor, Document, Matter, RequirementState
 from .textnorm import format_inr, name_similarity, normalize_name
+from .understand import screen_text
 
 LABELS = {"proof_of_claim": "proof of claim", "authority": "authority", "security_interest": "security interest",
           "bank_details": "bank details", "evidence_of_debt": "facility agreement"}
@@ -94,6 +97,7 @@ class Assistant:
             m = _EXPIRING.search(q)
             if m:
                 return self._expiring(s, int(m.group(1)))
+            matter, question = _matter(s, question)            # the process named, and the question without it
             creditor, candidates = _resolve(s, question)
             if candidates:
                 return Answer("Which creditor do you mean: " + " or ".join(candidates) + "?", "clarify",
@@ -106,38 +110,58 @@ class Assistant:
             rid = _requirement(q)
             for words, req, fld in FIELDS:
                 if (rid in (None, req)) and any(w in q for w in words):
-                    return self._field(s, creditor, req, fld)
+                    return self._field(s, creditor, req, fld, matter)
             clause = next((cid for cid, words in CLAUSES.items() if any(w in q for w in words)), None)
             if clause and (rid in (None, "evidence_of_debt")):
-                return self._clause(s, creditor, clause, question)
+                return self._clause(s, creditor, clause, question, matter)
             if rid and any(w in q for w in FINDING_WORDS):
-                return self._findings(s, creditor, rid)
+                return self._findings(s, creditor, rid, matter)
             if rid and (any(w in q for w in STATUS_WORDS) or q.lstrip().startswith(YES_NO)):
-                return self._status(s, creditor, rid)
-            return self._search(s, creditor, question)
+                return self._status(s, creditor, rid, matter)
+            return self._search(s, creditor, question, matter)
 
     # ------------------------------------------------------------------ answers from the engine's records
-    def _states(self, s: Session, creditor: Creditor, rid: str) -> list[RequirementState]:
-        engs = [e.id for e in s.scalars(select(Claim).where(Claim.creditor_id == creditor.id))]
+    def _states(self, s: Session, creditor: Creditor, rid: str, matter: Matter | None = None) -> list[RequirementState]:
+        claims = select(Claim.id).where(Claim.creditor_id == creditor.id)
+        if matter is not None:
+            claims = claims.where(Claim.matter_id == matter.id)
+        engs = list(s.scalars(claims))
         return list(s.scalars(select(RequirementState).where(RequirementState.claim_id.in_(engs),
                                                              RequirementState.requirement_id == rid)
                               .order_by(RequirementState.claim_id)))
 
-    def _field(self, s: Session, creditor: Creditor, rid: str, fld: str) -> Answer:
-        states = self._states(s, creditor, rid)
+    def _which_process(self, s: Session, creditor: Creditor, rid: str, states: list[RequirementState],
+                       matter: Matter | None) -> Answer | None:
+        """A creditor with current documents in more than one process, asked without naming one: ask back. Evidence
+        of one process never answers for another."""
+        if matter is not None or len({st.document_id for st in states if st.document_id is not None}) < 2:
+            return None
+        names = sorted({s.get(Matter, s.get(Claim, st.claim_id).matter_id).name for st in states})
+        return Answer(f"{creditor.legal_name} has a claim in more than one process: which do you mean, " +
+                      " or ".join(names) + "?", "clarify", creditor_id=creditor.id, requirement_id=rid,
+                      candidates=names)
+
+    def _field(self, s: Session, creditor: Creditor, rid: str, fld: str, matter: Matter | None = None) -> Answer:
+        states = self._states(s, creditor, rid, matter)
+        which = self._which_process(s, creditor, rid, states, matter)
+        if which is not None:
+            return which
         docs = {st.document_id for st in states if st.document_id is not None}
         what = fld.replace("_", " ")
+        where = f" in {matter.name}" if matter is not None else ""
         if not docs:
             if any(st.status == Status.NEEDS_REVIEW for st in states):
-                return Answer(f"{creditor.legal_name}'s {LABELS[rid]} is waiting for a person: a document that may be "
-                              "theirs has not been matched yet, so I will not answer from older evidence.", "pending",
-                              creditor_id=creditor.id, requirement_id=rid)
-            on_file = self._latest_on_file(s, creditor, rid)   # e.g. a trustee's authority: it has no claim itself
+                return Answer(f"{creditor.legal_name}'s {LABELS[rid]}{where} is waiting for a person: a document that "
+                              "may be theirs has not been matched yet, so I will not answer from older evidence.",
+                              "pending", creditor_id=creditor.id, requirement_id=rid)
+            # a creditor with no claim (a trustee's authority) is answered from its latest document on file; one
+            # with a claim is answered from that claim's evidence or not at all
+            on_file = None if states else self._latest_on_file(s, creditor, rid)
             if on_file is None:
-                return Answer(f"There is no current {LABELS[rid]} document for {creditor.legal_name}.", "refuse",
-                              creditor_id=creditor.id, requirement_id=rid)
+                return Answer(f"There is no current {LABELS[rid]} document for {creditor.legal_name}{where}.",
+                              "refuse", creditor_id=creditor.id, requirement_id=rid)
             docs = {on_file.id}
-        doc = s.get(Document, max(docs))           # several claims share the same current document as a rule
+        doc = s.get(Document, max(docs))
         reading = (doc.fields or {}).get(fld)
         if not reading:
             clash = (doc.conflicts or {}).get(fld)
@@ -167,14 +191,14 @@ class Assistant:
         return self._warn(doc, answer)
 
     def _latest_on_file(self, s: Session, creditor: Creditor, rid: str) -> Document | None:
-        """The creditor's newest matched document of the requirement's type, whether or not any claim requires
-        it: the same rule the engine uses to pick the current document (key date, then first upload)."""
+        """The newest matched document of the requirement's type of a creditor that has no claim (a trustee): the
+        same rule the engine uses to pick the current document (key date, then first upload)."""
         doc_type = self.pack.requirements[rid].doc_type
         docs = s.scalars(select(Document).where(Document.creditor_id == creditor.id, Document.doc_type == doc_type,
                                                 Document.state == "matched")).all()
         if not docs:
             return None
-        key = KEY_DATE.get(doc_type)
+        key = self.pack.doc_types[doc_type].key_date
         return max(docs, key=lambda d: (((d.fields or {}).get(key) or {}).get("value") or "" if key else "", d.id))
 
     def _pending_for(self, s: Session, creditor: Creditor, rid: str) -> bool:
@@ -184,15 +208,17 @@ class Assistant:
                    for d in s.scalars(select(Document).where(Document.state == "needs_review",
                                                              Document.doc_type == req.doc_type)))
 
-    def _status(self, s: Session, creditor: Creditor, rid: str) -> Answer:
-        states = self._states(s, creditor, rid)
+    def _status(self, s: Session, creditor: Creditor, rid: str, matter: Matter | None = None) -> Answer:
+        states = self._states(s, creditor, rid, matter)
         if not states:
-            return Answer(f"{creditor.legal_name} has no claim that requires {LABELS[rid]}.", "refuse",
-                          creditor_id=creditor.id, requirement_id=rid)
+            return Answer(f"{creditor.legal_name} has no claim that requires {LABELS[rid]}"
+                          f"{f' in {matter.name}' if matter else ''}.", "refuse", creditor_id=creditor.id,
+                          requirement_id=rid)
         lines, cites = [], []
         for st in states:
             e = s.get(Claim, st.claim_id)
-            lines.append(f"claim {e.id} ({e.tier} tier): {STATUS_PHRASE[Status(st.status)]}")
+            lines.append(f"claim {e.id} in {s.get(Matter, e.matter_id).name} ({e.tier} tier): "
+                         f"{STATUS_PHRASE[Status(st.status)]}")
             if st.document_id is not None:
                 doc = s.get(Document, st.document_id)
                 first = self._first_line(s, doc)
@@ -203,9 +229,9 @@ class Assistant:
         docs = [s.get(Document, st.document_id) for st in states if st.document_id is not None]
         return self._warn(docs[0], answer) if docs else answer
 
-    def _findings(self, s: Session, creditor: Creditor, rid: str) -> Answer:
+    def _findings(self, s: Session, creditor: Creditor, rid: str, matter: Matter | None = None) -> Answer:
         notes, cites = [], []
-        for st in self._states(s, creditor, rid):
+        for st in self._states(s, creditor, rid, matter):
             _, results = self.engine._verdicts(s, st.tenant_id, st.claim_id, rid)
             for r in results:
                 if r.verdict in (Verdict.FAIL, Verdict.ABSTAIN):
@@ -223,11 +249,15 @@ class Assistant:
         return Answer(f"{creditor.legal_name}, {LABELS[rid]}: " + " | ".join(dict.fromkeys(notes)), "findings", unique,
                       creditor.id, rid)
 
-    def _clause(self, s: Session, creditor: Creditor, clause: str, question: str) -> Answer:
-        states = [st for st in self._states(s, creditor, "evidence_of_debt") if st.document_id is not None]
+    def _clause(self, s: Session, creditor: Creditor, clause: str, question: str,
+                matter: Matter | None = None) -> Answer:
+        states = [st for st in self._states(s, creditor, "evidence_of_debt", matter) if st.document_id is not None]
         if not states:
             return Answer(f"There is no current facility agreement with {creditor.legal_name}.", "refuse",
                           creditor_id=creditor.id, requirement_id="evidence_of_debt")
+        which = self._which_process(s, creditor, "evidence_of_debt", states, matter)
+        if which is not None:
+            return which
         st = states[0]
         doc = s.get(Document, st.document_id)
         _, results = self.engine._verdicts(s, st.tenant_id, st.claim_id, "evidence_of_debt")
@@ -271,9 +301,9 @@ class Assistant:
                       "; ".join(f"{n} on {d.isoformat()}" for d, n in rows) + ".", "list", cites,
                       value=[(d.isoformat(), n) for d, n in rows])
 
-    def _search(self, s: Session, creditor: Creditor, question: str) -> Answer:
+    def _search(self, s: Session, creditor: Creditor, question: str, matter: Matter | None = None) -> Answer:
         docs = [s.get(Document, st.document_id) for rid in self.pack.requirements
-                for st in self._states(s, creditor, rid) if st.document_id is not None]
+                for st in self._states(s, creditor, rid, matter) if st.document_id is not None]
         hits = self._retrieve(s, list({d.id: d for d in docs}.values()), question, k=1, min_overlap=2,
                               exclude=set(normalize_name(creditor.legal_name).split()))
         if not hits:
@@ -312,7 +342,7 @@ class Assistant:
         for d in docs:
             for p in self._extraction(s, d).pages:
                 for text in passages([line.text for line in p.lines]):
-                    if not any(h.search(text) for h in hostile):
+                    if not any(h.search(screen_text(text)) for h in hostile):
                         chunks.append((d, p.number, text))
         if not chunks:
             return []
@@ -356,6 +386,21 @@ def _requirement(q: str) -> str | None:
 _NAME_SPAN = re.compile(r"[A-Z][\w&.'()-]*(?:\s+(?:of|and|the|&|[A-Z(][\w&.'()-]*))*")
 _QUESTION_WORDS = frozenset("when what which who whose is are does do has have how why show list tell give can "
                             "the a an i we".split())
+
+
+def _matter(s: Session, question: str) -> tuple[Matter | None, str]:
+    """The process a question names, by its corporate debtor written out in full (legal-form words aside), and the
+    question with the debtor's name taken out, so the creditor is resolved from what is left. Named only when exactly
+    one process's debtor appears."""
+    q = _plain(question)
+    named = [m for m in s.scalars(select(Matter))
+             if normalize_name(m.name) and f" {normalize_name(m.name)} " in q]
+    if len(named) != 1:
+        return None, question
+    words = normalize_name(named[0].name).split()
+    span = re.compile(r"\b" + r"\W+".join(map(re.escape, words)) + r"(?:\W+(?:pvt|private|ltd|limited|llp)\b\.?)*",
+                      re.I)
+    return named[0], span.sub(" ", question)
 
 
 def _resolve(s: Session, question: str) -> tuple[Creditor | None, list[str]]:

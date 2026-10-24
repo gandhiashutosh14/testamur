@@ -185,9 +185,10 @@ class Extractor:
     def version(self) -> str:
         return f"2+{self.ocr.name}-{self.ocr.version}"
 
-    def extract(self, data: bytes, mime: str, before_ocr=None) -> Extraction:
+    def extract(self, data: bytes, mime: str, before_ocr=None, on_page=None) -> Extraction:
         """`before_ocr(pages)` is called with the number of pages about to go through OCR, before any does: the
-        hook a spend gate uses to refuse the cost up front."""
+        hook a spend gate uses to refuse the cost up front. `on_page()` is called before each page goes through OCR:
+        the hook that renews a worker's lock and lease while a long document is read, and may stop it."""
         t0 = time.perf_counter()
         is_pdf = mime == "application/pdf"
         pages = _text_layer(data) if is_pdf else None
@@ -205,6 +206,8 @@ class Extractor:
                 if existing is not None and len(" ".join(x.text for x in existing.lines)) >= MIN_TEXT_CHARS:
                     merged.append(existing)
                     continue
+                if on_page is not None:
+                    on_page()
                 merged.append(Page(number=i, lines=self.ocr.lines(img, i), width=img.width, height=img.height))
                 ocr_pages += 1
             pages = merged

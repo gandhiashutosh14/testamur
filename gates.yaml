@@ -2,6 +2,7 @@
 # of these is breached. The first three hold the dangerous direction at zero; the rest keep the engine honest
 # about cost and about how much it hands to people.
 status_false_vouching_max: 0        # vouching for a creditor when the truth says otherwise
+permission_false_grant_max: 0        # a vote or a payout the evidence permits when the truth withholds it
 critical_check_false_pass_max: 0     # a critical check saying PASS when the truth says FAIL
 wrong_match_max: 0                   # evidence attached to the wrong creditor
 classification_accuracy_min: 0.95

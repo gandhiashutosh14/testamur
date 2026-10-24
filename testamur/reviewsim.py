@@ -69,11 +69,21 @@ class Oracle:
     def _upload(self, tenant_id: int, doc_id: int):
         with self.engine.store.tenant(tenant_id) as s:
             doc = s.get(Document, doc_id)
-            ref = s.scalars(select(UploadRow.external_ref).where(UploadRow.sha256 == doc.sha256)
+            ref = s.scalars(select(UploadRow.external_ref).where(UploadRow.sha256 == doc.sha256,
+                                                                 UploadRow.matter_id == doc.matter_id)
                             .order_by(UploadRow.id)).first()
             holder = doc.creditor_id
-        u = self.uploads[int(ref.split(":")[1])]
-        return (self.uploads[u.truth.duplicate_of] if u.truth.duplicate_of else u), holder
+        # the document's first upload in its own process stands for it: a copy carries the original's truth, and
+        # its process is the one the document is evidence in
+        return self.uploads[int(ref.split(":")[1])], holder
+
+    def _belongs_here(self, owner: int, doc_type: str, matter_id: int) -> bool:
+        """Evidence of one process counts there only: the owner (or a holder it acts as trustee for) must have a claim
+        in the process the document was filed in. Evidence shared across processes belongs wherever it was filed."""
+        if self.pack.doc_types[doc_type].evidence_scope == "creditor":
+            return True
+        acting_for = {owner} | {x.id for x in self.world.creditors if x.trustee_id == owner}
+        return any(e.matter_id == matter_id and e.creditor_id in acting_for for e in self.world.claims)
 
     def verdict(self, tenant_id: int, item: QueueItem) -> Verdict | None:
         """What a careful person says about a check of this document; None if they could not say either."""
@@ -106,8 +116,12 @@ class Oracle:
             return "classify"
         if item.kind == "document_owner":
             if t.owner_creditor_id is not None and self.tenant_of.get(t.owner_creditor_id) == tenant_id:
-                self.engine.assign(tenant_id, item.document_id, t.owner_creditor_id, REVIEWER)
-                return "assign"
+                if self._belongs_here(t.owner_creditor_id, t.doc_type, u.matter_id):
+                    self.engine.assign(tenant_id, item.document_id, t.owner_creditor_id, REVIEWER)
+                    return "assign"
+                self.engine.reject(tenant_id, item.document_id, REVIEWER,
+                                   "filed in a process in which the creditor has no claim")
+                return "reject"
             self.engine.reject(tenant_id, item.document_id, REVIEWER, "not evidence for any of our creditors")
             return "reject"
         if item.kind == "document_security":
@@ -221,7 +235,8 @@ def accuracy_scenario(world_dir: str | Path, db: str | Path, model=None, fault: 
 
 
 def _false_passes(world: World, store: Store, engine: Engine, check: str, truth: dict) -> dict[int, int]:
-    """Per tenant: the engine's PASS verdicts of `check` on current documents that the truth says are FAIL."""
+    """Per tenant: the engine's PASS verdicts of `check` on current documents where the truth gives no PASS (a FAIL,
+    or a question only a person can settle)."""
     out: Counter = Counter()
     tenant_of = {e.id: e.tenant_id for e in world.claims}
     for key, tv in truth.items():
@@ -229,7 +244,7 @@ def _false_passes(world: World, store: Store, engine: Engine, check: str, truth:
             continue
         _, results = engine.verdicts(tenant_of[key[0]], *key)
         mine = next((r for r in results if r.check_id == check), None)
-        if mine is not None and mine.verdict == Verdict.PASS and tv["checks"][check] == Verdict.FAIL:
+        if mine is not None and mine.verdict == Verdict.PASS and tv["checks"][check] in (Verdict.FAIL, Verdict.ABSTAIN):
             out[tenant_of[key[0]]] += 1
     return dict(out)
 

@@ -7,7 +7,7 @@ import json
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
@@ -32,6 +32,19 @@ class DocTypeSpec(BaseModel):
     filename_aliases: list[str] = Field(default_factory=list)
     key_labels: list[str] = Field(default_factory=list)
     fields: dict[str, FieldSpec] = Field(default_factory=dict)
+    name_field: str                             # whose document it is: the name matched against creditors
+    key_date: str | None = None                 # among several, the most recent by this date is current
+    # Where the evidence counts. "matter": only in the process it was filed in (a proof of claim, an authority for
+    # this process, a charge over this debtor's assets). "creditor": for every claim of the creditor in the tenant (a
+    # bank account confirmation). Sharing evidence across processes is a decision written here, never a default.
+    evidence_scope: Literal["matter", "creditor"] = "matter"
+
+    @model_validator(mode="after")
+    def _fields_exist(self) -> DocTypeSpec:
+        for f in (self.name_field, self.key_date):
+            if f is not None and f not in self.fields:
+                raise ValueError(f"names a field it does not read: {f}")
+        return self
 
 
 class CheckSpec(BaseModel):
@@ -40,6 +53,37 @@ class CheckSpec(BaseModel):
     rule: str
     params: dict[str, Any] = Field(default_factory=dict)
     hint: str = ""
+    # Where a check states only the usual case of the law, it says so, with the date its wording was last reviewed
+    # and its basis; its exceptions are left to a person (the rule abstains rather than fails on them).
+    illustrative: bool = False
+    reviewed: str | None = None
+    basis: str = ""
+
+
+DESCRIPTIVE = {"hint", "illustrative", "reviewed", "basis"}          # wording for people, not what a check means
+
+
+class Condition(BaseModel):
+    """One thing an action needs: a requirement in one of the statuses, or a check with one of the verdicts (on the
+    requirement's current document, after people's decisions; a requirement verified out of band meets it)."""
+    requirement: str | None = None
+    statuses: list[str] | None = None
+    check: str | None = None
+    verdicts: list[str] | None = None
+
+    @model_validator(mode="after")
+    def _one(self) -> Condition:
+        if (self.requirement is None) == (self.check is None):
+            raise ValueError("a condition names a requirement or a check, not both")
+        if (self.requirement and not self.statuses) or (self.check and not self.verdicts):
+            raise ValueError("a condition needs the statuses or verdicts that meet it")
+        return self
+
+
+class PermissionSpec(BaseModel):
+    """An action the evidence may permit (a vote, a payout): every condition must hold."""
+    description: str
+    requires: list[Condition]
 
 
 class Applicability(BaseModel):
@@ -70,13 +114,14 @@ class AuditPolicy(BaseModel):
 
 class ActionPolicy(BaseModel):
     """What a finding turns into (see actions.py). The first workflow automated is the chase for a creditor's lapsing
-    authority: frequent, triggered by a rule (a date), and reversible (a reminder and a task)."""
-    chase_requirements: list[str] = Field(default_factory=lambda: ["authority"])
+    authority: frequent, triggered by a rule (a date), and reversible (a reminder and a task). A withheld permission
+    (`hold_permissions`) puts the claim on hold for that action until the evidence permits it."""
+    # domain-neutral defaults: what to chase and what to hold is the pack's to say
+    chase_requirements: list[str] = Field(default_factory=list)
     chase_statuses: list[str] = Field(default_factory=lambda: ["MISSING", "EXPIRED", "NOT_SATISFIED"])
-    chase_findings: list[str] = Field(default_factory=lambda: ["auth_renewal_due"])
+    chase_findings: list[str] = Field(default_factory=list)
     follow_up_statuses: list[str] = Field(default_factory=lambda: ["MISSING", "EXPIRED", "NOT_SATISFIED"])
-    hold_requirements: list[str] = Field(default_factory=lambda: ["authority", "bank_details"])
-    hold_statuses: list[str] = Field(default_factory=lambda: ["EXPIRED", "NOT_SATISFIED"])
+    hold_permissions: list[str] = Field(default_factory=list)
     notify_cooldown_days: int = 7
     task_due_days: dict[str, int] = Field(default_factory=lambda: {"critical": 2, "high": 3, "standard": 5,
                                                                    "low": 7})
@@ -85,13 +130,15 @@ class ActionPolicy(BaseModel):
 class Pack(BaseModel):
     name: str
     version: int
-    registrar_offices: list[str]
-    bank_codes: dict[str, str]
     doc_types: dict[str, DocTypeSpec]
     checks: dict[str, CheckSpec]
     requirements: dict[str, RequirementSpec]
-    asset_terms: dict[str, list[str]]
     injection_markers: list[str]
+    # tables some rules read; a pack whose checks do not use those rules leaves them out
+    registrar_offices: list[str] = Field(default_factory=list)
+    bank_codes: dict[str, str] = Field(default_factory=dict)
+    asset_terms: dict[str, list[str]] = Field(default_factory=dict)
+    permissions: dict[str, PermissionSpec] = Field(default_factory=dict)
     audit: AuditPolicy = Field(default_factory=AuditPolicy)
     actions: ActionPolicy = Field(default_factory=ActionPolicy)
     digest: str = ""
@@ -112,16 +159,31 @@ class Pack(BaseModel):
                 raise ValueError(f"check {cid}: a model-tier check needs statement, opposite and search")
         for marker in self.injection_markers:
             re.compile(marker)
+        for name, perm in self.permissions.items():
+            for c in perm.requires:
+                if c.requirement is not None and c.requirement not in self.requirements:
+                    raise ValueError(f"permission {name}: unknown requirement {c.requirement}")
+                if c.check is not None and len([r for r in self.requirements.values() if c.check in r.checks]) != 1:
+                    raise ValueError(f"permission {name}: {c.check} must be a check of exactly one requirement")
+        for name in self.actions.hold_permissions:
+            if name not in self.permissions:
+                raise ValueError(f"actions: holds for unknown permission {name}")
         return self
 
     def injection_patterns(self) -> list[re.Pattern[str]]:
         return [re.compile(m, re.I) for m in self.injection_markers]
 
+    def requirement_of(self, check_id: str) -> str:
+        return next(rid for rid, r in self.requirements.items() if check_id in r.checks)
+
     def rule_digest(self, check_id: str) -> str:
-        """What a check means: its definition (not its wording for people) and the pack tables its rule reads."""
+        """What a check means: its definition (not its wording for people), the pack tables its rule reads, and the
+        version of the rule's own meaning (checks.RULE_VERSIONS)."""
+        from .checks import RULE_VERSIONS
         spec = self.checks[check_id]
         tables = {t: getattr(self, t) for t in RULE_TABLES.get(spec.rule, ())}
-        raw = json.dumps({"check": spec.model_dump(mode="json", exclude={"hint"}), "tables": tables}, sort_keys=True)
+        raw = json.dumps({"check": spec.model_dump(mode="json", exclude=DESCRIPTIVE), "tables": tables,
+                          "rule_version": RULE_VERSIONS.get(spec.rule)}, sort_keys=True)
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
 
 
@@ -133,7 +195,12 @@ def pack_digest(raw: bytes) -> str:
 
 @lru_cache(maxsize=8)
 def load_pack(name: str = "insolvency_claims") -> Pack:
-    raw = (PACKS / name / "pack.yaml").read_bytes()
+    return load_pack_file(PACKS / name / "pack.yaml")
+
+
+def load_pack_file(path: str | Path) -> Pack:
+    """A pack from any file: another domain is another file, read by the same engine."""
+    raw = Path(path).read_bytes()
     pack = Pack.model_validate(yaml.safe_load(raw))
     pack.digest = pack_digest(raw)
     return pack
