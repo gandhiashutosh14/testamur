@@ -47,12 +47,15 @@ from .store import (
     Task,
     WebhookEndpoint,
 )
+from .telemetry import traced
 
 MAX_ATTEMPTS = 8
 
 
 # ---------------------------------------------------------------------------------------------- dispatching events
 
+@traced("dispatch", before=lambda store, pack, tenant_id, *a, **k: {"tenant_id": tenant_id},
+        after=lambda c: {"count": c.get("events", 0)})
 def dispatch(store: Store, pack: Pack, tenant_id: int, now: datetime, fail_after: int | None = None) -> Counter:
     """Turn the tenant's undispatched events into actions, oldest first, one transaction per event. `fail_after=k`
     raises inside the k-th event's transaction (after its actions were written): a crash test."""
@@ -230,6 +233,8 @@ class Receiver:
         return 500 if self.rng.random() < self.ack_loss else 200
 
 
+@traced("deliver", before=lambda store, tenant_id, *a, **k: {"tenant_id": tenant_id},
+        after=lambda c: {"count": sum(c.values())})
 def deliver(store: Store, tenant_id: int, transport: Transport, now: datetime) -> Counter:
     """Send the tenant's due webhook messages. Sending happens outside any transaction; each attempt's outcome is
     recorded after. Backoff doubles from 30 seconds; after MAX_ATTEMPTS a message is dead, for a person to see."""

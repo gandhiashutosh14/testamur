@@ -484,11 +484,13 @@ class TenantBudget(TenantScoped, Base):
 
 
 class ApiKey(TenantScoped, Base):
-    """An agent's key: the tenant it acts for and the name it acts under. Only a hash of the key is stored."""
+    """A key: the tenant it acts for, the name it acts under and its role (an agent on the agent surface; a person who
+    uploads, or who reviews and approves, on the service). Only a hash of the key is stored."""
     __tablename__ = "api_keys"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(80))
     key_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    role: Mapped[str] = mapped_column(String(12), default="agent")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -515,7 +517,10 @@ class Proposal(TenantScoped, Base):
     transaction that applies the change, and a proposal whose evidence moved on is refused as stale, never applied to
     whatever is current now. `binding_digest` is what the person confirms."""
     __tablename__ = "proposals"
+    __table_args__ = (UniqueConstraint("tenant_id", "origin"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # what made it, when that is a workflow step that may run again (a run and a check): one proposal per origin
+    origin: Mapped[str | None] = mapped_column(String(160), nullable=True)
     kind: Mapped[str] = mapped_column(String(30))
     args: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     binding: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
@@ -528,6 +533,52 @@ class Proposal(TenantScoped, Base):
     decided_by: Mapped[str | None] = mapped_column(String(300), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     outcome: Mapped[str] = mapped_column(Text, default="")
+
+
+class InvestigationRun(TenantScoped, Base):
+    """One run of the investigator-verifier workflow on one claim (testamur.investigate). The workflow's own state is
+    checkpointed by LangGraph under `thread_id`, which is generated here and never taken from a caller: a run is found
+    by its id inside the tenant's session, so nobody resumes or reads another tenant's work by naming its thread."""
+    __tablename__ = "investigation_runs"
+    __table_args__ = (_referable("investigation_runs"), _same_tenant("claim_id", "claims"))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    claim_id: Mapped[int] = mapped_column(Integer, index=True)
+    thread_id: Mapped[str] = mapped_column(String(40), unique=True)
+    mode: Mapped[str] = mapped_column(String(10), default="pair")         # pair | single
+    # started | investigating | evidence_ready | verifying | awaiting_approval | applied | rejected | no_change |
+    # needs_person | stale | cancelled | failed
+    status: Mapped[str] = mapped_column(String(20), default="started")
+    requested_by: Mapped[str] = mapped_column(String(300))
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)   # each requirement's evidence fingerprint
+    packet: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    report: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    recommendations: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    stats: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    outcomes: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+    error: Mapped[str] = mapped_column(Text, default="")
+    tokens: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class AgentEvent(TenantScoped, Base):
+    """The trace of a run: every tool call an agent made (allowed, refused or failed) and each agent's summary (how
+    it stopped, its steps and tokens, its short notes). No document text and no hidden reasoning is kept."""
+    __tablename__ = "agent_events"
+    __table_args__ = (_same_tenant("run_id", "investigation_runs"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(Integer, index=True)
+    role: Mapped[str] = mapped_column(String(20))                           # investigator | verifier | coordinator
+    kind: Mapped[str] = mapped_column(String(10))                           # tool | agent
+    step: Mapped[int] = mapped_column(Integer, default=0)
+    tool: Mapped[str] = mapped_column(String(40), default="")
+    args: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    outcome: Mapped[str] = mapped_column(String(40), default="")             # ok | denied | error | how it stopped
+    reason: Mapped[str] = mapped_column(Text, default="")
+    detail: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    ms: Mapped[float] = mapped_column(Float, default=0.0)
+    at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class Setting(Base):
@@ -617,7 +668,7 @@ class Store:
     statement reaches it. The owner connection (`url`) creates the schema and runs the system sessions."""
 
     def __init__(self, url: str = "sqlite:///data/testamur.db", busy_timeout_ms: int = 120_000,
-                 tenant_url: str | None = None):
+                 tenant_url: str | None = None, create_schema: bool = True):
         self.engine = create_engine(url, future=True)
         self.dialect = self.engine.dialect.name
         self.tenant_engine = create_engine(tenant_url, future=True) if tenant_url else self.engine
@@ -642,7 +693,8 @@ class Store:
                 # BEGIN fails, and its write lock is held until then
                 if dbapi_conn.in_transaction:
                     dbapi_conn.rollback()
-        Base.metadata.create_all(self.engine)
+        if create_schema:                    # a deployment runs the migrations instead (testamur db upgrade)
+            Base.metadata.create_all(self.engine)
         self._factory = sessionmaker(self.engine, expire_on_commit=False)
         self._tenant_factory = sessionmaker(self.tenant_engine, expire_on_commit=False)
 
@@ -692,15 +744,34 @@ def enable_row_level_security(store: Store, role: str) -> None:
     tenant matches nothing: it fails closed. Defence in depth under the session's own filter; idempotent."""
     if store.dialect != "postgresql":
         raise RuntimeError("row-level security needs Postgres")
-    prep = store.engine.dialect.identifier_preparer
+    with store.engine.begin() as conn:
+        for sql in rls_statements(store.engine.dialect.identifier_preparer, role):
+            conn.exec_driver_sql(sql)
+
+
+def rls_statements(prep, role: str, tables: list[str] | None = None) -> list[str]:
+    """The row-level security for `role` on `tables` (by default every tenant table), as SQL (idempotent): run by
+    enable_row_level_security, and by the migrations, which name their own tables."""
     who = prep.quote(role)
     current = "NULLIF(current_setting('testamur.tenant_id', true), '')::int"
-    with store.engine.begin() as conn:
-        for name in ["tenants", *tenant_tables()]:
-            table, column = prep.quote(name), "id" if name == "tenants" else "tenant_id"
-            conn.exec_driver_sql(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
-            conn.exec_driver_sql(f"DROP POLICY IF EXISTS tenant_isolation ON {table}")
-            conn.exec_driver_sql(f"CREATE POLICY tenant_isolation ON {table} TO {who} "
-                                 f"USING ({column} = {current}) WITH CHECK ({column} = {current})")
-            conn.exec_driver_sql(f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO {who}")
-        conn.exec_driver_sql(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {who}")
+    out = []
+    for name in tables if tables is not None else ["tenants", *tenant_tables()]:
+        table, column = prep.quote(name), "id" if name == "tenants" else "tenant_id"
+        out += [f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY",
+                f"DROP POLICY IF EXISTS tenant_isolation ON {table}",
+                f"CREATE POLICY tenant_isolation ON {table} TO {who} "
+                f"USING ({column} = {current}) WITH CHECK ({column} = {current})",
+                f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO {who}"]
+    return out + [f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {who}"]
+
+
+def rls_drop_statements(prep, role: str, tables: list[str]) -> list[str]:
+    """Undoes rls_statements on `tables`."""
+    who = prep.quote(role)
+    out = []
+    for name in tables:
+        table = prep.quote(name)
+        out += [f"REVOKE SELECT, INSERT, UPDATE, DELETE ON {table} FROM {who}",
+                f"DROP POLICY IF EXISTS tenant_isolation ON {table}",
+                f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY"]
+    return out

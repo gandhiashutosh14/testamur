@@ -8,7 +8,7 @@ person, turn findings into work, and never say PASS without evidence.*
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Compute](https://img.shields.io/badge/compute-CPU%20only-lightgrey)
-![Status](https://img.shields.io/badge/status-v0.4-blue)
+![Status](https://img.shields.io/badge/status-v0.5-blue)
 
 > **In plain English:** when a company goes into insolvency in India, everyone it owes money to must prove what they
 > are owed. A resolution professional checks every claim against a short statutory clock, and the result decides who
@@ -20,7 +20,27 @@ person, turn findings into work, and never say PASS without evidence.*
 > companies proves each claim separately. When it cannot be sure, it says so and hands the case to a person, because a
 > confident wrong "admitted" is worse than an honest "not sure". It says separately what the evidence lets a claim do
 > (vote, be paid), and when something is wrong it opens the work to fix it: a task, a reminder to the creditor, a hold
-> on the vote or the payout.
+> on the vote or the payout. Two AI agents can be asked to read a claim's evidence closely, one investigating and one
+> checking the other's work; they cite the page for everything they say, and they can only propose: a person
+> approves.
+
+## What is shipped, measured, simulated and planned
+
+| Capability | Status | Where to look |
+|---|---|---|
+| Reading claim files (text layer, OCR for scans and photos), classifying, reading fields, working out whose they are | Shipped; measured on generated worlds | [harness report](reports/harness-full-seed11.md) |
+| 32 checks at the cheapest tier that can decide; statuses; what the evidence permits (vote, payout) | Shipped; measured | [harness report](reports/harness-full-seed11.md), [false-PASS panel](tests/panel.yaml) |
+| Review queue, people's decisions as inputs, audits with exact bounds and a breaker per check | Shipped; measured with simulated reviewers | [review simulation](reports/review-sim-full-seed11.md) |
+| Tasks, reminders, holds and signed webhooks through a transactional outbox | Shipped; receivers simulated | [action simulation](reports/action-sim-full-seed11.md) |
+| An assistant that answers from the records and cites the page | Shipped; measured | [golden set](reports/assistant-golden-full-seed11.md) |
+| Multi-agent investigation (LangGraph): an investigator and a verifier in separate contexts, typed contracts, scoped tools, budgets, checkpoints, a coordinator in code, a person's evidence-bound approval | Shipped; measured against the rules alone and one agent on a holdout written by hand: the agents send to a person some of the PASSes the rules got wrong, and decide nothing on their own; the verifier changed no outcome on that set | [holdout comparison](reports/holdout-eval.md), [ADR 0017](docs/decisions/0017-an-investigator-and-a-verifier.md), [ADR 0019](docs/decisions/0019-measuring-the-agents-on-a-holdout.md) |
+| Agent tool surface over MCP: per-tenant keys and grants checked on every call, proposals bound to evidence | Shipped; tested | [ADR 0014](docs/decisions/0014-agents-propose-people-dispose.md) |
+| A service for reviewers (FastAPI): JSON API, review page, keys with roles, signed sessions, CSRF, strict CSP | Shipped; driven end to end in CI | [ADR 0018](docs/decisions/0018-a-service-for-reviewers.md) |
+| PostgreSQL with row-level security under an application role; Alembic migrations; an S3-compatible object store; OpenTelemetry traces to Jaeger; Docker Compose | Shipped; tested in CI | [`docker-compose.yml`](docker-compose.yml), [CI](.github/workflows/ci.yml) |
+| The demo's agents on a live model (llama.cpp serving an open-weight model) | Opt-in; not run in CI | [`compose.llm.yml`](compose.llm.yml) |
+| Votes, payments, e-mail, real webhook receivers | Simulated | |
+| Single sign-on, TLS, backups, alerting, load tests of the service | Not here | |
+| Real claim files, expert-labelled agreements, cases written by people other than the author | Not here: synthetic data and hand-written cases only | |
 
 <!-- RESULTS -->
 ## Results
@@ -77,9 +97,30 @@ Learn then Test on 1,656 labelled documents certifies name-matching thresholds d
 
 278 of 278 generated questions, in the categories the assistant supports, answered right: field lookups with citations (154 of 154, including 6 the engine had not settled, answered as such), near-twin names, shared first words asked back, another tenant's creditors, unanswerable questions, hostile documents and lists of lapsing authorities. Wrong values, wrong versions or wrong creditors: 0. Citations outside the tenant: 0.
 
+### The agents against the rules ([holdout comparison](reports/holdout-eval.md), commit `b7f7ce7`)
+
+24 cases written by hand for this comparison, independently of the generator, and fixed before any agent ran on them (set `517a32ec6fe5b1a8`). The agents' model: `llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf` on GitHub's CPU runners, every call recorded and replayed in CI; the engine's own clause tier off, so the agents are the only model reading. A proposal is counted as the output, as if approved.
+
+| | Rules | One agent | Investigator and verifier |
+|---|---|---|---|
+| Right output | 8 of 24 | 11 of 24 | 11 of 24 |
+| False PASS | 7 | 3 | 3 |
+| False FAIL | 0 | 0 | 0 |
+| Sent to a person | 15 of 24 | 20 of 24 | 20 of 24 |
+| Citations that held | - | 80 of 85 | 202 of 210 |
+| Permission violations | - | 0 | 0 |
+| Latency p50 / p95 | - | 223.9 s / 316.1 s | 423.4 s / 545.5 s |
+| Tokens per case | - | 13,680 | 25,340 |
+
+Against the rules, one agent turned 4 wrong outputs right (PASS to person) and 1 right output wrong (FAIL to person); none of its own verdicts replaced the rules' output. The pair gave one agent's output in 24 of 24 cases.
+
+An earlier run 1 on the same cases (commit `121ef57`): one agent 8 of 24 right with 7 false PASS, the agents stopping by step budget 21, finished 3. After it, each agent was shown its remaining steps, its last step was made the answer (the only action the model may take on it), and claim_summary was made to list the documents there are to read; the cases and their labels did not change.
+
+Faults forced on purpose with a scripted model (a model timeout, an agent reaching outside its claim, approval of changed evidence, a decision delivered twice, a worker finishing after its lease was taken over): 5 of 5 contained.
+
 ### Delivery
 
-239 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 78 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, approvals and the engine tested on Postgres; the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
+286 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 98 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, migrations, approvals and the engine tested on Postgres; the Compose stack built, started and driven as a client (upload, read, investigate, isolation, traces); the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
 <!-- /RESULTS -->
 
 ## The problem
@@ -118,9 +159,10 @@ reviewers: answer yes to every question").
 | What happens when it is not sure? | A review queue. People decide a check, correct a reading, say whose a document is, or clear a security finding. Their decisions are inputs the engine applies on every later run, bound to the rule they were made under. |
 | How does it know it is still right? | A random sample of its confident verdicts is audited; each check has an error budget and an exact bound; a check that breaks its budget stops vouching until a person re-certifies it. |
 | What happens after a finding? | Tasks, creditor reminders, holds per action (votes not counted, or nothing paid) and signed webhooks, through a transactional outbox: each action single in the database, webhooks delivered at least once with a stable id the receiver deduplicates by. They undo themselves when the evidence is put right. Votes, payments and e-mail are simulated. |
-| Who else can use it? | The resolution professional's team, through an assistant that answers from the engine's records and cites the page; other systems' agents, through a tenant-scoped MCP tool server where agents propose and people dispose, and a person's confirmation applies exactly the evidence it was shown, once. |
+| Who else can use it? | The resolution professional's team, through a review page and an assistant that answers from the engine's records and cites the page; other systems, through a JSON API; other systems' agents, through a tenant-scoped MCP tool server where agents propose and people dispose, and a person's confirmation applies exactly the evidence it was shown, once. |
+| Where do agents come in? | Where the rules could not decide, or might have missed something, a reviewer can ask two agents to investigate a claim: an investigator builds a cited evidence packet, a verifier checks it in a separate context, code reconciles both with the rules, and only a person can apply what they propose. |
 | How is it measured? | The real engine runs over a generated, adversarial world with ground truth for every document, field, check and requirement; merge gates hold the dangerous errors at zero. |
-| What runs it? | Python on a CPU: RapidOCR (ONNX Runtime) for scans and photos, an open-weight model through llama.cpp for clauses, SQLite locally and Postgres tested in CI. No GPU and no paid API. |
+| What runs it? | Python on a CPU: RapidOCR (ONNX Runtime) for scans and photos, an open-weight model (Qwen3-4B) through llama.cpp for clauses and for the agents, LangGraph for the agents' workflow, FastAPI for the service, SQLite locally and PostgreSQL in the stack and in CI. No GPU and no paid API. |
 
 ## How it works
 
@@ -138,6 +180,9 @@ flowchart LR
     H -->|"same transaction"| O[("Outbox")]
     O --> W["Tasks, reminders, holds, signed webhooks"]
     H --> S["Assistant and agent tools, read-only"]
+    Q -->|"a reviewer asks"| I["Investigator and verifier agents: cited findings"]
+    I --> R["Coordinator in code: proposals only where the rules abstained"]
+    R -->|"a person approves, against the evidence"| G
 ```
 
 1. **Store once, judge in context.** Files are hashed and read once per tenant; a document is the file as evidence in
@@ -178,6 +223,16 @@ flowchart LR
     filtering by tenant, process, creditor and current document before it ranks anything. Agents get paginated,
     tenant-scoped tools, checked against their key and grants on every call; their writes are proposals, bound to the
     evidence they were made on, that a person confirms in one transaction or finds refused as stale.
+12. **Investigate with two agents, decide with a person.** An investigator reads the claim's evidence through
+    read-only tools scoped to that claim and answers in a typed contract, every finding citing a page; a verifier, in
+    a separate context, checks each finding and looks for what was missed. A coordinator in code drops any citation
+    whose words are not on its page, reconciles the two answers with the rules, proposes only for checks the rules
+    could not decide, and sends disagreement to a person. The run is checkpointed after every step, bounded in
+    steps, tokens, time and tool calls, and paused for the person's approval, which is applied atomically against
+    the evidence it was bound to.
+13. **Serve it.** A FastAPI service queues uploads and investigations for workers and applies a reviewer's decision
+    in the request; its processes keep no state of their own (PostgreSQL under row-level security, an object store
+    and the agents' checkpoints are shared), and every request and job is one trace.
 
 ## Design principles
 
@@ -197,6 +252,8 @@ flowchart LR
   confirmation applies it in the same transaction that checks that evidence is unchanged, or refuses it as stale.
 - **Documents are untrusted input.** Text aimed at automated readers marks a document as hostile: it is never shown to
   the model, never quoted by the assistant, and never vouches until a person has read it.
+- **Agents read; code decides; people approve.** No agent writes a verdict or holds a tool that changes anything;
+  what it says counts only with a citation that is really on the page, and only a person applies a proposal.
 - **People's decisions are inputs, not edits.** Applied on every run, bound to the rule they were made under, and kept
   beside the engine's own answer, which is how accuracy is measured.
 - **Side effects through an outbox.** Nothing leaves the transaction that decided it except through an event; actions
@@ -220,6 +277,19 @@ change. Still domain-specific outside the pack: the assistant's question words, 
 world with its ground truth.
 
 ## Run it
+
+The service, in one command: an API for other systems, a review page for people, workers for the slow parts, all
+over shared state:
+
+```bash
+docker compose up --build        # PostgreSQL, an S3-compatible store, Jaeger, migrations, the API and a worker
+docker compose logs seed         # sign-in keys for the synthetic world, shown once
+# the review page: http://localhost:8000   the API: http://localhost:8000/docs   traces: http://localhost:16686
+docker compose -f docker-compose.yml -f compose.llm.yml up --build   # the same, with the agents on a live model
+python scripts/dev_service.py    # or the service in one process on SQLite, without Docker
+```
+
+The engine and its measurements, from the command line:
 
 ```bash
 python -m venv .venv && .venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
@@ -251,6 +321,15 @@ testamur calibrate --seeds 21-30                                        # thresh
 The committed reports are regenerated on GitHub's runners by the manual
 [`measure`](.github/workflows/measure.yml) workflow, CPU only.
 
+The agents on one claim, and the holdout comparison (the model as above):
+
+```bash
+testamur investigate start 6 --by reviewer@firm --db data/harness.db --model-path Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+testamur investigate approve 1 3 --digest <shown> --by reviewer@firm --db data/harness.db
+testamur evaluate run --model-path Qwen3-4B-Instruct-2507-Q4_K_M.gguf --cassette data/holdout.jsonl
+testamur evaluate report artifacts/holdout-0.json   # the arms compared, the faults forced, the report
+```
+
 Agents connect over MCP with a key the tenant created, to the tools the tenant granted:
 
 ```bash
@@ -280,13 +359,20 @@ testamur/
   jobs.py, budget.py, worker.py   the job queue, spend caps, worker processes
   actions.py      dispatcher: tasks, reminders, holds, signed webhooks
   assistant.py    answers from the engine's records, with verified citations
-  agents.py, mcp_server.py        keys, tool catalogue, proposals, the MCP server
+  agents.py, mcp_server.py        keys and roles, tool catalogue, proposals, the MCP server
+  investigate/    the investigator-verifier workflow: typed contracts, scoped tools, the coordinator, the graph
+  service/        the FastAPI service: API, review page, sign-in, the demo seed
+  migrations/     the schema's history (Alembic), row-level security included
+  blobs.py, telemetry.py          the object-store interface; traces and structured logs
   harness.py, golden.py           measurement against the ground truth
   loadtest.py, shadow.py, reviewsim.py, actionsim.py, calibrate.py   the experiments behind the results
   synth/          the adversarial world generator and its ground truth
 tests/            unit, integration, isolation and simulation tests; panel.yaml, the adversarial false-PASS panel
 scripts/          prove_tests_fire.py (mutation proof), risk.py (review risk), results.py (this README's numbers),
-                  compare_judges.py (judging strategies and models)
+                  compare_judges.py (judging strategies and models), smoke_stack.py (the stack as a client),
+                  dev_service.py (the service without Docker)
+docker-compose.yml, compose.llm.yml, Dockerfile, deploy/      the demo stack, and its live-model option
+evals/holdout/    the cases written by hand for the agents' comparison
 docs/             architecture, walkthrough, delivery, decision records
 reports/          committed reports, each stamped with the commit and command that produced it
 gates.yaml        the merge gates
@@ -297,25 +383,34 @@ engine, [how a change ships](docs/delivery.md), and the [decision records](docs/
 
 ## Roadmap
 
-Done in v0.4: the fixes from an external review (tenant isolation for bulk statements with database-side keys and
+Done in v0.5: a bounded, durable investigator-verifier workflow with a person's approval, measured against the rules
+alone and against one agent on a holdout written by hand, with faults forced on purpose; a service for reviewers
+(FastAPI, roles, sessions, migrations, row-level security, an object store, traces, Docker Compose) driven end to end
+in CI. Done in v0.4: the fixes from an external review (tenant isolation for bulk statements with database-side keys and
 row-level security, evidence bound to its process, voting granted only by a clause that grants it and permissions
 decided apart from statuses, screening before any model, approvals bound to evidence and applied atomically, fenced
 leases and locks, keys checked on every call, accurate claims about every number). Done in v0.3: the claim-verification
 domain on the engine built in v0.1 and v0.2. Next:
 
-1. **A bounded investigator-verifier agent workflow**, with checkpoints, budgets and human approval, compared with the
-   rules alone and with one agent on independently written cases.
-2. **A reviewer-facing service**: FastAPI, Postgres migrations, Docker Compose, authenticated approvals and end-to-end
-   traces.
-3. **Operational creditors.** A full pack for Form B claims: invoices, delivery records and the demand notice.
-4. **Records from an information utility.** Read the record of default as evidence beside the creditor's own.
-5. **Real agreements.** Measure the clause tier on expert-labelled public contracts, not only synthetic clauses.
-6. **Accuracy from fewer labels.** Prediction-powered inference, combining the audit sample with the engine's other
+1. **The rules' blind spot the holdout found.** The voting and currency checks read only their own field; a
+   restriction, a withdrawal or a revocation elsewhere on the page goes unseen. Read the whole document for them,
+   and measure the change on new cases, not on the holdout that found it.
+2. **Agents that decide where they can.** On the holdout the agents' value was caution: they caught some of the
+   rules' wrong PASSes by sending them to a person, and no verdict of theirs replaced the rules'. A stronger model,
+   or one narrow question per check instead of one open investigation per claim, before the verifier's cost is
+   worth paying.
+3. **Cases from other people.** The holdout is independent of the generator, not of its author.
+4. **Operational creditors.** A full pack for Form B claims: invoices, delivery records and the demand notice.
+5. **Records from an information utility.** Read the record of default as evidence beside the creditor's own.
+6. **Real agreements.** Measure the clause tier on expert-labelled public contracts, not only synthetic clauses.
+7. **Accuracy from fewer labels.** Prediction-powered inference, combining the audit sample with the engine's other
    verdicts, for tighter per-check intervals.
 
 ## What this is not
 
-- Not a production service: no web API for people yet, no deployment configuration; Postgres is tested, not tuned.
+- Not a production deployment: the Compose stack runs in CI and shows the shape (stateless processes, a restricted
+  database role under row-level security, an object store, traces), with no single sign-on, TLS, backup or load test of
+  the service. Postgres is tested, not tuned.
 - Not evidence about real claim files: the worlds are synthetic, and every name, bank, office and document in them is
   fictional. They are adversarial by design, but real files are messier in ways a generator does not anticipate.
 - Not legal advice, and not a system that admits claims or decides voting rights: the pack's checks are illustrative

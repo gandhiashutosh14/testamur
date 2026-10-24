@@ -1,0 +1,114 @@
+# The demo stack, one command:  docker compose up --build
+#
+#   postgres   the store and the agents' checkpoints; tenant sessions connect as a role under row-level security
+#   objects    an S3-compatible object store (RustFS) for uploaded documents
+#   jaeger     traces from the API and the worker (http://localhost:16686)
+#   migrate    brings the schema to head, then exits
+#   seed       loads a synthetic world through the intake and prints sign-in keys (docker compose logs seed)
+#   api        the API (http://localhost:8000/docs) and the review page (http://localhost:8000)
+#   worker     reads uploads and runs investigations from the shared queue
+#
+# Synthetic data only, local passwords only. Votes, payments, email and webhooks stay simulated. The agents need a
+# model: TESTAMUR_MODEL=openai:http://host.docker.internal:8080/v1#qwen3-4b (any chat-completions server), or a
+# recorded cassette; without one an investigation ends by routing its claim to a person.
+name: testamur
+
+x-app: &app
+  build: .
+  image: testamur:demo
+  restart: "no"
+  environment:
+    TESTAMUR_DATABASE_URL: postgresql+psycopg://testamur:testamur@postgres:5432/testamur
+    TESTAMUR_TENANT_DATABASE_URL: postgresql+psycopg://testamur_app:testamur_app@postgres:5432/testamur
+    TESTAMUR_CHECKPOINTS: postgresql://testamur:testamur@postgres:5432/testamur
+    TESTAMUR_S3_BUCKET: testamur-documents
+    TESTAMUR_S3_ENDPOINT: http://objects:9000
+    AWS_ACCESS_KEY_ID: testamur-local
+    AWS_SECRET_ACCESS_KEY: testamur-local-only
+    AWS_DEFAULT_REGION: us-east-1
+    TESTAMUR_AS_OF: "2026-10-01"
+    TESTAMUR_SESSION_SECRET: ${TESTAMUR_SESSION_SECRET:-local-demo-only-change-me-0123456789abcdef}
+    TESTAMUR_SECURE_COOKIES: "0"
+    TESTAMUR_MODEL: ${TESTAMUR_MODEL:-none}
+    TESTAMUR_CASSETTE: ${TESTAMUR_CASSETTE:-}
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
+
+services:
+  postgres:
+    image: postgres:16.4
+    environment:
+      POSTGRES_USER: testamur
+      POSTGRES_PASSWORD: testamur
+      POSTGRES_DB: testamur
+    volumes:
+      - ./deploy/postgres-init.sql:/docker-entrypoint-initdb.d/10-app-role.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testamur -d testamur"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  objects:
+    image: rustfs/rustfs:1.0.0
+    environment:
+      RUSTFS_ACCESS_KEY: testamur-local
+      RUSTFS_SECRET_KEY: testamur-local-only
+    volumes:
+      - objects:/data
+
+  jaeger:
+    image: jaegertracing/jaeger:2.21.0
+    ports:
+      - "127.0.0.1:16686:16686"
+
+  migrate:
+    <<: *app
+    command: ["testamur", "db", "upgrade"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  seed:
+    <<: *app
+    command: ["testamur", "demo", "seed", "--out", "/tmp/demo-world"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      objects:
+        condition: service_started
+
+  api:
+    <<: *app
+    restart: unless-stopped
+    command: ["testamur", "serve", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      objects:
+        condition: service_started
+      jaeger:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz')"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  worker:
+    <<: *app
+    restart: unless-stopped
+    command: ["testamur", "worker", "--name", "worker-1"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      objects:
+        condition: service_started
+      jaeger:
+        condition: service_started
+
+volumes:
+  pgdata:
+  objects:

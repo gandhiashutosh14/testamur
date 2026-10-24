@@ -30,11 +30,12 @@ from sqlalchemy.orm import Session
 
 from . import __version__, budget
 from .accuracy import check_health
+from .blobs import BlobStore, LocalBlobStore
 from .checks import TIME_RULES, CheckContext, evaluate
 from .extract import Extractor, sniff_mime
 from .match import covered, match
 from .model import CheckResult, Evidence, Extraction, FieldValue, Severity, Status, Tier, Verdict
-from .modeltier import CassetteMiss, ModelClient, Reply, call_key, fingerprint_of, judge, locate, quote_in
+from .modeltier import CassetteMiss, ModelClient, Reply, ask, call_key, fingerprint_of, judge, locate, quote_in
 from .pack import Pack, RequirementSpec
 from .status import decide
 from .store import (
@@ -61,6 +62,7 @@ from .store import (
     VerdictRow,
     utcnow,
 )
+from .telemetry import traced
 from .understand import Classification, Fields, classify, hostile_spans, identifiers, parse_value, read_fields
 
 NO_MODEL = "no model is configured for this check"      # retried every pass, so a model added later answers it
@@ -141,8 +143,8 @@ class _TenantCachedModel:
         self.model_id = inner.model_id
         self.fingerprint = fingerprint_of(inner)
 
-    def chat(self, messages: list[dict], max_tokens: int = 200) -> Reply:
-        key = call_key(self.model_id, messages, max_tokens)
+    def chat(self, messages: list[dict], max_tokens: int = 200, schema: dict | None = None) -> Reply:
+        key = call_key(self.model_id, messages, max_tokens, schema)
         row = self.session.get(ModelCall, {"key": key, "tenant_id": self.tenant_id})
         if row is not None and row.fingerprint == self.fingerprint:       # the same question to the same weights
             self.session.add(UsageRow(day=self.today, provider="model",
@@ -150,7 +152,7 @@ class _TenantCachedModel:
             return Reply(row.response, row.prompt_tokens, row.completion_tokens, 0.0, cached=True)
         estimate = len(json.dumps(messages)) / 4 + max_tokens          # checked before money is spent
         budget.check(self.session, self.tenant_id, "model", estimate, self.today)
-        reply = self.inner.chat(messages, max_tokens)
+        reply = ask(self.inner, messages, max_tokens, schema)
         if row is not None:                                               # other weights answered before: replaced
             self.session.delete(row)
             self.session.flush()
@@ -165,24 +167,27 @@ class _TenantCachedModel:
 
 class Engine:
     def __init__(self, store: Store, pack: Pack, as_of: date, blob_root: str | Path,
-                 extractor: Extractor | None = None, model: ModelClient | None = None, clock=utcnow):
+                 extractor: Extractor | None = None, model: ModelClient | None = None, clock=utcnow,
+                 blobs: BlobStore | None = None):
         self.store, self.pack, self.as_of = store, pack, as_of
         self.blob_root = Path(blob_root)
+        self.blobs = blobs or LocalBlobStore(self.blob_root)      # where the bytes live (blobs.py)
         self.extractor = extractor or Extractor()
         self.model = model
         self.clock = clock                    # wall clock for budgets and usage; injectable for simulation
         self.version = f"{__version__}+code.{code_digest()}+pack.{pack.digest}"
 
     # ------------------------------------------------------------------ intake
+    @traced("ingest", before=lambda self, tenant_id, matter_id, *a, **k: {"tenant_id": tenant_id,
+                                                                         "matter_id": matter_id},
+            after=lambda upload_id: {"upload_id": upload_id})
     def ingest(self, tenant_id: int, matter_id: int, filename: str, data: bytes, channel: str,
                uploaded_at: datetime, declared_creditor_id: int | None = None, external_ref: str | None = None) -> int:
         sha = hashlib.sha256(data).hexdigest()
         with self.store.tenant(tenant_id) as s:
             if s.get(Blob, {"sha256": sha, "tenant_id": tenant_id}) is None:
-                path = self.blob_root / str(tenant_id) / sha[:2] / sha
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(data)
-                s.add(Blob(sha256=sha, tenant_id=tenant_id, size=len(data), mime=sniff_mime(data), path=str(path)))
+                where = self.blobs.put(tenant_id, sha, data)
+                s.add(Blob(sha256=sha, tenant_id=tenant_id, size=len(data), mime=sniff_mime(data), path=where))
             up = UploadRow(matter_id=matter_id, sha256=sha, filename=filename, channel=channel,
                            uploaded_at=uploaded_at, declared_creditor_id=declared_creditor_id, external_ref=external_ref)
             s.add(up)
@@ -190,6 +195,8 @@ class Engine:
             return up.id
 
     # ------------------------------------------------------------------ processing
+    @traced("ocr", before=lambda self, tenant_id, upload_id, *a, **k: {"tenant_id": tenant_id, "upload_id": upload_id},
+            after=lambda pages: {"ocr_pages": pages, "cache_hit": pages == 0})
     def prefetch(self, tenant_id: int, upload_id: int, heartbeat=None) -> int:
         """Run the slow, paid step (OCR) outside any long transaction, so concurrent workers overlap on it and only
         the short bookkeeping that follows is serialised. Returns the OCR pages paid for (0 on a cache hit).
@@ -238,7 +245,7 @@ class Engine:
             if heartbeat is not None:
                 heartbeat()
         try:
-            ex = self.extractor.extract(Path(path).read_bytes(), mime, before_ocr=gate, on_page=renew)
+            ex = self.extractor.extract(self.blobs.get(path), mime, before_ocr=gate, on_page=renew)
         except Exception:
             with self.store.tenant(tenant_id) as s:
                 if reservation:
@@ -255,6 +262,9 @@ class Engine:
             s.execute(delete(ReadingLock).where(ReadingLock.sha256 == sha, ReadingLock.owner == token))
             return ex.ocr_pages
 
+    @traced("process", before=lambda self, tenant_id, upload_id: {"tenant_id": tenant_id, "upload_id": upload_id},
+            after=lambda o: {"document_id": o.document_id, "doc_type": o.doc_type, "outcome": o.state,
+                             "cache_hit": o.deduplicated})
     def process(self, tenant_id: int, upload_id: int) -> Outcome:
         with self.store.tenant(tenant_id) as s:
             up = s.get(UploadRow, upload_id)
@@ -612,7 +622,7 @@ class Engine:
             return Extraction.model_validate(row.payload)
         blob = s.get(Blob, {"sha256": sha, "tenant_id": tenant_id})
         today = self.clock().date()
-        ex = self.extractor.extract(Path(blob.path).read_bytes(), blob.mime,
+        ex = self.extractor.extract(self.blobs.get(blob.path), blob.mime,
                                     before_ocr=lambda pages: budget.check(s, tenant_id, "ocr", pages, today))
         s.add(ExtractionRow(**key, payload=ex.model_dump(mode="json"), ocr_pages=ex.ocr_pages, seconds=ex.seconds))
         if ex.ocr_pages:
@@ -756,6 +766,8 @@ class Engine:
             whose |= {trustee} if trustee else set()
         return any(whose & set((d.match_detail or {}).get("candidates", [])) for d in docs)
 
+    @traced("status", before=lambda self, s, tenant_id, key, *a, **k: {"tenant_id": tenant_id, "claim_id": key[0],
+                                                                      "requirement": key[1]})
     def _recompute(self, s: Session, tenant_id: int, key: tuple[int, str], force: bool = False) -> None:
         eid, rid = key
         e = s.get(Claim, eid)
@@ -898,6 +910,10 @@ class Engine:
                 results[cid] = self._store(s, e.id, doc.id, r, rows.get(cid))
         return [effective(cid, results[cid]) for cid in req.checks]
 
+    @traced("model_check", before=lambda self, s, tenant_id, cid, rid, doc, *a, **k: {
+        "tenant_id": tenant_id, "check": cid, "requirement": rid, "document_id": doc.id},
+        after=lambda r: {"verdict": r.verdict.value, "tokens": int(r.cost.get("tokens", 0)),
+                         "cached_calls": int(r.cost.get("cached_calls", 0)), "reason": r.reason[:80]})
     def _model_check(self, s: Session, tenant_id: int, cid: str, rid: str, doc: Document, ex: Extraction,
                      so_far: dict[str, CheckResult]) -> CheckResult:
         spec = self.pack.checks[cid]

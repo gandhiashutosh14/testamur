@@ -201,6 +201,61 @@ def render() -> str:
                 f"answered as such), near-twin names, shared first words asked back, another tenant's creditors, "
                 f"unanswerable questions, hostile documents and lists of lapsing authorities. Wrong values, wrong versions or wrong "
                 f"creditors: {wrong}. Citations outside the tenant: {leaked}."]
+    ho = _load("holdout-eval.json")
+    if ho and ho.get("summary"):
+        s, n = ho["summary"], len(ho["cases"])
+        stamp = re.search(r"at commit `([^`]+)`", (REPORTS / "holdout-eval.md").read_text(encoding="utf-8"))
+        measured = ho.get("commit") or (stamp.group(1) if stamp else "?")        # where the arms ran
+        arms = [a for a in ("rules", "single", "pair") if a in s]
+
+        def row(label, fn):
+            return f"| {label} | " + " | ".join(fn(s[a]) for a in arms) + " |"
+        faults = ho.get("faults") or []
+        out += ["", f"### The agents against the rules ([holdout comparison](reports/holdout-eval.md), commit "
+                f"`{measured}`)", "",
+                f"{n} cases written by hand for this comparison, independently of the generator, and fixed before "
+                f"any agent ran on them (set `{ho['set']}`). The agents' model: `{ho.get('model') or 'none'}` on "
+                "GitHub's CPU runners, every call recorded and replayed in CI; the engine's own clause tier off, so "
+                "the agents are the only model reading. A proposal is counted as the output, as if approved.", "",
+                "| | " + " | ".join({"rules": "Rules", "single": "One agent", "pair": "Investigator and verifier"}[a]
+                                     for a in arms) + " |", "|---|" + "---|" * len(arms),
+                row("Right output", lambda m: f"{m['success']} of {m['cases']}"),
+                row("False PASS", lambda m: str(m["false_pass"])),
+                row("False FAIL", lambda m: str(m["false_fail"])),
+                row("Sent to a person", lambda m: f"{m['person']} of {m['cases']}"),
+                row("Citations that held", lambda m: f"{m['citations_valid']} of {m['citations']}"
+                    if "citations" in m else "-"),
+                row("Permission violations", lambda m: str(m["violations"]) if "violations" in m else "-"),
+                row("Latency p50 / p95", lambda m: f"{m['p50_seconds']} s / {m['p95_seconds']} s"
+                    if "p50_seconds" in m else "-"),
+                row("Tokens per case", lambda m: f"{m['tokens_per_case']:,}" if "tokens_per_case" in m else "-")]
+        cases = ho["cases"]
+        if all("single" in c["outputs"] for c in cases):
+            def moved(arm, ok_before, ok_after):
+                return [c for c in cases if (c["outputs"]["rules"] in c["truth"]) == ok_before
+                        and (c["outputs"][arm] in c["truth"]) == ok_after and c["outputs"][arm] != c["outputs"]["rules"]]
+            fixed, broke = moved("single", False, True), moved("single", True, False)
+            decided = [c for c in cases if c["outputs"]["single"] in ("PASS", "FAIL")
+                       and c["outputs"]["single"] != c["outputs"]["rules"]]
+            same = sum(c["outputs"].get("pair") == c["outputs"]["single"] for c in cases)
+            def how(cs):
+                return ", ".join(sorted({c["outputs"]["rules"] + " to " + c["outputs"]["single"] for c in cs}))
+            out += ["", f"Against the rules, one agent turned {len(fixed)} wrong output{'s' * (len(fixed) != 1)} "
+                    f"right ({how(fixed)}) and {len(broke)} right output{'s' * (len(broke) != 1)} wrong "
+                    f"({how(broke)}); " + (f"{len(decided)} of its own verdicts" if decided else "none of its own "
+                                          "verdicts") + " replaced the rules' output. The pair gave one agent's "
+                    f"output in {same} of {len(cases)} cases."]
+        for e in ho.get("earlier") or []:
+            single = e["summary"].get("single", {})
+            out += ["", f"An earlier {e['label']} on the same cases (commit `{e['commit']}`): one agent "
+                    f"{single.get('success', '?')} of {single.get('cases', '?')} right with "
+                    f"{single.get('false_pass', '?')} false PASS, the agents stopping by "
+                    + ", ".join(f"{k} {v}" for k, v in (single.get("stops") or {}).items())
+                    + (f". After it, {e['change']}." if e.get("change") else ".")]
+        if faults:
+            out += ["", f"Faults forced on purpose with a scripted model (a model timeout, an agent reaching outside "
+                    f"its claim, approval of changed evidence, a decision delivered twice, a worker finishing after its "
+                    f"lease was taken over): {sum(f['held'] for f in faults)} of {len(faults)} contained."]
     jc = REPORTS / "judge-comparison.md"
     if jc.exists():
         rows = [r for r in jc.read_text(encoding="utf-8").splitlines() if r.startswith("| ") and "| clean |" in r]
@@ -217,8 +272,10 @@ def render() -> str:
             f"{floor.group(1) if floor else '?'} tests (a run that collects fewer, or skips one without a stated reason, "
             f"fails; the Postgres-only tests skip locally and run in their own job); {mutants} hand-picked safety rules "
             "broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation "
-            "score); the harness gates on every push; queue, tenancy, row-level security, approvals and the engine "
-            "tested on Postgres; the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, "
+            "score); the harness gates on every push; queue, tenancy, row-level security, migrations, approvals and "
+            "the engine tested on Postgres; the Compose stack built, started and driven as a client (upload, read, "
+            "investigate, isolation, traces); the pipeline itself checked by zizmor and actionlint; one aggregate "
+            "check, `gate`, "
             "that passes only when every job did, meant to be the required check on main "
             "([how a change ships](docs/delivery.md))."]
     return "\n".join(out)

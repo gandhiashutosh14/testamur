@@ -50,6 +50,16 @@ def test_an_agent_sees_and_calls_only_the_tools_its_tenant_granted(env):
         build_server(engine, "tsk_not_a_key")
 
 
+def test_a_persons_key_does_not_open_the_agent_surface(env):
+    """Keys carry a role: what an agent does is never recorded under a person's name, nor the reverse."""
+    world, store, engine = env
+    for role in ("reviewer", "uploader"):
+        with pytest.raises(PermissionError):
+            build_server(engine, agents.create_key(store, 1, f"person-{role}", role))
+    with pytest.raises(ValueError):
+        agents.create_key(store, 1, "someone", "admin")
+
+
 def test_a_revoked_key_stops_working_on_a_server_already_running(env):
     """Authentication is checked on every call, not once when the server was built."""
     world, store, engine = env

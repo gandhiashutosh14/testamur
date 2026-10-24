@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Claim {{ c.claim }}{% endblock %}
+{% block main %}
+<section class="card">
+  <p class="crumbs"><a href="/">Overview</a> / claim {{ c.claim }}</p>
+  <h1>{{ c.creditor }}</h1>
+  <p class="muted">Claim {{ c.claim }} in the process of {{ c.process }} · {{ c.tier }} · {{ c.type }} · {{ c.facility }}</p>
+  {% if c.holds %}
+  <div class="banner warn">
+    {% for h in c.holds %}<p><strong>On hold for {{ h.action }}:</strong> {{ h.reasons|join('; ') }}</p>{% endfor %}
+  </div>
+  {% endif %}
+  {% if c.permissions %}
+  <p>{% for p in c.permissions %}<span class="chip {{ 's-satisfied' if p.granted else 's-missing' }}" title="{{ p.unmet|join('; ') }}">{{ p.action }}: {{ 'permitted' if p.granted else 'not permitted' }}</span> {% endfor %}</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Ask the agents</h2>
+  <p class="muted">An investigator reads the claim's evidence with read-only tools and cites it; a verifier, in a separate context, checks each finding and looks for what was missed. Code reconciles both against the rules and proposes only for checks the rules could not decide. Nothing changes until you approve.</p>
+  <form method="post" action="/claims/{{ c.claim }}/investigate" class="row">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label><input type="radio" name="mode" value="pair" checked> investigator and verifier</label>
+    <label><input type="radio" name="mode" value="single"> investigator alone (the baseline)</label>
+    <button type="submit">Investigate</button>
+  </form>
+  {% if c.investigations %}
+  <p>Earlier runs: {% for r in c.investigations %}<a href="/runs/{{ r.run }}">#{{ r.run }}</a> <span class="chip s-{{ r.status }}">{{ r.status|replace('_', ' ') }}</span> {% endfor %}</p>
+  {% endif %}
+</section>
+
+{% for r in c.requirements %}
+<section class="card">
+  <h2>{{ r.requirement|replace('_', ' ') }} <span class="chip s-{{ r.status|lower }}">{{ r.status|replace('_', ' ')|lower }}</span></h2>
+  {% if r.document %}<p>Evidence: <a href="/documents/{{ r.document }}/pages/1">document {{ r.document }}</a></p>{% endif %}
+  {% set rows = checks[r.requirement] %}
+  {% if r.reasons and not rows %}<ul class="reasons">{% for x in r.reasons %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+  {% if rows %}
+  <table>
+    <thead><tr><th>Check</th><th>Verdict</th><th>Why</th><th>Evidence</th></tr></thead>
+    <tbody>
+    {% for k in rows %}
+      <tr><td>{{ k.check }}</td><td><span class="chip v-{{ k.verdict }}">{{ k.verdict }}</span></td><td>{{ k.reason }}</td>
+          <td>{% for e in k.evidence[:2] %}{% if r.document and e.page %}<a href="/documents/{{ r.document }}/pages/{{ e.page }}?q={{ e.quote|urlencode }}">p.{{ e.page }}</a>{% else %}<span class="muted">record</span>{% endif %} {% endfor %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+{% endfor %}
+{% endblock %}

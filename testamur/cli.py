@@ -14,11 +14,12 @@ app = typer.Typer(add_completion=False, no_args_is_help=True,
                   help="TESTAMUR: verifying creditors' claims in a corporate insolvency process.")
 
 
-def _model(model_path: str | None, model_url: str | None, model_name: str | None, cassette: str | None):
+def _model(model_path: str | None, model_url: str | None, model_name: str | None, cassette: str | None,
+           ctx: int = 4096):
     from .modeltier import Cassette, LlamaCppClient, OpenAICompatibleClient
     inner = None
     if model_path:
-        inner = LlamaCppClient(model_path)
+        inner = LlamaCppClient(model_path, n_ctx=ctx)
     elif model_url:
         inner = OpenAICompatibleClient(model_url, model_name or "default")
     if cassette:
@@ -336,10 +337,11 @@ app.add_typer(proposals, name="proposals")
 
 
 @keys.command("create")
-def keys_create(name: str, db: str = "data/harness.db", tenant: int = 1):
-    """Create a key for an agent; it is shown once."""
+def keys_create(name: str, db: str = "data/harness.db", tenant: int = 1,
+                role: str = typer.Option("agent", help="agent (the agent surface), uploader or reviewer (the service)")):
+    """Create a key; it is shown once."""
     from .agents import create_key
-    typer.echo(create_key(_engine(db).store, tenant, name))
+    typer.echo(create_key(_engine(db).store, tenant, name, role))
 
 
 @keys.command("revoke")
@@ -398,6 +400,71 @@ def proposals_decline(proposal: int, by: str = BY, db: str = "data/harness.db", 
     typer.echo(_decide(decide, _engine(db), tenant, proposal, by, False))
 
 
+investigate_app = typer.Typer(help="The investigator-verifier workflow on one claim: two agents read, a coordinator "
+                                    "validates and proposes, a person approves.", no_args_is_help=True)
+app.add_typer(investigate_app, name="investigate")
+
+
+AGENT_CTX = 16384      # an agent's conversation: its task, the tools, and several pages read
+
+
+def _flow(db: str, model=None):
+    from .investigate import Investigations, sqlite_checkpointer
+    saver, _ = sqlite_checkpointer(str(Path(db).with_suffix("")) + ".checkpoints.sqlite")
+    return Investigations(_engine(db), model, saver)
+
+
+def _show_run(run: dict) -> None:
+    import json
+    typer.echo(f"run {run['run']} on claim {run['claim']} ({run['mode']}): {run['status']}, {run['tokens']} tokens")
+    for e in run["trace"]:
+        if e["kind"] == "agent":
+            typer.echo(f"  {e['role']:12} stopped: {e['outcome']} after {e['detail'].get('steps')} steps")
+        else:
+            typer.echo(f"  {e['role']:12} step {e['step']}: {e['tool']}({json.dumps(e['args'])}) {e['outcome']}"
+                       + (f": {e['reason']}" if e["reason"] else ""))
+    for r in run["recommendations"]:
+        typer.echo(f"  -> {r['action']:16} {r['requirement']}/{r['check'] or '-'} {r.get('verdict') or ''} "
+                   f"[{r['agreement']}] {r['reason'][:120]}"
+                   + (f" (proposal {r['proposal_id']}, digest {r['digest']})" if r.get("proposal_id") else ""))
+
+
+@investigate_app.command("start")
+def investigate_start(claim: int, by: str = BY, mode: str = typer.Option("pair", help="pair or single"),
+                      model_path: str = typer.Option(None, help="a local GGUF model (llama.cpp)"),
+                      cassette: str = typer.Option(None, help="record calls here; replay-only without a model"),
+                      db: str = "data/harness.db", tenant: int = 1):
+    """Investigate one claim: the investigator builds a cited evidence packet, the verifier checks it, the coordinator
+    proposes what only a person may apply."""
+    _show_run(_decide(_flow(db, _model(model_path, None, None, cassette, AGENT_CTX)).start, tenant, claim, by, mode))
+
+
+@investigate_app.command("show")
+def investigate_show(run: int, db: str = "data/harness.db", tenant: int = 1):
+    _show_run(_decide(_flow(db).status, tenant, run))
+
+
+@investigate_app.command("approve")
+def investigate_approve(run: int, proposal: int, by: str = BY, digest: str = typer.Option(..., help="as shown"),
+                        decline: bool = False, db: str = "data/harness.db", tenant: int = 1):
+    """Approve (or --decline) one of a run's proposals, as shown with its digest; it is applied only if its evidence
+    is unchanged."""
+    _show_run(_decide(_flow(db).resume, tenant, run, [{"proposal": proposal, "approve": not decline,
+                                                       "digest": digest}], by))
+
+
+@investigate_app.command("recover")
+def investigate_recover(run: int, model_path: str = typer.Option(None), cassette: str = typer.Option(None),
+                        db: str = "data/harness.db", tenant: int = 1):
+    """Continue a run whose process died, from its last finished step."""
+    _show_run(_decide(_flow(db, _model(model_path, None, None, cassette, AGENT_CTX)).recover, tenant, run))
+
+
+@investigate_app.command("cancel")
+def investigate_cancel(run: int, by: str = BY, db: str = "data/harness.db", tenant: int = 1):
+    _show_run(_decide(_flow(db).cancel, tenant, run, by))
+
+
 @app.command()
 def mcp(db: str = "data/harness.db"):
     """Serve the tenant-scoped tools over MCP (stdio). The agent's key comes from TESTAMUR_API_KEY."""
@@ -438,6 +505,172 @@ def explain(claim: int, requirement: str, db: str = "data/harness.db", tenant: i
             typer.echo(f"             evidence {where}: {ev.quote}")
         if r.verdict == Verdict.FAIL and r.fix_hint:
             typer.echo(f"             fix: {r.fix_hint}")
+
+
+db_app = typer.Typer(help="The schema, by migration (row-level security included on Postgres).", no_args_is_help=True)
+demo_app = typer.Typer(help="The demo stack's synthetic data and keys.", no_args_is_help=True)
+app.add_typer(db_app, name="db")
+app.add_typer(demo_app, name="demo")
+
+
+def _db_url(url: str | None) -> str:
+    import os
+    return url or os.environ.get("TESTAMUR_DATABASE_URL") or "sqlite:///data/service.db"
+
+
+@db_app.command("upgrade")
+def db_upgrade(url: str = typer.Option(None, help="the owner's URL; TESTAMUR_DATABASE_URL by default"),
+               app_role: str = typer.Option(None, help="the role row-level security admits; TESTAMUR_APP_ROLE or "
+                                                       "testamur_app by default")):
+    """Bring the database to the current schema, and the workflow's checkpoint tables when they live in Postgres."""
+    import os
+
+    from . import migrations
+    target = _db_url(url)
+    migrations.upgrade(target, app_role=app_role)
+    typer.echo(f"schema at {migrations.current(target)} (head {migrations.head()})")
+    where = os.environ.get("TESTAMUR_CHECKPOINTS", "")
+    if where.startswith(("postgresql://", "postgresql+psycopg://", "postgres://")):
+        from .investigate import checkpointer
+        _, pool = checkpointer(where)          # creates LangGraph's own tables, idempotently
+        pool.close()
+        typer.echo("checkpoint tables ready")
+
+
+@db_app.command("current")
+def db_current(url: str = typer.Option(None, help="TESTAMUR_DATABASE_URL by default")):
+    from . import migrations
+    typer.echo(f"schema at {migrations.current(_db_url(url))} (head {migrations.head()})")
+
+
+@app.command()
+def serve(host: str = "127.0.0.1", port: int = 8000):
+    """The service (API and review page), configured by TESTAMUR_* variables (testamur/service/settings.py)."""
+    import uvicorn
+    uvicorn.run("testamur.service:create_app", factory=True, host=host, port=port, proxy_headers=True,
+                log_level="info")
+
+
+@app.command("worker")
+def worker_cmd(name: str = "worker-1", lease_seconds: float = 120.0,
+               serve_forever: bool = typer.Option(True, "--serve/--drain", help="keep polling, or exit when idle")):
+    """A worker for the service: reads uploads and runs investigations from the shared queue."""
+    import json
+    import signal
+    import threading
+
+    from .service.runtime import Runtime
+    from .service.settings import Settings
+    from .telemetry import configure
+    from .worker import work
+    configure("testamur-worker")
+    rt = Runtime(Settings.from_env(require_secret=False))
+    stop = threading.Event()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, lambda *_: stop.set())        # finish the job in hand, then exit
+    try:
+        stats = work(rt.engine, name, investigations=rt.investigations, lease_seconds=lease_seconds,
+                     forever=serve_forever, stop=stop)
+    finally:
+        rt.close()
+    typer.echo(json.dumps(stats))
+
+
+@demo_app.command("seed")
+def demo_seed(out: str = "data/demo-world", world_seed: int = 3):
+    """Load the synthetic world through the service's intake and print fresh demo keys (shown once)."""
+    from .service.demo import seed
+    from .service.runtime import Runtime
+    from .service.settings import Settings
+    rt = Runtime(Settings.from_env(require_secret=False))
+    try:
+        result = seed(rt, out, world_seed)
+    finally:
+        rt.close()
+    typer.echo(f"registry {result['registry']}: {result['tenants']} firms, {result['claims']} claims; "
+               f"{result['uploads_queued']} upload(s) queued for the worker")
+    for name, k in result["keys"].items():
+        typer.echo(f"  {k['role']:8} key for firm {k['tenant']} ({name}): {k['key']}")
+    typer.echo("Sign in at http://localhost:8000/login with a reviewer key. Synthetic data only.")
+
+
+eval_app = typer.Typer(help="The holdout comparison: the rules alone, one agent, and the investigator-verifier "
+                            "pair, on cases written by hand.", no_args_is_help=True)
+app.add_typer(eval_app, name="evaluate")
+
+
+@eval_app.command("run")
+def evaluate_run(cases: str = "evals/holdout/cases.yaml", out: str = "artifacts/holdout-0.json",
+                 work: str = "data/holdout", shard: str = typer.Option("0/1", help="this shard of n: i/n"),
+                 arms: str = "rules,single,pair",
+                 model_path: str = typer.Option(None, help="the agents' GGUF model (llama.cpp, CPU)"),
+                 ctx: int = typer.Option(16384, help="the agents' context window, in tokens"),
+                 threads: int = typer.Option(None, help="CPU threads for the model"),
+                 cassette: str = typer.Option(None, help="record calls here; replay-only without a model")):
+    """Run the arms over one shard of the cases and write its results."""
+    import json
+
+    from . import evaluate as ev
+    from .modeltier import Cassette, LlamaCppClient
+    inner = LlamaCppClient(model_path, n_ctx=ctx, threads=threads) if model_path else None
+    model = Cassette(cassette, inner=inner) if cassette else inner
+    i, n = (int(x) for x in shard.split("/"))
+    result = ev.evaluate(ev.load(cases), Path(work) / f"shard-{i}", model, arms=tuple(arms.split(",")), shard=(i, n))
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text(json.dumps(result, indent=1), encoding="utf-8")
+    typer.echo(f"{len(result['cases'])} case(s) -> {out}")
+
+
+@eval_app.command("report")
+def evaluate_report(results: list[str], cases: str = "evals/holdout/cases.yaml",
+                    report: str = "reports/holdout-eval.md", data: str = "reports/holdout-eval.json",
+                    work: str = "data/holdout-faults",
+                    earlier: list[str] | None = typer.Option(None, help="an earlier run's report data, oldest first"),
+                    change: list[str] | None = typer.Option(None, help="what changed after each earlier run, in order")):
+    """Merge the shards' results, force the fault scenarios, and write the report and its data."""
+    import json
+    import re
+    from datetime import UTC, datetime
+
+    from . import evaluate as ev
+    from .harness import git_stamp
+    hs = ev.load(cases)
+    merged = ev.merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])
+    if merged["set"] != hs.digest:
+        raise typer.BadParameter(f"the results are about case set {merged['set']}, the file is {hs.digest}")
+    before, change = [], change or []
+    for i, path in enumerate(earlier or []):
+        prior = json.loads(Path(path).read_text(encoding="utf-8"))
+        if prior["set"] != hs.digest:
+            raise typer.BadParameter(f"{path} is about case set {prior['set']}, not {hs.digest}")
+        stamp = re.search(r"at commit `([^`]+)`", Path(path).with_suffix(".md").read_text(encoding="utf-8"))
+        before.append({"label": f"run {i + 1}", "commit": stamp.group(1) if stamp else "?",
+                       "summary": prior["summary"], "change": change[i] if i < len(change) else ""})
+    rows = ev.faults(hs, work)
+    meta = {"generated": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"), "commit": git_stamp(Path.cwd()),
+            "command": "testamur evaluate report " + " ".join(Path(p).name for p in results)
+            + "".join(f" --earlier {Path(p).name}" for p in earlier or [])}
+    Path(report).write_text(ev.render(merged, meta, rows, before), encoding="utf-8", newline="\n")
+    Path(data).write_text(json.dumps({**merged, "summary": ev.summarise(merged), "faults": rows,
+                                      "earlier": before, "meta": meta}, indent=1), encoding="utf-8", newline="\n")
+    typer.echo(f"{report}: {len(merged['cases'])} cases, {sum(f['held'] for f in rows)} of {len(rows)} faults held")
+
+
+@eval_app.command("check")
+def evaluate_check(results: list[str], against: str = "reports/holdout-eval.json"):
+    """Fail unless these results give every case the outputs the committed report gives it (a replay's check)."""
+    import json
+
+    from . import evaluate as ev
+    merged = ev.merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])
+    committed = json.loads(Path(against).read_text(encoding="utf-8"))
+    now = {c["case"]: c["outputs"] for c in merged["cases"]}
+    then = {c["case"]: c["outputs"] for c in committed["cases"]}
+    differ = sorted(k for k in now.keys() | then.keys() if now.get(k) != then.get(k))
+    if merged["set"] != committed["set"] or differ:
+        typer.echo(f"the outputs differ from {against}: set {merged['set']} vs {committed['set']}; cases {differ}")
+        raise typer.Exit(1)
+    typer.echo(f"{len(now)} cases: every output as committed")
 
 
 if __name__ == "__main__":

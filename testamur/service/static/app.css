@@ -1,0 +1,64 @@
+:root {
+  --bg: #f6f7f9; --card: #ffffff; --ink: #1d2330; --muted: #5d6676; --line: #dde1e8; --accent: #2457c5;
+  --ok: #17733d; --ok-bg: #e5f4ea; --bad: #a3262a; --bad-bg: #fbe8e8; --warn: #8a5a00; --warn-bg: #fff4dc;
+  --neutral-bg: #eceff4; --hit: #fff1a8;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151b; --card: #1a1f27; --ink: #e6e9ef; --muted: #9aa3b2; --line: #2c3340; --accent: #7aa2ff;
+    --ok: #7fd49c; --ok-bg: #173323; --bad: #ff9a9a; --bad-bg: #3a1c1e; --warn: #f2c66d; --warn-bg: #3a2e14;
+    --neutral-bg: #262c37; --hit: #4a4220;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+       font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); }
+code { font-size: 12px; word-break: break-all; }
+header.top { display: flex; align-items: center; gap: 12px; padding: 12px 24px; background: var(--card);
+             border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.brand { font-weight: 700; letter-spacing: .08em; text-decoration: none; color: var(--ink); }
+.tag { color: var(--muted); }
+nav { margin-left: auto; display: flex; gap: 14px; align-items: center; }
+.who { color: var(--muted); font-size: 13px; }
+main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+footer { max-width: 1100px; margin: 0 auto; padding: 0 16px 32px; color: var(--muted); font-size: 12px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 16px 20px; margin: 0 0 16px;
+        overflow-x: auto; }
+.card.narrow { max-width: 460px; margin: 40px auto; }
+.card.accent { border-color: var(--accent); }
+h1 { font-size: 22px; margin: 4px 0 6px; } h2 { font-size: 17px; margin: 0 0 10px; }
+.muted { color: var(--muted); } .small { font-size: 12px; }
+.crumbs { margin: 0; font-size: 13px; color: var(--muted); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; background: var(--neutral-bg);
+        white-space: nowrap; }
+.s-satisfied, .v-PASS, .s-applied, .s-no_change, .a-supported, .st-supports { background: var(--ok-bg); color: var(--ok); }
+.s-missing, .s-not_satisfied, .s-failed, .v-FAIL, .s-rejected, .a-disputed, .st-contradicts, .s-held { background: var(--bad-bg);
+  color: var(--bad); }
+.s-needs_review, .s-awaiting_approval, .s-needs_person, .s-stale, .v-ABSTAIN, .a-unresolved, .st-unclear, .st-missing,
+.s-investigating, .s-verifying, .s-evidence_ready, .s-started { background: var(--warn-bg); color: var(--warn); }
+.banner.warn { background: var(--warn-bg); color: var(--warn); border-radius: 6px; padding: 8px 12px; }
+.banner p { margin: 4px 0; }
+.error { color: var(--bad); }
+form.inline { display: inline; }
+form.row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+label { display: inline-flex; gap: 6px; align-items: center; }
+input[type=password] { display: block; width: 100%; padding: 8px; margin: 6px 0 12px; border: 1px solid var(--line);
+                       border-radius: 6px; background: var(--bg); color: var(--ink); }
+button { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 7px 14px; font: inherit;
+         cursor: pointer; }
+button.link { background: none; color: var(--accent); padding: 0; }
+fieldset { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 12px; padding: 8px 12px; }
+legend { padding: 0 4px; font-weight: 600; }
+.quote { margin: 4px 0 4px 12px; font-size: 14px; }
+.finding { border-bottom: 1px solid var(--line); padding: 6px 0; }
+.review { margin: 2px 0 6px 12px; font-size: 14px; }
+.reasons { margin: 4px 0 10px; color: var(--muted); font-size: 14px; }
+.pager { display: flex; gap: 16px; }
+ol.lines { font: 13px/1.6 ui-monospace, Consolas, monospace; padding-left: 3.2em; }
+ol.lines li.hit { background: var(--hit); }

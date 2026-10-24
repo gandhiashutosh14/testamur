@@ -3,9 +3,11 @@ name: measure
 # Regenerates the committed measurements on GitHub's machines, CPU only: the full world with the open-weight model run
 # live and every call recorded, the assistant's golden set, the review simulations, the threshold calibration, the
 # finding-to-action simulation, the load test, the shadow OCR trial, and the small-world recording the CI harness
-# replays. Manual: in record mode it downloads a 2.5 GB model and takes a few hours; in replay mode it answers every
-# model call from the committed recordings (a call they do not hold fails the run) and needs no model. The reports
-# come back as artifacts and are committed by hand, each stamped with the commit and the command that produced it.
+# replays (suite: reports); or the holdout comparison of the rules alone, one agent and the investigator-verifier pair
+# on the cases written by hand in evals/holdout/cases.yaml, in four shards side by side (suite: holdout). Manual: in
+# record mode it downloads a 2.5 GB model and takes a few hours; in replay mode it answers every model call from the
+# committed recordings (a call they do not hold fails the run) and needs no model. The reports come back as artifacts
+# and are committed by hand, each stamped with the commit and the command that produced it.
 
 on:
   workflow_dispatch:
@@ -21,6 +23,11 @@ on:
         type: choice
         options: [record, replay]
         default: record
+      suite:
+        description: reports (the committed measurements) or holdout (the agents against the rules)
+        type: choice
+        options: [reports, holdout]
+        default: reports
 
 permissions:
   contents: read
@@ -28,6 +35,7 @@ permissions:
 jobs:
   model:
     name: full world with the model live, golden set, review simulations, calibration, actions
+    if: inputs.suite == 'reports'
     runs-on: ubuntu-latest
     timeout-minutes: 345
     env:
@@ -95,6 +103,7 @@ jobs:
 
   load:
     name: load test and shadow OCR trial
+    if: inputs.suite == 'reports'
     runs-on: ubuntu-latest
     timeout-minutes: 150
     env:
@@ -120,6 +129,7 @@ jobs:
 
   small:
     name: the small world recorded on Linux, for the CI harness to replay
+    if: inputs.suite == 'reports'
     runs-on: ubuntu-latest
     timeout-minutes: 180
     env:
@@ -165,3 +175,97 @@ jobs:
         with:
           name: measure-small
           path: reports/
+
+  holdout:
+    name: holdout shard ${{ matrix.shard }} of 4
+    if: inputs.suite == 'holdout'
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      MODEL_REPO: ${{ inputs.model_repo }}
+      MODEL_FILE: ${{ inputs.model_file }}
+      MODEL_MODE: ${{ inputs.model_mode }}
+      SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[ocr,agents]"
+      - if: inputs.model_mode == 'record'
+        run: python -m pip install "llama-cpp-python>=0.3" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+      - if: inputs.model_mode == 'record'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: models
+          key: gguf-${{ inputs.model_file }}
+      - name: Download the model
+        if: inputs.model_mode == 'record'
+        run: |
+          case "$MODEL_FILE$MODEL_REPO" in *[!A-Za-z0-9._/-]*) echo "unexpected characters in the inputs"; exit 1;; esac
+          mkdir -p models
+          [ -f "models/$MODEL_FILE" ] || curl -sSL -o "models/$MODEL_FILE" \
+            "https://huggingface.co/$MODEL_REPO/resolve/main/$MODEL_FILE"
+          ls -la models
+      - name: The three arms over this shard's cases
+        run: |
+          mkdir -p artifacts
+          if [ "$MODEL_MODE" = record ]; then
+            # a recording is made whole, by one model: every record carries the weights' fingerprint
+            testamur evaluate run --shard "$SHARD/4" --out "artifacts/holdout-$SHARD.json" --threads 4 \
+              --model-path "models/$MODEL_FILE" --cassette "artifacts/holdout-$SHARD.jsonl"
+          else
+            testamur evaluate run --shard "$SHARD/4" --out "artifacts/holdout-$SHARD.json" \
+              --cassette reports/cassettes/holdout.jsonl
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: holdout-shard-${{ matrix.shard }}
+          path: artifacts/
+
+  holdout-report:
+    name: the holdout report
+    if: inputs.suite == 'holdout'
+    needs: holdout
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MODEL_MODE: ${{ inputs.model_mode }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[ocr,agents]"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: holdout-shard-*
+          path: artifacts
+          merge-multiple: true
+      - name: Merge the shards, force the fault scenarios, write the report
+        run: |
+          ls -la artifacts
+          testamur evaluate report artifacts/holdout-0.json artifacts/holdout-1.json artifacts/holdout-2.json \
+            artifacts/holdout-3.json
+          if [ "$MODEL_MODE" = record ]; then
+            mkdir -p reports/cassettes
+            cat artifacts/holdout-0.jsonl artifacts/holdout-1.jsonl artifacts/holdout-2.jsonl \
+              artifacts/holdout-3.jsonl > reports/cassettes/holdout.jsonl
+          fi
+          cat reports/holdout-eval.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: holdout-report
+          path: |
+            reports/holdout-eval.md
+            reports/holdout-eval.json
+            reports/cassettes/holdout.jsonl

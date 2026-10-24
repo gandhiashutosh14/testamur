@@ -276,6 +276,36 @@ testamur proposals list --tenant 1                             # what agents ask
 testamur proposals confirm 3 --by reviewer@firm --tenant 1     # a person applies it
 ```
 
+### Investigations: two agents and a person
+For what rules cannot decide but a careful reader can (an authority granting the vote "subject to the board's
+approval" that records the approval two lines down), a reviewer can ask for an investigation
+([`investigate/`](../testamur/investigate/), [ADR 0017](decisions/0017-an-investigator-and-a-verifier.md)). An
+*investigator* reads the claim's evidence through read-only tools and answers with a typed evidence packet, each
+finding citing a document, a page and words copied from it; a *verifier*, in a separate context with its own tools,
+checks each finding and looks for what was missed. A coordinator in code validates every citation against the page,
+reconciles the two answers with each other and with the rules, and alone creates proposals, only for checks the rules
+could not decide; disagreement goes to a person. The run is a LangGraph graph checkpointed after every step: a crash
+resumes at the step it was on, a restart during review resumes at the approval, and every step that can run twice is
+idempotent. Budgets bound steps, tokens, time and tool calls per agent. `mode="single"` (the investigator alone) is the
+baseline the pair is measured against.
+
+### The service
+A FastAPI service puts the engine in front of people and other systems ([`service/`](../testamur/service/),
+[ADR 0018](decisions/0018-a-service-for-reviewers.md)): a JSON API (`/api/v1`, described at `/docs`) and a
+server-rendered review page. Keys carry a role (agent, uploader, reviewer) and are checked by hash on every request;
+the review page signs a session holding only the key's hash, and every form carries a CSRF token. Uploads and
+investigations are queued for workers; a reviewer's approval is applied in the request, atomically and against the
+digest the reviewer was shown. Processes are stateless: Postgres (with tenant sessions as an application role under
+row-level security), an S3-compatible object store and the workflow's checkpoints are shared, so API and worker
+processes scale apart. The schema is migrated by Alembic, row-level security included. Every request and job is one
+OpenTelemetry trace, with a span per stage, agent step, tool call and approval, carrying identifiers only.
+
+```bash
+docker compose up --build                  # Postgres, object store, Jaeger, migrations, API, worker
+docker compose logs seed                   # the synthetic world's sign-in keys
+python scripts/dev_service.py              # or one process on SQLite, no Docker
+```
+
 ### Revisions and retries
 Verdicts are stored per claim, requirement, check, document and engine version. A transient failure (a timeout,
 a provider error) is recorded as a transient ABSTAIN, retried on the next pass, and never overwrites a conclusive
@@ -358,8 +388,8 @@ cost (a re-index pays for nothing) and about how much it hands to people (deferr
   stays domain-specific outside the pack: the assistant's question words, and the world generator with its truth.
 - **Real agreements.** The clause tier is measured on synthetic clauses; an evaluation on expert-labelled public
   contracts is the next measurement.
-- **A web API and sign-in for people.** People work through the command line; agents through the tool server. A
-  service with authenticated reviewers is the next release.
+- **Single sign-on.** People sign in to the service with a key made for them; a deployment would put an identity
+  provider in front and map its identities to principals and roles.
 - **A generative layer in the assistant.** It answers from records and quotes passages; a model could phrase answers
   behind the same citation check.
 - **Per-tenant policy.** One domain pack serves every tenant; budgets, audit rates and action policy are pack-wide.
@@ -367,5 +397,6 @@ cost (a re-index pays for nothing) and about how much it hands to people (deferr
   the usual case (limitation as three years from the default) it abstains on the rest and a person decides.
 - **The outside world.** Reminders are written, not e-mailed; webhooks are signed and retried, but the receivers in
   the simulations are simulated.
-- **Production operations.** Postgres runs in CI, not under load; there is no deployment, backup or monitoring
-  configuration.
+- **Production operations.** The Compose stack shows the deployment's shape (stateless processes, shared state, a
+  restricted database role, traces) and runs in CI; there is no TLS termination, rate limiting, backup, alerting or
+  load testing of the service itself.
