@@ -590,6 +590,73 @@ def demo_seed(out: str = "data/demo-world", world_seed: int = 3):
     typer.echo("Sign in at http://localhost:8000/login with a reviewer key. Synthetic data only.")
 
 
+eval_app = typer.Typer(help="The holdout comparison: the rules alone, one agent, and the investigator-verifier "
+                            "pair, on cases written by hand.", no_args_is_help=True)
+app.add_typer(eval_app, name="evaluate")
+
+
+@eval_app.command("run")
+def evaluate_run(cases: str = "evals/holdout/cases.yaml", out: str = "artifacts/holdout-0.json",
+                 work: str = "data/holdout", shard: str = typer.Option("0/1", help="this shard of n: i/n"),
+                 arms: str = "rules,single,pair",
+                 model_path: str = typer.Option(None, help="the agents' GGUF model (llama.cpp, CPU)"),
+                 ctx: int = typer.Option(16384, help="the agents' context window, in tokens"),
+                 threads: int = typer.Option(None, help="CPU threads for the model"),
+                 cassette: str = typer.Option(None, help="record calls here; replay-only without a model")):
+    """Run the arms over one shard of the cases and write its results."""
+    import json
+
+    from . import evaluate as ev
+    from .modeltier import Cassette, LlamaCppClient
+    inner = LlamaCppClient(model_path, n_ctx=ctx, threads=threads) if model_path else None
+    model = Cassette(cassette, inner=inner) if cassette else inner
+    i, n = (int(x) for x in shard.split("/"))
+    result = ev.evaluate(ev.load(cases), Path(work) / f"shard-{i}", model, arms=tuple(arms.split(",")), shard=(i, n))
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text(json.dumps(result, indent=1), encoding="utf-8")
+    typer.echo(f"{len(result['cases'])} case(s) -> {out}")
+
+
+@eval_app.command("report")
+def evaluate_report(results: list[str], cases: str = "evals/holdout/cases.yaml",
+                    report: str = "reports/holdout-eval.md", data: str = "reports/holdout-eval.json",
+                    work: str = "data/holdout-faults"):
+    """Merge the shards' results, force the fault scenarios, and write the report and its data."""
+    import json
+    from datetime import UTC, datetime
+
+    from . import evaluate as ev
+    from .harness import git_stamp
+    hs = ev.load(cases)
+    merged = ev.merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])
+    if merged["set"] != hs.digest:
+        raise typer.BadParameter(f"the results are about case set {merged['set']}, the file is {hs.digest}")
+    rows = ev.faults(hs, work)
+    meta = {"generated": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"), "commit": git_stamp(Path.cwd()),
+            "command": "testamur evaluate report " + " ".join(Path(p).name for p in results)}
+    Path(report).write_text(ev.render(merged, meta, rows), encoding="utf-8")
+    Path(data).write_text(json.dumps({**merged, "summary": ev.summarise(merged), "faults": rows}, indent=1),
+                          encoding="utf-8")
+    typer.echo(f"{report}: {len(merged['cases'])} cases, {sum(f['held'] for f in rows)} of {len(rows)} faults held")
+
+
+@eval_app.command("check")
+def evaluate_check(results: list[str], against: str = "reports/holdout-eval.json"):
+    """Fail unless these results give every case the outputs the committed report gives it (a replay's check)."""
+    import json
+
+    from . import evaluate as ev
+    merged = ev.merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])
+    committed = json.loads(Path(against).read_text(encoding="utf-8"))
+    now = {c["case"]: c["outputs"] for c in merged["cases"]}
+    then = {c["case"]: c["outputs"] for c in committed["cases"]}
+    differ = sorted(k for k in now.keys() | then.keys() if now.get(k) != then.get(k))
+    if merged["set"] != committed["set"] or differ:
+        typer.echo(f"the outputs differ from {against}: set {merged['set']} vs {committed['set']}; cases {differ}")
+        raise typer.Exit(1)
+    typer.echo(f"{len(now)} cases: every output as committed")
+
+
 if __name__ == "__main__":
     app()
     Path  # noqa: B018

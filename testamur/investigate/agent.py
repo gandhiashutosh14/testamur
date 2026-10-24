@@ -19,12 +19,15 @@ from ..telemetry import span
 from .tools import ToolGateway
 
 MAX_INVALID = 2
+STEP_TOKENS = 1200      # the longest answer one step may give: a finished packet of findings with quotes
 
 
 @dataclass
 class Budget:
     steps: int = 8
-    tokens: int = 24_000              # prompt + completion tokens, summed over the agent's calls
+    # prompt + completion tokens, summed over the agent's calls; each call's prompt is the whole conversation so far,
+    # so eight steps of reading pages come to about 40,000
+    tokens: int = 60_000
     seconds: float = 900.0
 
 
@@ -88,7 +91,7 @@ def _run(model, gateway: ToolGateway, system: str, task: str, output: type[BaseM
             break
         gateway.step = step
         try:
-            reply = model.chat(messages, max_tokens=700, schema=schema)
+            reply = model.chat(messages, max_tokens=STEP_TOKENS, schema=schema)
         except Exception as exc:  # noqa: BLE001 - a provider failure ends the agent; the coordinator decides
             result.stop = f"model error: {type(exc).__name__}"
             break
