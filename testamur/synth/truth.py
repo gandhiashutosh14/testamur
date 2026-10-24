@@ -26,24 +26,45 @@ def _years_before(d: date, years: int) -> date:
         return d.replace(year=d.year - years, day=28)
 
 
-def _copies(world: World, up: Upload) -> list[Upload]:
-    root = up.truth.duplicate_of or up.id
-    return [u for u in world.uploads if u.id == root or u.truth.duplicate_of == root]
+def _root(world: World, up: Upload) -> int:
+    return up.truth.duplicate_of or up.id
 
 
-def current_document(world: World, e: Claim, doc_type: str, trustee_cover: bool) -> tuple[Upload | None, bool]:
-    """The document that should decide the requirement: a creditor's own document beats a trustee's; among several,
-    the most recent by the type's key date (then by upload time). Returns (upload, via_trustee)."""
-    originals = [u for u in world.uploads if u.tenant_id == e.tenant_id and u.truth.duplicate_of is None
-                 and u.truth.doc_type == doc_type and u.truth.variant != "wrong_tenant"]
-    direct = [u for u in originals if u.truth.owner_creditor_id == e.creditor_id]
-    trustee = [u for u in originals if trustee_cover and e.creditor_id in u.truth.covers
+def _copies(world: World, up: Upload, scope: str = "matter") -> list[Upload]:
+    """Every upload of the same file that tells how and when this evidence arrived: in its own process, for evidence
+    of one process; anywhere in the tenant, for evidence shared across processes."""
+    root = _root(world, up)
+    return [u for u in world.uploads if _root(world, u) == root and u.tenant_id == up.tenant_id
+            and (scope == "creditor" or u.matter_id == up.matter_id)]
+
+
+def evidence(world: World, tenant_id: int, doc_type: str) -> list[Upload]:
+    """The file as evidence in each process it was filed in: one per (process, file), stood for by its first upload
+    there (a copy carries the original's truth). A file filed in two processes is evidence twice, once in each."""
+    groups: dict[tuple[int, int], list[Upload]] = {}
+    for u in world.uploads:
+        if u.tenant_id == tenant_id and u.truth.doc_type == doc_type and u.truth.variant != "wrong_tenant":
+            groups.setdefault((u.matter_id, _root(world, u)), []).append(u)
+    return [min(ups, key=lambda u: (u.uploaded_at, u.id)) for ups in groups.values()]
+
+
+def current_document(world: World, e: Claim, doc_type: str, trustee_cover: bool,
+                     scope: str | None = None) -> tuple[Upload | None, bool]:
+    """The document that should decide the requirement: evidence filed in the claim's own process (anywhere in the
+    tenant for a type the pack shares across processes); a creditor's own document beats a trustee's; among several,
+    the most recent by the type's key date, then one filed in the claim's own process, then the first to arrive.
+    Returns (the upload standing for it, via_trustee)."""
+    scope = scope or load_pack().doc_types[doc_type].evidence_scope
+    pool_all = [u for u in evidence(world, e.tenant_id, doc_type) if scope == "creditor" or u.matter_id == e.matter_id]
+    direct = [u for u in pool_all if u.truth.owner_creditor_id == e.creditor_id]
+    trustee = [u for u in pool_all if trustee_cover and e.creditor_id in u.truth.covers
                and u.truth.owner_creditor_id != e.creditor_id]
     pool, via_trustee = (direct, False) if direct else (trustee, bool(trustee))
     if not pool:
         return None, False
     key = KEY_DATE.get(doc_type)
-    best = max(pool, key=lambda u: (u.truth.fields.get(key, "") if key else "", u.uploaded_at, u.id))
+    best = max(pool, key=lambda u: (u.truth.fields.get(key, "") if key else "", u.matter_id == e.matter_id,
+                                    u.uploaded_at, u.id))
     return best, via_trustee
 
 
@@ -58,7 +79,7 @@ def truth_check(pack: Pack, world: World, check_id: str, rid: str, e: Claim, up:
     as_of = world.as_of
     creditor = world.creditor(e.creditor_id)
     matter = world.matter(e.matter_id)
-    copies = _copies(world, up)
+    copies = _copies(world, up, pack.doc_types[pack.requirements[rid].doc_type].evidence_scope)
 
     def res(v: Verdict, lapsed: bool = False) -> CheckResult:
         return CheckResult(check_id=check_id, requirement_id=rid, verdict=v, severity=spec.severity, tier=spec.tier,
@@ -80,6 +101,8 @@ def truth_check(pack: Pack, world: World, check_id: str, rid: str, e: Claim, up:
         return ok(min(c.uploaded_at for c in copies).date() <= matter.claims_due)
     if check_id == "bank_channel_verified":
         return ok(any(c.channel == "staff_verified" for c in copies))
+    if check_id == "claim_against_debtor":
+        return ok(f["debtor_name"] == matter.name)
     if check_id == "claim_name_matches":
         return ok(f["creditor_name"] == creditor.legal_name)
     if check_id == "claim_within_books":
@@ -127,6 +150,8 @@ def truth_check(pack: Pack, world: World, check_id: str, rid: str, e: Claim, up:
         return ok(f["account_holder"] == creditor.legal_name)
     if check_id == "bank_letter_recent":
         return ok((as_of - _d(f["letter_date"])).days <= 180)
+    if check_id == "facility_borrower_is_debtor":
+        return ok(f["borrower"] == matter.name)
     if check_id == "facility_signed":
         return ok(bool(t.signed))
     if spec.tier == Tier.MODEL:
@@ -142,9 +167,12 @@ def truth_statuses(world: World, pack: Pack | None = None, resolved: bool = Fals
     for e in world.claims:
         for rid, req in pack.requirements.items():
             applicable = req.applies_to.matches(e.tier, e.claim_type)
-            up, via_trustee = current_document(world, e, req.doc_type, req.trustee_cover) if applicable else (None, False)
-            attested = any(a.tenant_id == e.tenant_id and a.creditor_id == e.creditor_id and a.requirement_id == rid
-                           for a in world.attestations)
+            scope = pack.doc_types[req.doc_type].evidence_scope
+            up, via_trustee = current_document(world, e, req.doc_type, req.trustee_cover, scope) if applicable \
+                else (None, False)
+            # the world attests creditor-wide only; evidence of one process would need an attestation naming the claim
+            attested = scope == "creditor" and any(a.tenant_id == e.tenant_id and a.creditor_id == e.creditor_id
+                                                   and a.requirement_id == rid for a in world.attestations)
             results = None
             if up is not None:
                 results = _skip_decided([truth_check(pack, world, cid, rid, e, up, via_trustee, resolved)

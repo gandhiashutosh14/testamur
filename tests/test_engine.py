@@ -68,7 +68,7 @@ def test_a_transient_abstain_never_replaces_a_conclusive_verdict(tiny, tmp_path)
     load_registry(store, world)                    # the verdict's claim and document must exist: foreign keys
     engine = Engine(store, load_pack(), world.as_of, tmp_path / "blobs")
     with store.tenant(1) as s:
-        s.add(Document(id=7, sha256="ab" * 32, doc_type="authority_letter"))
+        s.add(Document(id=7, matter_id=world.claims[0].matter_id, sha256="ab" * 32, doc_type="authority_letter"))
         row = VerdictRow(claim_id=1, requirement_id="authority", check_id="auth_current", document_id=7,
                          verdict="PASS", severity="critical", tier="field", engine_version=engine.version)
         s.add(row)
@@ -96,7 +96,7 @@ def test_a_hostile_document_is_never_shown_to_the_model(tiny, tmp_path):
 
     engine = Engine(store, load_pack(), world.as_of, tmp_path / "blobs", model=WouldPass())
     with store.tenant(1) as s:
-        doc = Document(sha256="cd" * 32, doc_type="facility_agreement", hostile=True)
+        doc = Document(sha256="cd" * 32, matter_id=world.matters[0].id, doc_type="facility_agreement", hostile=True)
         s.add(doc)
         s.flush()
         r = engine._model_check(s, 1, "clause_interest", "evidence_of_debt", doc, None, {})

@@ -49,7 +49,7 @@ def test_a_write_into_another_tenant_is_refused(store):
 
 def test_rows_written_without_a_tenant_take_the_session_tenant(store):
     with store.tenant(2) as s:
-        d = Document(sha256="ab" * 32)
+        d = Document(sha256="ab" * 32, matter_id=2)
         s.add(d)
         s.flush()
         assert d.tenant_id == 2

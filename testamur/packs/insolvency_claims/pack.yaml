@@ -29,12 +29,18 @@ bank_codes:
   Coromandel Union Bank: CRUX
   Sindhu Co-operative Bank: SNDX
 
+# For each document type: how to recognise it, the fields to read, whose it is (name_field), which of several is
+# current (key_date, the latest; otherwise the first to arrive), and where it counts as evidence (evidence_scope:
+# "matter", only in the process it was filed in; "creditor", for every claim of the creditor in the firm).
 doc_types:
   claim_form:
     title_keywords: ["proof of claim by financial creditors", "form c", "proof of claim"]
     filename_aliases: ["form c", "claim", "proof of claim", "poc"]
     key_labels: ["name of the financial creditor", "total amount of claim", "date of default"]
+    name_field: creditor_name
+    evidence_scope: matter
     fields:
+      debtor_name: {labels: ["in the matter of", "name of the corporate debtor"], type: text}
       creditor_name: {labels: ["name of the financial creditor", "name of financial creditor"], type: text}
       cin: {labels: ["cin", "corporate identity number"], type: text}
       pan: {labels: ["pan", "permanent account number"], type: text}
@@ -48,6 +54,9 @@ doc_types:
     title_keywords: ["letter of authority", "authority letter", "certificate of authorisation"]
     filename_aliases: ["authority", "authorisation", "loa", "board resolution"]
     key_labels: ["financial creditor", "authorised representative", "valid until"]
+    name_field: creditor_name
+    key_date: effective_date
+    evidence_scope: matter
     fields:
       creditor_name: {labels: ["financial creditor", "name of the creditor"], type: text}
       representative: {labels: ["authorised representative", "authorized representative"], type: text}
@@ -60,6 +69,9 @@ doc_types:
     title_keywords: ["certificate of registration of charge", "registration of charge", "certificate of charge"]
     filename_aliases: ["charge", "chg", "roc", "security"]
     key_labels: ["charge id", "charge holder", "amount secured"]
+    name_field: charge_holder
+    key_date: registration_date
+    evidence_scope: matter
     fields:
       charge_holder: {labels: ["charge holder", "chargeholder", "in favour of"], type: text}
       company: {labels: ["company", "name of the company"], type: text}
@@ -72,6 +84,9 @@ doc_types:
     title_keywords: ["bank account confirmation", "confirmation of bank details", "bank mandate"]
     filename_aliases: ["bank", "account", "mandate", "cancelled cheque"]
     key_labels: ["account holder", "account number", "ifsc"]
+    name_field: account_holder
+    key_date: letter_date
+    evidence_scope: creditor        # an account confirmation is the creditor's, whichever process it was filed in
     fields:
       bank_name: {labels: ["bank"], type: text}
       account_holder: {labels: ["account holder", "name of the account holder"], type: text}
@@ -82,6 +97,8 @@ doc_types:
     title_keywords: ["facility agreement", "loan agreement", "term loan agreement"]
     filename_aliases: ["agreement", "loan", "facility", "signed"]
     key_labels: ["lender", "borrower", "facility amount"]
+    name_field: lender
+    evidence_scope: matter
     fields:
       lender: {labels: ["lender"], type: text}
       borrower: {labels: ["borrower"], type: text}
@@ -98,6 +115,12 @@ checks:
     severity: minor
     rule: received_by_due_date
     hint: "The claim arrived {days_late} days after the last date for claims ({due_date}). A late claim is verified separately and the reason for the delay recorded (regulations 12 and 13)."
+  claim_against_debtor:
+    tier: field
+    severity: critical
+    rule: name_matches
+    params: {field: debtor_name, against: debtor, pass_at: 92, fail_below: 80}
+    hint: "The form is a claim against '{found}', not against '{expected}': it belongs to another process. Ask {creditor} for a proof of claim in this one."
   claim_name_matches:
     tier: field
     severity: critical
@@ -236,6 +259,12 @@ checks:
     rule: within_days
     params: {field: letter_date, days: 180}
     hint: "The bank letter is dated {found}; ask for one from the last six months."
+  facility_borrower_is_debtor:
+    tier: field
+    severity: critical
+    rule: name_matches
+    params: {field: borrower, against: debtor, pass_at: 92, fail_below: 80}
+    hint: "The agreement's borrower is '{found}', not the corporate debtor '{expected}': it evidences a debt in another process."
   facility_signed:
     tier: field
     severity: critical
@@ -284,8 +313,9 @@ requirements:
   proof_of_claim:
     doc_type: claim_form
     applies_to: {}
-    checks: [received_by_due_date, claim_name_matches, claim_within_books, claim_words_match, claim_not_time_barred,
-             claim_dated_after_announcement, claim_gstin_valid, claim_pan_in_gstin, claim_lei_valid]
+    checks: [received_by_due_date, claim_against_debtor, claim_name_matches, claim_within_books, claim_words_match,
+             claim_not_time_barred, claim_dated_after_announcement, claim_gstin_valid, claim_pan_in_gstin,
+             claim_lei_valid]
   authority:
     doc_type: authority_letter
     applies_to: {}
@@ -303,7 +333,8 @@ requirements:
   evidence_of_debt:
     doc_type: facility_agreement
     applies_to: {tiers: [critical, high, standard]}
-    checks: [facility_signed, clause_disbursement, clause_interest, clause_security, clause_assignment]
+    checks: [facility_borrower_is_debtor, facility_signed, clause_disbursement, clause_interest, clause_security,
+             clause_assignment]
     check_applies:
       clause_security: {claim_types: [secured]}
 

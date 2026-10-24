@@ -174,11 +174,20 @@ def _model_mode(model) -> str:
     return "replay" if getattr(model, "inner", "live") is None else "live"
 
 
+def instances(world: World) -> list:
+    """Each file as evidence in each process it was filed in (the unit the engine judges), stood for by its first
+    upload there: a copy filed in the same process is the same document, a copy filed in another is another."""
+    groups: dict[tuple[int, int, int], list] = {}
+    for u in world.uploads:
+        groups.setdefault((u.tenant_id, u.matter_id, u.truth.duplicate_of or u.id), []).append(u)
+    return sorted((min(ups, key=lambda u: (u.uploaded_at, u.id)) for ups in groups.values()), key=lambda u: u.id)
+
+
 def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]:
-    by_sha: dict[str, Document] = {}
+    by_key: dict[tuple[int, int, str], Document] = {}
     with store.system() as s:
         for d in s.scalars(select(Document)).all():
-            by_sha[f"{d.tenant_id}:{d.sha256}"] = d
+            by_key[(d.tenant_id, d.matter_id, d.sha256)] = d
         states = {(r.claim_id, r.requirement_id): r for r in s.scalars(select(RequirementState)).all()}
         verdicts = defaultdict(dict)
         for v in s.scalars(select(VerdictRow)).all():
@@ -186,9 +195,9 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
     up_doc: dict[int, Document] = {}
     for u in world.uploads:
         sha = sha256((world_dir / u.file).read_bytes()).hexdigest()
-        up_doc[u.id] = by_sha[f"{u.tenant_id}:{sha}"]
+        up_doc[u.id] = by_key[(u.tenant_id, u.matter_id, sha)]
 
-    originals = [u for u in world.uploads if u.truth.duplicate_of is None]
+    originals = instances(world)
     # classification
     cls = Counter()
     for u in originals:
@@ -280,7 +289,7 @@ def measure(world: World, world_dir: Path, store: Store, pack) -> dict[str, Any]
     detected = sum(1 for u in injected if up_doc[u.id].hostile)
     hostile_model_pass = 0
     for (_eid, _rid, did), rows in verdicts.items():
-        d = next((x for x in by_sha.values() if x.id == did), None)
+        d = next((x for x in by_key.values() if x.id == did), None)
         if d is not None and d.hostile:
             hostile_model_pass += sum(1 for r in rows.values() if r.tier == Tier.MODEL and r.verdict == Verdict.PASS)
     return {

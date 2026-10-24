@@ -69,11 +69,21 @@ class Oracle:
     def _upload(self, tenant_id: int, doc_id: int):
         with self.engine.store.tenant(tenant_id) as s:
             doc = s.get(Document, doc_id)
-            ref = s.scalars(select(UploadRow.external_ref).where(UploadRow.sha256 == doc.sha256)
+            ref = s.scalars(select(UploadRow.external_ref).where(UploadRow.sha256 == doc.sha256,
+                                                                 UploadRow.matter_id == doc.matter_id)
                             .order_by(UploadRow.id)).first()
             holder = doc.creditor_id
-        u = self.uploads[int(ref.split(":")[1])]
-        return (self.uploads[u.truth.duplicate_of] if u.truth.duplicate_of else u), holder
+        # the document's first upload in its own process stands for it: a copy carries the original's truth, and
+        # its process is the one the document is evidence in
+        return self.uploads[int(ref.split(":")[1])], holder
+
+    def _belongs_here(self, owner: int, doc_type: str, matter_id: int) -> bool:
+        """Evidence of one process counts there only: the owner (or a holder it acts as trustee for) must have a claim
+        in the process the document was filed in. Evidence shared across processes belongs wherever it was filed."""
+        if self.pack.doc_types[doc_type].evidence_scope == "creditor":
+            return True
+        acting_for = {owner} | {x.id for x in self.world.creditors if x.trustee_id == owner}
+        return any(e.matter_id == matter_id and e.creditor_id in acting_for for e in self.world.claims)
 
     def verdict(self, tenant_id: int, item: QueueItem) -> Verdict | None:
         """What a careful person says about a check of this document; None if they could not say either."""
@@ -106,8 +116,12 @@ class Oracle:
             return "classify"
         if item.kind == "document_owner":
             if t.owner_creditor_id is not None and self.tenant_of.get(t.owner_creditor_id) == tenant_id:
-                self.engine.assign(tenant_id, item.document_id, t.owner_creditor_id, REVIEWER)
-                return "assign"
+                if self._belongs_here(t.owner_creditor_id, t.doc_type, u.matter_id):
+                    self.engine.assign(tenant_id, item.document_id, t.owner_creditor_id, REVIEWER)
+                    return "assign"
+                self.engine.reject(tenant_id, item.document_id, REVIEWER,
+                                   "filed in a process in which the creditor has no claim")
+                return "reject"
             self.engine.reject(tenant_id, item.document_id, REVIEWER, "not evidence for any of our creditors")
             return "reject"
         if item.kind == "document_security":

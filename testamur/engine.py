@@ -31,7 +31,7 @@ from . import __version__, budget
 from .accuracy import check_health
 from .checks import TIME_RULES, CheckContext, evaluate
 from .extract import Extractor, sniff_mime
-from .match import NAME_FIELD, covered, match
+from .match import covered, match
 from .model import CheckResult, Evidence, Extraction, FieldValue, Severity, Status, Tier, Verdict
 from .modeltier import CassetteMiss, ModelClient, Reply, call_key, judge, locate
 from .pack import Pack, RequirementSpec
@@ -62,8 +62,6 @@ from .store import (
 from .understand import Classification, Fields, classify, hostile_spans, identifiers, parse_value, read_fields
 
 NO_MODEL = "no model is configured for this check"      # retried every pass, so a model added later answers it
-KEY_DATE = {"authority_letter": "effective_date", "charge_certificate": "registration_date",
-            "bank_mandate": "letter_date"}
 
 
 def _jsonable(value):
@@ -100,6 +98,7 @@ class QueueItem:
     blocking: bool = True           # holds a requirement in NEEDS_REVIEW
     retrying: bool = False          # a transient failure the engine will retry by itself
     confirm: bool = False           # the engine said PASS, but the check is under review: a person confirms
+    matter_id: int | None = None    # the process the document was filed in
 
 
 @dataclass
@@ -235,10 +234,10 @@ class Engine:
             up = s.get(UploadRow, upload_id)
             if up is None:
                 raise KeyError(f"upload {upload_id} not found for tenant {tenant_id}")
-            doc = s.scalar(select(Document).where(Document.sha256 == up.sha256))
+            doc = s.scalar(select(Document).where(Document.sha256 == up.sha256, Document.matter_id == up.matter_id))
             dedup = doc is not None and doc.engine_version == self.version
             if doc is None:
-                doc = Document(sha256=up.sha256)
+                doc = Document(sha256=up.sha256, matter_id=up.matter_id)
                 s.add(doc)
                 s.flush()
             if not dedup:
@@ -265,8 +264,7 @@ class Engine:
         with self.store.tenant(tenant_id) as s:
             docs = s.scalars(select(Document)).all()
             for doc in docs:
-                up = s.scalar(select(UploadRow).where(UploadRow.sha256 == doc.sha256).order_by(UploadRow.uploaded_at))
-                self._understand(s, tenant_id, doc, up)
+                self._understand(s, tenant_id, doc, self._first_upload_of(s, doc))
             keys = set().union(*(self._affected(s, d) for d in docs)) if docs else set()
             for key in sorted(keys):
                 self._recompute(s, tenant_id, key, force=True)
@@ -281,12 +279,13 @@ class Engine:
             for d in s.scalars(select(Document).order_by(Document.id)).all():
                 detail = d.match_detail or {}
                 if d.state == "needs_review":
-                    items.append(QueueItem("document_owner", d.id, reason=detail.get("reason", ""),
-                                           options=list(detail.get("candidates", []))))
+                    items.append(QueueItem("document_owner", d.id, matter_id=d.matter_id,
+                                           reason=detail.get("reason", ""), options=list(detail.get("candidates", []))))
                 elif d.state == "unknown":
-                    items.append(QueueItem("document_type", d.id, reason=detail.get("reason", "")))
+                    items.append(QueueItem("document_type", d.id, matter_id=d.matter_id,
+                                           reason=detail.get("reason", "")))
                 elif d.state == "matched" and d.hostile and not d.cleared:
-                    items.append(QueueItem("document_security", d.id,
+                    items.append(QueueItem("document_security", d.id, matter_id=d.matter_id,
                                            reason="the document carries text aimed at automated readers"))
             states = {(st.claim_id, st.requirement_id): st.document_id
                       for st in s.scalars(select(RequirementState)).all() if st.document_id is not None}
@@ -502,8 +501,7 @@ class Engine:
         recompute each requirement it bore on before or bears on now. Its verdicts are judged afresh (the inputs
         changed); extraction and model answers come from their caches, so this costs nothing."""
         before = self._affected(s, doc)
-        up = s.scalar(select(UploadRow).where(UploadRow.sha256 == doc.sha256).order_by(UploadRow.uploaded_at))
-        self._understand(s, tenant_id, doc, up)
+        self._understand(s, tenant_id, doc, self._first_upload_of(s, doc))
         s.execute(delete(VerdictRow).where(VerdictRow.document_id == doc.id, VerdictRow.engine_version == self.version))
         for key in sorted(before | self._affected(s, doc)):
             self._recompute(s, tenant_id, key)
@@ -627,7 +625,8 @@ class Engine:
         doc.fields = {k: {"value": _jsonable(v.value), "raw": v.raw, "page": v.page, "line": v.line}
                       for k, v in fields.values.items()}
         doc.conflicts = {k: [{"raw": v.raw, "page": v.page} for v in vs] for k, vs in fields.conflicts.items()}
-        name = fields.get(NAME_FIELD[cls.doc_type])
+        spec = self.pack.doc_types[cls.doc_type]
+        name = fields.get(spec.name_field)
         covered_names = fields.get("represented_holders") or []
         if disposition is not None:                       # a person said whose document it is
             doc.creditor_id = disposition.creditor_id
@@ -636,7 +635,8 @@ class Engine:
             doc.match_detail = {"reason": f"assigned by {disposition.reviewer}" +
                                 (f": {disposition.note}" if disposition.note else ""), "candidates": [], "margin": 0.0}
             return
-        m = match(s, cls.doc_type, name if isinstance(name, str) else None, doc.identifiers, up, covered_names)
+        m = match(s, cls.doc_type, name if isinstance(name, str) else None, doc.identifiers, up, covered_names,
+                  matter_scoped=spec.evidence_scope == "matter")
         doc.creditor_id, doc.covers = m.creditor_id, m.covers
         doc.match_method, doc.match_score = m.method, m.score
         doc.match_detail = {"reason": m.reason, "candidates": m.candidates, "margin": m.margin}
@@ -644,6 +644,9 @@ class Engine:
 
     # ------------------------------------------------------------------ requirements
     def _affected(self, s: Session, doc: Document) -> set[tuple[int, str]]:
+        """The claims and requirements a document bears on: its creditor's (and, for a trustee's document, its
+        holders') claims in the process it was filed in, or in every process for evidence the pack shares across
+        them."""
         if doc.doc_type is None:
             return set()
         rids = [rid for rid, r in self.pack.requirements.items() if r.doc_type == doc.doc_type]
@@ -651,17 +654,31 @@ class Engine:
             set((doc.match_detail or {}).get("candidates", []))
         if not creditors:
             return set()
-        engs = s.scalars(select(Claim).where(Claim.creditor_id.in_(creditors))).all()
-        return {(e.id, rid) for e in engs for rid in rids}
+        q = select(Claim).where(Claim.creditor_id.in_(creditors))
+        if self.pack.doc_types[doc.doc_type].evidence_scope == "matter" and doc.state == "matched":
+            q = q.where(Claim.matter_id == doc.matter_id)
+        return {(e.id, rid) for e in s.scalars(q).all() for rid in rids}
 
-    def _first_upload(self, s: Session, docs: list[Document]) -> dict[str, datetime]:
+    def _first_upload_of(self, s: Session, doc: Document) -> UploadRow:
+        """The document's first upload in its own process: its filename and provenance."""
+        return s.scalar(select(UploadRow).where(UploadRow.sha256 == doc.sha256, UploadRow.matter_id == doc.matter_id)
+                        .order_by(UploadRow.uploaded_at, UploadRow.id))
+
+    def _first_upload(self, s: Session, docs: list[Document]) -> dict[tuple[str, int], datetime]:
         shas = [d.sha256 for d in docs]
-        rows = s.execute(select(UploadRow.sha256, func.min(UploadRow.uploaded_at))
-                         .where(UploadRow.sha256.in_(shas)).group_by(UploadRow.sha256)).all()
-        return dict(rows)
+        rows = s.execute(select(UploadRow.sha256, UploadRow.matter_id, func.min(UploadRow.uploaded_at))
+                         .where(UploadRow.sha256.in_(shas)).group_by(UploadRow.sha256, UploadRow.matter_id)).all()
+        return {(sha, mid): at for sha, mid, at in rows}
 
     def _current(self, s: Session, e: Claim, req: RequirementSpec) -> tuple[Document | None, bool]:
-        docs = s.scalars(select(Document).where(Document.doc_type == req.doc_type, Document.state == "matched")).all()
+        """The document that decides a claim's requirement: evidence filed in the claim's own process (or, where the
+        pack shares the type across processes, in any process of the tenant); the creditor's own before a trustee's;
+        among several, the latest by the type's key date, then the first to arrive."""
+        spec = self.pack.doc_types[req.doc_type]
+        q = select(Document).where(Document.doc_type == req.doc_type, Document.state == "matched")
+        if spec.evidence_scope == "matter":
+            q = q.where(Document.matter_id == e.matter_id)
+        docs = s.scalars(q).all()
         direct = [d for d in docs if d.creditor_id == e.creditor_id]
         group = [d for d in docs if req.trustee_cover and e.creditor_id in (d.covers or [])
                  and d.creditor_id != e.creditor_id]
@@ -669,11 +686,11 @@ class Engine:
         if not pool:
             return None, False
         first = self._first_upload(s, pool)
-        key = KEY_DATE.get(req.doc_type)
+        key = spec.key_date
 
         def rank(d: Document):
             v = (d.fields or {}).get(key, {}).get("value") if key else None
-            return (v or "", first.get(d.sha256, datetime.min), d.id)
+            return (v or "", d.matter_id == e.matter_id, first.get((d.sha256, d.matter_id), datetime.min), d.id)
         return max(pool, key=rank), via_trustee
 
     def _pending(self, s: Session, e: Claim, req: RequirementSpec) -> bool:
@@ -692,8 +709,13 @@ class Engine:
         e = s.get(Claim, eid)
         req = self.pack.requirements[rid]
         applicable = req.applies_to.matches(e.tier, e.claim_type)
-        attested = s.scalar(select(func.count()).select_from(Attestation).where(
-            Attestation.creditor_id == e.creditor_id, Attestation.requirement_id == rid)) > 0
+        attestations = select(func.count()).select_from(Attestation).where(
+            Attestation.creditor_id == e.creditor_id, Attestation.requirement_id == rid)
+        if self.pack.doc_types[req.doc_type].evidence_scope == "matter":
+            attestations = attestations.where(Attestation.claim_id == eid)   # vouches for this claim, by name
+        else:
+            attestations = attestations.where((Attestation.claim_id.is_(None)) | (Attestation.claim_id == eid))
+        attested = s.scalar(attestations) > 0
         doc, via_trustee = self._current(s, e, req) if applicable else (None, False)
         pending = applicable and self._pending(s, e, req)
         results = self._results(s, tenant_id, e, rid, req, doc, via_trustee, force) if doc is not None else None
@@ -745,7 +767,12 @@ class Engine:
             matter = s.get(Matter, e.matter_id)
             ex = self._extraction(s, tenant_id, doc.sha256)
             fields = self._fields(s, doc.id, req.doc_type, ex)
-            uploads = s.scalars(select(UploadRow).where(UploadRow.sha256 == doc.sha256)).all()
+            # how and when it arrived: in its own process, for evidence of that process (the same bytes filed in
+            # another process are another story); anywhere in the tenant, for evidence the pack shares across them
+            arrived = select(UploadRow).where(UploadRow.sha256 == doc.sha256)
+            if self.pack.doc_types[req.doc_type].evidence_scope == "matter":
+                arrived = arrived.where(UploadRow.matter_id == doc.matter_id)
+            uploads = s.scalars(arrived).all()
             ctx = CheckContext(pack=self.pack, as_of=self.as_of, claim=e, creditor=creditor, filing_party=filing,
                                via_trustee=via_trustee, matter=matter, document_id=doc.id, fields=fields, uploads=list(uploads),
                                source="ocr" if ex.method.startswith("ocr") else "text")

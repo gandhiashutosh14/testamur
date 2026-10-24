@@ -7,7 +7,7 @@ import json
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
@@ -32,6 +32,19 @@ class DocTypeSpec(BaseModel):
     filename_aliases: list[str] = Field(default_factory=list)
     key_labels: list[str] = Field(default_factory=list)
     fields: dict[str, FieldSpec] = Field(default_factory=dict)
+    name_field: str                             # whose document it is: the name matched against creditors
+    key_date: str | None = None                 # among several, the most recent by this date is current
+    # Where the evidence counts. "matter": only in the process it was filed in (a proof of claim, an authority for
+    # this process, a charge over this debtor's assets). "creditor": for every claim of the creditor in the tenant (a
+    # bank account confirmation). Sharing evidence across processes is a decision written here, never a default.
+    evidence_scope: Literal["matter", "creditor"] = "matter"
+
+    @model_validator(mode="after")
+    def _fields_exist(self) -> DocTypeSpec:
+        for f in (self.name_field, self.key_date):
+            if f is not None and f not in self.fields:
+                raise ValueError(f"names a field it does not read: {f}")
+        return self
 
 
 class CheckSpec(BaseModel):

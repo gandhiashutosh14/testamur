@@ -18,7 +18,8 @@ from dataclasses import dataclass
 from sqlalchemy import select
 
 from .accuracy import binom_cdf
-from .match import ACCEPT, EXACT, MARGIN, NAME_FIELD, scope
+from .match import ACCEPT, EXACT, MARGIN, scope
+from .pack import load_pack
 from .store import Creditor, Document, Store, UploadRow
 from .synth.world import World
 from .textnorm import name_similarity
@@ -43,6 +44,7 @@ def labelled_names(world: World, store: Store) -> list[Labelled]:
     the matcher saw for the name it read, and whether its best candidate is the true owner. A document whose owner is
     not in scope (misfiled, another tenant's, a stranger's) is never correctly accepted."""
     uploads = {u.id: u for u in world.uploads}
+    pack = load_pack()
     rows: list[Labelled] = []
     with store.system() as s:
         pool: dict[int, list[Creditor]] = {}
@@ -51,10 +53,11 @@ def labelled_names(world: World, store: Store) -> list[Labelled]:
         for d in s.scalars(select(Document).order_by(Document.id)):
             if d.doc_type is None or d.match_method == "identifier":
                 continue
-            name = ((d.fields or {}).get(NAME_FIELD[d.doc_type]) or {}).get("value")
+            name = ((d.fields or {}).get(pack.doc_types[d.doc_type].name_field) or {}).get("value")
             if not isinstance(name, str):
                 continue
-            up = s.scalars(select(UploadRow).where(UploadRow.tenant_id == d.tenant_id, UploadRow.sha256 == d.sha256)
+            up = s.scalars(select(UploadRow).where(UploadRow.tenant_id == d.tenant_id, UploadRow.sha256 == d.sha256,
+                                                   UploadRow.matter_id == d.matter_id)
                            .order_by(UploadRow.id)).first()
             truth = uploads[int(up.external_ref.split(":")[1])].truth
             in_scope = scope(s, pool[d.tenant_id], up.matter_id)

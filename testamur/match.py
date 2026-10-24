@@ -2,7 +2,9 @@
 
 1. Identifiers that validate (LEI and GSTIN by their check characters, CIN by its structure, a bank account as an IFSC
    and account number together) are looked up across the tenant. One hit decides; hits on different creditors
-   abstain.
+   abstain. For evidence that counts in one process only, the creditor found must have a claim in the process the
+   file was filed in (or act as trustee for a holder who has): otherwise the file is possibly misfiled, and a person
+   says where it belongs. A file never becomes evidence in another process because its creditor matched.
 2. Otherwise the name on the document is scored against the creditors with a claim in the matter it was uploaded
    to, plus the debenture trustees acting for them. A clear winner (high score and a margin over the runner-up) decides.
 3. A strong name match outside that matter is not taken: the file may have been misfiled, and a person
@@ -28,9 +30,6 @@ MARGIN = 5.0
 EXACT = 99.5         # equal after normalisation (case, punctuation, legal-form suffix)
 NEAR = 80.0          # close enough that the document might be theirs: flagged for review, never attached
 
-NAME_FIELD = {"claim_form": "creditor_name", "authority_letter": "creditor_name", "charge_certificate": "charge_holder",
-              "bank_mandate": "account_holder", "facility_agreement": "lender"}
-
 
 @dataclass
 class MatchResult:
@@ -44,9 +43,15 @@ class MatchResult:
 
 
 def match(session: Session, doc_type: str, name: str | None, ids: dict[str, list[str]], upload: UploadRow,
-          covered_names: list[str] | None = None) -> MatchResult:
+          covered_names: list[str] | None = None, matter_scoped: bool = True) -> MatchResult:
     creditors = list(session.scalars(select(Creditor)))
     result = _resolve(session, creditors, name, ids, upload)
+    if matter_scoped and result.method == "identifier" and \
+            result.creditor_id not in scope(session, creditors, upload.matter_id):
+        who = next(c.legal_name for c in creditors if c.id == result.creditor_id)
+        return MatchResult(None, "none", result.score, 0.0,
+                           f"the identifiers name {who}, who has no claim in this process: possibly misfiled",
+                           candidates=[result.creditor_id])
     if result.creditor_id is not None and upload.declared_creditor_id is not None:
         claimed = upload.declared_creditor_id
         if result.creditor_id != claimed:

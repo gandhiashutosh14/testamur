@@ -126,10 +126,13 @@ class Claim(TenantScoped, Base):
 
 
 class Attestation(TenantScoped, Base):
+    """A requirement verified outside the platform (a call-back, a register search). For evidence that counts in one
+    process only, it must name the claim; one naming only the creditor vouches for creditor-wide evidence only."""
     __tablename__ = "attestations"
-    __table_args__ = (_same_tenant("creditor_id", "creditors"),)
+    __table_args__ = (_same_tenant("creditor_id", "creditors"), _same_tenant("claim_id", "claims"))
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     creditor_id: Mapped[int] = mapped_column(Integer)
+    claim_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     requirement_id: Mapped[str] = mapped_column(String(60))
     verified_by: Mapped[str] = mapped_column(String(120))
     verified_on: Mapped[date] = mapped_column(Date)
@@ -176,11 +179,15 @@ class ReadingLock(TenantScoped, Base):
 
 
 class Document(TenantScoped, Base):
-    """One per distinct file (per tenant). Re-uploading the same bytes adds an upload event, not a document."""
+    """A file as evidence in one process: one per distinct file per matter. The bytes (Blob) and their reading
+    (ExtractionRow) are stored once per tenant whatever the context; whose evidence the file is, and for which claims
+    it counts, is decided in the context it was filed in. The same bytes filed in two processes are two documents (each
+    judged against its own process's dates and debtor); re-uploading them in the same process adds an upload event."""
     __tablename__ = "documents"
-    __table_args__ = (UniqueConstraint("tenant_id", "sha256"), _referable("documents"),
-                      _same_tenant("creditor_id", "creditors"))
+    __table_args__ = (UniqueConstraint("tenant_id", "matter_id", "sha256"), _referable("documents"),
+                      _same_tenant("creditor_id", "creditors"), _same_tenant("matter_id", "matters"))
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    matter_id: Mapped[int] = mapped_column(Integer, index=True)
     sha256: Mapped[str] = mapped_column(String(64))
     doc_type: Mapped[str | None] = mapped_column(String(60), nullable=True)
     class_method: Mapped[str] = mapped_column(String(40), default="")
