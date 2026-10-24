@@ -205,13 +205,14 @@ def render() -> str:
     if ho and ho.get("summary"):
         s, n = ho["summary"], len(ho["cases"])
         stamp = re.search(r"at commit `([^`]+)`", (REPORTS / "holdout-eval.md").read_text(encoding="utf-8"))
+        measured = ho.get("commit") or (stamp.group(1) if stamp else "?")        # where the arms ran
         arms = [a for a in ("rules", "single", "pair") if a in s]
 
         def row(label, fn):
             return f"| {label} | " + " | ".join(fn(s[a]) for a in arms) + " |"
         faults = ho.get("faults") or []
         out += ["", f"### The agents against the rules ([holdout comparison](reports/holdout-eval.md), commit "
-                f"`{stamp.group(1) if stamp else '?'}`)", "",
+                f"`{measured}`)", "",
                 f"{n} cases written by hand for this comparison, independently of the generator, and fixed before "
                 f"any agent ran on them (set `{ho['set']}`). The agents' model: `{ho.get('model') or 'none'}` on "
                 "GitHub's CPU runners, every call recorded and replayed in CI; the engine's own clause tier off, so "
@@ -237,12 +238,13 @@ def render() -> str:
             decided = [c for c in cases if c["outputs"]["single"] in ("PASS", "FAIL")
                        and c["outputs"]["single"] != c["outputs"]["rules"]]
             same = sum(c["outputs"].get("pair") == c["outputs"]["single"] for c in cases)
-            out += ["", f"Against the rules, one agent turned {len(fixed)} wrong outputs right "
-                    f"({', '.join(sorted({c['outputs']['rules'] + ' to ' + c['outputs']['single'] for c in fixed}))}) "
-                    f"and {len(broke)} right outputs wrong "
-                    f"({', '.join(sorted({c['outputs']['rules'] + ' to ' + c['outputs']['single'] for c in broke}))}); "
-                    f"{len(decided)} of its own verdicts replaced the rules' output. The pair gave one agent's output "
-                    f"in {same} of {len(cases)} cases."]
+            def how(cs):
+                return ", ".join(sorted({c["outputs"]["rules"] + " to " + c["outputs"]["single"] for c in cs}))
+            out += ["", f"Against the rules, one agent turned {len(fixed)} wrong output{'s' * (len(fixed) != 1)} "
+                    f"right ({how(fixed)}) and {len(broke)} right output{'s' * (len(broke) != 1)} wrong "
+                    f"({how(broke)}); " + (f"{len(decided)} of its own verdicts" if decided else "none of its own "
+                                          "verdicts") + " replaced the rules' output. The pair gave one agent's "
+                    f"output in {same} of {len(cases)} cases."]
         for e in ho.get("earlier") or []:
             single = e["summary"].get("single", {})
             out += ["", f"An earlier {e['label']} on the same cases (commit `{e['commit']}`): one agent "

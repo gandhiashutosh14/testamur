@@ -36,6 +36,15 @@ measures that count the dangerous error separately from the expensive one.
   the words that withhold or revoke the power sit outside the field they read. The set stays as it was: a fix to the
   rules developed knowing these cases would be measured by them only as cases already seen, and must be measured on
   new ones.
+- The first run with the model found the loop's own failure: the investigator spent its steps reading and almost
+  never answered, so the agents changed nothing. The loop now shows each agent its remaining steps and makes the
+  last one the answer (the only action the model may take on it); the report keeps that run beside the next one and
+  says what changed between them. The cases and labels did not change.
+- The run after it measured what the agents are for on this set: caution, not decisions. They sent to a person some
+  of the PASSes the rules got wrong (an addendum withdrawing the vote, an endorsement revoking the authority, a letter
+  superseded on file, a power given for another debtor's committee), missed others, sent one right FAIL to a person,
+  and proposed no verdict that replaced the rules'. The verifier changed no outcome, at about twice the investigator's
+  tokens and time. The pair is not claimed to beat one agent.
 - 24 cases find where each arm goes wrong; they do not estimate a rate. A difference of one or two cases between arms
   is not evidence of a difference.
 - The cases are independent of the generator, not of the author: they were written by the person who built the

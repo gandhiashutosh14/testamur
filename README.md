@@ -33,7 +33,7 @@ person, turn findings into work, and never say PASS without evidence.*
 | Review queue, people's decisions as inputs, audits with exact bounds and a breaker per check | Shipped; measured with simulated reviewers | [review simulation](reports/review-sim-full-seed11.md) |
 | Tasks, reminders, holds and signed webhooks through a transactional outbox | Shipped; receivers simulated | [action simulation](reports/action-sim-full-seed11.md) |
 | An assistant that answers from the records and cites the page | Shipped; measured | [golden set](reports/assistant-golden-full-seed11.md) |
-| Multi-agent investigation (LangGraph): an investigator and a verifier in separate contexts, typed contracts, scoped tools, budgets, checkpoints, a coordinator in code, a person's evidence-bound approval | Shipped; measured against the rules alone and one agent on a holdout written by hand | [holdout comparison](reports/holdout-eval.md), [ADR 0017](docs/decisions/0017-an-investigator-and-a-verifier.md), [ADR 0019](docs/decisions/0019-measuring-the-agents-on-a-holdout.md) |
+| Multi-agent investigation (LangGraph): an investigator and a verifier in separate contexts, typed contracts, scoped tools, budgets, checkpoints, a coordinator in code, a person's evidence-bound approval | Shipped; measured against the rules alone and one agent on a holdout written by hand: the agents send to a person some of the PASSes the rules got wrong, and decide nothing on their own; the verifier changed no outcome on that set | [holdout comparison](reports/holdout-eval.md), [ADR 0017](docs/decisions/0017-an-investigator-and-a-verifier.md), [ADR 0019](docs/decisions/0019-measuring-the-agents-on-a-holdout.md) |
 | Agent tool surface over MCP: per-tenant keys and grants checked on every call, proposals bound to evidence | Shipped; tested | [ADR 0014](docs/decisions/0014-agents-propose-people-dispose.md) |
 | A service for reviewers (FastAPI): JSON API, review page, keys with roles, signed sessions, CSRF, strict CSP | Shipped; driven end to end in CI | [ADR 0018](docs/decisions/0018-a-service-for-reviewers.md) |
 | PostgreSQL with row-level security under an application role; Alembic migrations; an S3-compatible object store; OpenTelemetry traces to Jaeger; Docker Compose | Shipped; tested in CI | [`docker-compose.yml`](docker-compose.yml), [CI](.github/workflows/ci.yml) |
@@ -96,6 +96,27 @@ Learn then Test on 1,656 labelled documents certifies name-matching thresholds d
 ### The assistant ([golden set](reports/assistant-golden-full-seed11.md), commit `f16af51`)
 
 278 of 278 generated questions, in the categories the assistant supports, answered right: field lookups with citations (154 of 154, including 6 the engine had not settled, answered as such), near-twin names, shared first words asked back, another tenant's creditors, unanswerable questions, hostile documents and lists of lapsing authorities. Wrong values, wrong versions or wrong creditors: 0. Citations outside the tenant: 0.
+
+### The agents against the rules ([holdout comparison](reports/holdout-eval.md), commit `b7f7ce7`)
+
+24 cases written by hand for this comparison, independently of the generator, and fixed before any agent ran on them (set `517a32ec6fe5b1a8`). The agents' model: `llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf` on GitHub's CPU runners, every call recorded and replayed in CI; the engine's own clause tier off, so the agents are the only model reading. A proposal is counted as the output, as if approved.
+
+| | Rules | One agent | Investigator and verifier |
+|---|---|---|---|
+| Right output | 8 of 24 | 11 of 24 | 11 of 24 |
+| False PASS | 7 | 3 | 3 |
+| False FAIL | 0 | 0 | 0 |
+| Sent to a person | 15 of 24 | 20 of 24 | 20 of 24 |
+| Citations that held | - | 80 of 85 | 202 of 210 |
+| Permission violations | - | 0 | 0 |
+| Latency p50 / p95 | - | 223.9 s / 316.1 s | 423.4 s / 545.5 s |
+| Tokens per case | - | 13,680 | 25,340 |
+
+Against the rules, one agent turned 4 wrong outputs right (PASS to person) and 1 right output wrong (FAIL to person); none of its own verdicts replaced the rules' output. The pair gave one agent's output in 24 of 24 cases.
+
+An earlier run 1 on the same cases (commit `121ef57`): one agent 8 of 24 right with 7 false PASS, the agents stopping by step budget 21, finished 3. After it, each agent was shown its remaining steps, its last step was made the answer (the only action the model may take on it), and claim_summary was made to list the documents there are to read; the cases and their labels did not change.
+
+Faults forced on purpose with a scripted model (a model timeout, an agent reaching outside its claim, approval of changed evidence, a decision delivered twice, a worker finishing after its lease was taken over): 5 of 5 contained.
 
 ### Delivery
 
@@ -374,11 +395,15 @@ domain on the engine built in v0.1 and v0.2. Next:
 1. **The rules' blind spot the holdout found.** The voting and currency checks read only their own field; a
    restriction, a withdrawal or a revocation elsewhere on the page goes unseen. Read the whole document for them,
    and measure the change on new cases, not on the holdout that found it.
-2. **Cases from other people.** The holdout is independent of the generator, not of its author.
-3. **Operational creditors.** A full pack for Form B claims: invoices, delivery records and the demand notice.
-4. **Records from an information utility.** Read the record of default as evidence beside the creditor's own.
-5. **Real agreements.** Measure the clause tier on expert-labelled public contracts, not only synthetic clauses.
-6. **Accuracy from fewer labels.** Prediction-powered inference, combining the audit sample with the engine's other
+2. **Agents that decide where they can.** On the holdout the agents' value was caution: they caught some of the
+   rules' wrong PASSes by sending them to a person, and no verdict of theirs replaced the rules'. A stronger model,
+   or one narrow question per check instead of one open investigation per claim, before the verifier's cost is
+   worth paying.
+3. **Cases from other people.** The holdout is independent of the generator, not of its author.
+4. **Operational creditors.** A full pack for Form B claims: invoices, delivery records and the demand notice.
+5. **Records from an information utility.** Read the record of default as evidence beside the creditor's own.
+6. **Real agreements.** Measure the clause tier on expert-labelled public contracts, not only synthetic clauses.
+7. **Accuracy from fewer labels.** Prediction-powered inference, combining the audit sample with the engine's other
    verdicts, for tighter per-check intervals.
 
 ## What this is not
