@@ -14,7 +14,7 @@ from testamur.evidence import convert, sample
 from testamur.evidence import metrics as m
 from testamur.evidence.answer import Answer, answer, schema
 from testamur.evidence.retrieve import HashEmbedder, Index
-from testamur.evidence.run import auroc, by_dataset, evaluate, merge, render
+from testamur.evidence.run import auroc, by_dataset, differences, evaluate, merge, render
 from testamur.evidence.schema import Passage, Task
 from testamur.evidence.sources import BY_NAME, path_of
 from testamur.modeltier import Cassette, Reply
@@ -260,6 +260,20 @@ def test_the_run_scores_records_and_replays(corpus, tmp_path):
     assert "## Retrieval" in text and "## How far the judge can be trusted" in text and "CC BY 4.0" in text
     with pytest.raises(ValueError):
         merge([live, {**live, "manifest": "other"}])
+
+
+def test_a_replay_is_held_to_every_verdict_exactly_and_to_embedding_scores_nearly():
+    row = {"task": "t", "correct": {"as_answered": True, "evidence_rule": True},
+           "ragas": {"scores": {"faithfulness": 1.0, "answer_relevancy": 0.7396}}}
+
+    def but(**scores):
+        return {**row, "ragas": {"scores": {**row["ragas"]["scores"], **scores}}}
+    assert differences([but(answer_relevancy=0.7395)], [row]) == []      # another CPU's embeddings
+    assert differences([but(answer_relevancy=0.73)], [row]) == ["t"]
+    assert differences([but(answer_relevancy=None)], [row]) == ["t"]
+    assert differences([but(faithfulness=0.9999)], [row]) == ["t"]        # a recorded judgement: exactly
+    assert differences([{**row, "correct": {"as_answered": False, "evidence_rule": True}}], [row]) == ["t"]
+    assert differences([], [row]) == ["t"]
 
 
 def test_auroc_is_the_chance_a_right_answer_outscores_a_wrong_one():

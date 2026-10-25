@@ -34,6 +34,10 @@ can an LLM judge's scores be trusted when the ground truth is known.
   is reported as such.
 - **Measured on GitHub's CPU runners** (measure.yml, suite evidence): models, corpus and embeddings fetched once into
   the cache, sixteen shards, one report.
+- **Replayable anywhere.** The recording is attached to the release and its SHA-256s committed; `testamur evidence
+  check` holds a replay to every verdict and every recorded judgement exactly, and answer relevancy, which compares
+  embeddings computed on the machine that replays, to within 0.001 (a laptop's CPU moved its last digit on 6 of 115
+  answers; nothing else moved).
 
 ## Consequences
 - The claims the README can make about the skill are measured on other people's documents, with the dangerous error

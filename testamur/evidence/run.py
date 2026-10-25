@@ -135,6 +135,32 @@ def merge(parts: list[dict]) -> dict:
         "tasks": sorted((r for p in parts for r in p["tasks"]), key=lambda r: r["task"])}
 
 
+# answer relevancy compares embeddings computed on the machine that replays, not recorded ones: another CPU moves
+# its last digit, so it is held to this; every verdict and every other score is held exactly
+LIVE_METRICS = {"answer_relevancy": 0.001}
+
+
+def differences(now: list[dict], then: list[dict]) -> list[str]:
+    """The tasks a replay scores otherwise than the committed report does."""
+    def scored(rows):
+        return {r["task"]: (r["correct"], (r.get("ragas") or {}).get("scores") or {}) for r in rows}
+    a, b = scored(now), scored(then)
+    out = []
+    for task in sorted(a.keys() | b.keys()):
+        if task not in a or task not in b or a[task][0] != b[task][0]:
+            out.append(task)
+            continue
+        x, y = a[task][1], b[task][1]
+        for metric in x.keys() | y.keys():
+            u, v = x.get(metric), y.get(metric)
+            near = (metric in LIVE_METRICS and u is not None and v is not None
+                    and abs(u - v) <= LIVE_METRICS[metric] + 1e-9)
+            if u != v and not near:
+                out.append(task)
+                break
+    return out
+
+
 def auroc(scores: list[float], positive: list[bool]) -> float | None:
     """The probability a random positive scores above a random negative (ties count half); None without both."""
     pos = [s for s, y in zip(scores, positive, strict=True) if y]

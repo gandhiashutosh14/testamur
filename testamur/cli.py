@@ -764,15 +764,13 @@ def evidence_report(results: list[str], report: str = "reports/evidence-eval.md"
 
 @evidence_app.command("check")
 def evidence_check(results: list[str], against: str = "reports/evidence-eval.json"):
-    """Fail unless these results score every task as the committed report does (a replay's check)."""
+    """Fail unless these results score every task as the committed report does (a replay's check): every verdict and
+    judgement exactly, answer relevancy (embeddings computed where it replays) within 0.001."""
     import json
 
-    from .evidence.run import merge
-    now = {r["task"]: (r["correct"], r.get("ragas", {}).get("scores"))
-           for r in merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])["tasks"]}
-    then = {r["task"]: (r["correct"], r.get("ragas", {}).get("scores"))
-            for r in json.loads(Path(against).read_text(encoding="utf-8"))["tasks"]}
-    differ = sorted(k for k in now.keys() | then.keys() if now.get(k) != then.get(k))
+    from .evidence.run import differences, merge
+    now = merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])["tasks"]
+    differ = differences(now, json.loads(Path(against).read_text(encoding="utf-8"))["tasks"])
     if differ:
         typer.echo(f"{len(differ)} task(s) scored differently from {against}: {differ[:10]}")
         raise typer.Exit(1)
