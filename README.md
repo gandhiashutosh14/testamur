@@ -102,7 +102,7 @@ Learn then Test on 1,656 labelled documents certifies name-matching thresholds d
 
 278 of 278 generated questions, in the categories the assistant supports, answered right: field lookups with citations (154 of 154, including 6 the engine had not settled, answered as such), near-twin names, shared first words asked back, another tenant's creditors, unanswerable questions, hostile documents and lists of lapsing authorities. Wrong values, wrong versions or wrong creditors: 0. Citations outside the tenant: 0.
 
-### The agents against the rules ([holdout comparison](reports/holdout-eval.md), commit `b7f7ce7`)
+### The agents against the rules ([holdout comparison](reports/holdout-eval.md), commit `e9f9d40`, scored again from the recording made at `b7f7ce7`)
 
 24 cases written by hand for this comparison, independently of the generator, and fixed before any agent ran on them (set `517a32ec6fe5b1a8`); run 2 followed changes made after run 1 on the same cases, so they are development cases now, and a claim that the agents generalise needs a fresh, sealed set. The agents' model: `{ho.get('model') or 'none'}` on GitHub's CPU runners, every call recorded and replayed in CI; the engine's own clause tier off, so the agents are the only model reading. A proposal is counted as the output, as if approved.
 
@@ -121,9 +121,11 @@ Against the rules, one agent turned 4 wrong outputs right (PASS to person) and 1
 
 An earlier run 1 on the same cases (commit `121ef57`): one agent 8 of 24 right with 7 false PASS, the agents stopping by step budget 21, finished 3. After it, each agent was shown its remaining steps, its last step was made the answer (the only action the model may take on it), and claim_summary was made to list the documents there are to read; the cases and their labels did not change.
 
+An earlier run 2 as scored at v0.6.0 on the same cases (commit `d585b07`): one agent 11 of 24 right with 3 false PASS, the agents stopping by finished 22, step budget 2. After it, the coordinator was made to count the verifier's support as agreement only with a citation of its own that holds, and a quote without a letter or a digit no longer holds; the same recording was scored again, and the cases, their labels and the model's calls did not change.
+
 Faults forced on purpose with a scripted model (a model timeout, an agent reaching outside its claim, approval of changed evidence, a decision delivered twice, a worker finishing after its lease was taken over): 5 of 5 contained.
 
-### Evidence QA on public datasets ([report](reports/evidence-eval.md), commit `69d6462`)
+### Evidence QA on public datasets ([report](reports/evidence-eval.md), commit `e9f9d40`, scored again from the recording made at `69d6462`)
 
 160 tasks from five expert-labelled datasets in four domains, a stratified sample fixed before any model ran. Answers by `llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf` from the hybrid retriever's top 4 passages, every quote checked against its passage; RAGAS judged by `llama.cpp:Phi-4-mini-instruct-Q4_K_M.gguf`, a model of another family, on the same CPUs.
 
@@ -136,11 +138,11 @@ Faults forced on purpose with a scripted model (a model timeout, an agent reachi
 | QASPER | science | 9 of 32 | 8 of 32 | 17 | 16 | 14 of 24 |
 | All |  | 86 of 160 | 80 of 160 | 58 | 51 | 113 of 126 |
 
-RAGAS over all tasks, with each metric's AUROC against the ground truth's right and wrong answers (0.5: it cannot tell them apart): faithfulness 0.832 (AUROC 0.476), answer relevancy 0.368 (AUROC 0.525), context precision 0.791 (AUROC 0.63), context recall 0.922 (AUROC 0.527), factual correctness 0.626 (AUROC 0.612). Faithfulness measures support in the retrieved passages, not correctness: its AUROC says how far it can stand in for correctness here. A hit is the report's heuristic (the gold span's words in a passage), and the scoring is adapted from each dataset's, not its official evaluator.
+RAGAS over all tasks, with each metric's AUROC against the ground truth's right and wrong answers (0.5: it cannot tell them apart): faithfulness 0.832 (AUROC 0.497, 95% interval 0.411 to 0.586), answer relevancy 0.368 (AUROC 0.538, 95% interval 0.444 to 0.632), context precision 0.791 (AUROC 0.608, 95% interval 0.52 to 0.7), context recall 0.922 (AUROC 0.527, 95% interval 0.472 to 0.582), factual correctness 0.626 (AUROC 0.62, 95% interval 0.514 to 0.721). Faithfulness measures support in the retrieved passages, not correctness: its AUROC says how far it can stand in for correctness here. A hit is the report's heuristic (the gold span's words in a passage), and the scoring is adapted from each dataset's, not its official evaluator.
 
 ### Delivery
 
-392 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 112 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, migrations, approvals and the engine tested on Postgres; the Compose stack built, started and driven as a client (upload, read, investigate, isolation, traces); the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
+393 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 112 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, migrations, approvals and the engine tested on Postgres; the Compose stack built, started and driven as a client (upload, read, investigate, isolation, traces); the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
 <!-- /RESULTS -->
 
 ## The problem

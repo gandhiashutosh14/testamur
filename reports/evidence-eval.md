@@ -1,6 +1,6 @@
 # Evidence QA across four domains: ground truth and RAGAS
 
-Generated 2026-10-25 02:08 UTC at commit `69d6462` with `testamur evidence report evidence-0.json evidence-1.json evidence-10.json evidence-11.json evidence-12.json evidence-13.json evidence-14.json evidence-15.json evidence-2.json evidence-3.json evidence-4.json evidence-5.json evidence-6.json evidence-7.json evidence-8.json evidence-9.json`, from the runs at commit `69d6462`.
+Generated 2026-10-25 15:29 UTC at commit `0dea509` with `testamur evidence report evidence-0.json evidence-1.json evidence-10.json evidence-11.json evidence-12.json evidence-13.json evidence-14.json evidence-15.json evidence-2.json evidence-3.json evidence-4.json evidence-5.json evidence-6.json evidence-7.json evidence-8.json evidence-9.json --timings-from evidence-eval-v0.6.0.json`, from the runs at commit `e9f9d40`, which replayed the recording made by the runs at commit `69d6462` (the timings below are those runs').
 
 160 tasks from public, expert-labelled datasets, a seeded and stratified sample committed before any model ran on it (`evals/evidence/manifest.json`, digest `9fa7a5d18f6074e9`). The answers: `llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf` (fingerprint `gguf:3605803b982cb64a|llama-cpp-python 0.3.36|ctx 8192`), given the hybrid retriever's top 4 passages, its decoding constrained to a JSON contract with citations. The judge for RAGAS: `llama.cpp:Phi-4-mini-instruct-Q4_K_M.gguf` (fingerprint `gguf:88c00229914083cd|llama-cpp-python 0.3.36|ctx 8192`), not the model that answered. Embeddings: `BAAI/bge-small-en-v1.5`. Every model call recorded; a replay reproduces every number below except the timings.
 
@@ -19,7 +19,7 @@ Right by each dataset's own criterion. *As answered*: the model's answer. *Evide
 
 ## Retrieval
 
-Whether the gold evidence is among the top 4 passages (the ones the model sees), and the mean reciprocal rank of its first passage in the top 10, over the answerable tasks. PubMedQA retrieves from the pool of all 500 test abstracts; the others from the task's own document.
+Whether the gold evidence is among the top 4 passages (the ones the model sees), and the mean reciprocal rank of its first passage in the top 10, over the answerable tasks. PubMedQA retrieves from the pool of all 500 test abstracts; the others from the task's own document. A hit is a heuristic: a passage holding all of a short gold span's words or 60% of a long one's, any passage of PubMedQA's right abstract; it does not establish that the passage holds everything the answer needs.
 
 | Dataset | BM25 | Dense | Hybrid | Hybrid MRR@10 |
 |---|---|---|---|---|
@@ -45,15 +45,15 @@ Means over the tasks each metric applies to (a metric that needs a reference is 
 
 ## How far the judge can be trusted
 
-AUROC: the probability that a right answer (by the ground truth) scores higher than a wrong one, so 0.5 is a metric that cannot tell them apart. For faithfulness, also against TESTAMUR's deterministic quote check.
+AUROC: the probability that a right answer (by the ground truth) scores higher than a wrong one, so 0.5 is a metric that cannot tell them apart. For faithfulness, also against TESTAMUR's deterministic quote check. Faithfulness measures whether an answer's statements are supported by the retrieved passages, not whether the answer is right: its AUROC against right answers says how useful it is as a stand-in for correctness on this sample, not how good the judge is in general.
 
-| Metric | Scored | AUROC against right answers |
-|---|---|---|
-| faithfulness | 115 | 0.476 |
-| answer relevancy | 115 | 0.525 |
-| context precision | 126 | 0.63 |
-| context recall | 124 | 0.527 |
-| factual correctness | 109 | 0.612 |
+| Metric | Scored | AUROC against right answers | 95% interval (bootstrap) |
+|---|---|---|---|
+| faithfulness | 115 | 0.497 | 0.411 to 0.586 |
+| answer relevancy | 115 | 0.538 | 0.444 to 0.632 |
+| context precision | 126 | 0.608 | 0.52 to 0.7 |
+| context recall | 124 | 0.527 | 0.472 to 0.582 |
+| factual correctness | 109 | 0.62 | 0.514 to 0.721 |
 
 Faithfulness against the verified-quote check: AUROC 0.507.
 
@@ -67,8 +67,8 @@ Answers: 156,063 tokens; 52.7 s per answer at the median, 97.1 s at the 95th per
 
 - 32 tasks per dataset find where the system goes wrong and roughly how often; they do not rank it against published results, which use full test sets and larger models.
 - The sample is stratified (half CUAD's tasks have no answer in the contract, a third of ContractNLI's statements are not mentioned), so the abstention numbers mean something; the proportions are not the datasets' own.
-- RAGAS's numbers are a small judge's opinion; the AUROC table says how much of it agrees with the ground truth.
-- TAT-QA's numbers are matched with their sign and within 0.5%; QASPER's free answers by token F1, which undercounts paraphrases.
+- RAGAS's numbers are a small judge's opinion; the AUROC table says how much of it agrees with the ground truth. A judge of another family avoids a model grading its own words, not errors the two share.
+- The scoring is adapted from each dataset's, not the official evaluators: CUAD by Jaccard, TAT-QA's numbers as the one quantity an answer states, in the gold's unit, with its sign and within 0.5%, QASPER's free answers by token F1, which undercounts paraphrases. The numbers do not compare with published benchmark results.
 
 ## Sources
 
