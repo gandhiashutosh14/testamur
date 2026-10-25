@@ -35,7 +35,8 @@ can an LLM judge's scores be trusted when the ground truth is known.
 - **Measured on GitHub's CPU runners** (measure.yml, suite evidence): models, corpus and embeddings fetched once into
   the cache, sixteen shards, one report.
 - **Replayable anywhere.** The recording is attached to the release and its SHA-256s committed; `testamur evidence
-  check` holds a replay to every verdict and every recorded judgement exactly, and answer relevancy, which compares
+  check` holds a replay to every field of every task exactly but the timings (since v0.6.1: retrieval, answers,
+  citations, verdicts, tokens, judgements; [ADR 0021](0021-the-v06-review.md)), and answer relevancy, which compares
   embeddings computed on the machine that replays, to within 0.001 (a laptop's CPU moved its last digit on 6 of 115
   answers; nothing else moved).
 
@@ -48,24 +49,30 @@ can an LLM judge's scores be trusted when the ground truth is known.
   repository: replaying needs them downloaded.
 
 ## What the first run found
-The run at commit `69d6462` ([report](../../reports/evidence-eval.md)), 160 tasks:
-- **Finding the evidence was mostly not the problem; reading it was.** The gold evidence was among the four passages
-  the model saw for 113 of the 126 answerable tasks, yet 86 of 160 answers were right; 49 of the 58 wrong answers
-  were given with the gold evidence among those four passages (counted from the report's data). PubMedQA shows it most
-  clearly: the right abstract retrieved 32 times of 32, the right yes, no or maybe 12 times. QASPER is the
-  exception: long papers, the evidence retrieved for 14 of 24, and token F1 undercounts paraphrased answers.
+The run at commit `69d6462`, 160 tasks, as scored at v0.6.0 ([report](../../reports/evidence-eval-v0.6.0.md)). An
+independent review then fixed the scorer and the recording was scored again
+([ADR 0021](0021-the-v06-review.md), [the current report](../../reports/evidence-eval.md)); the wording here was made
+as careful as the review asked.
+- **Retrieval hits did not make answers right.** The hybrid retriever had a hit among the four passages the model saw
+  for 113 of the 126 answerable tasks, yet 86 of 160 outcomes were right, and 49 of the 58 wrong answers came with a
+  hit. A hit is a heuristic (a gold span's words in a passage; any passage of PubMedQA's right abstract), not proof
+  that the passages held everything the answer needed: that the model misread what it had is likely, not shown.
+  PubMedQA shows the pattern most clearly: its right abstract first among 500 every time, the right yes, no or maybe
+  12 times of 32. QASPER is the exception: long papers, a hit for 14 of 24, and token F1 undercounts paraphrases.
 - **Abstaining works where the answer is absent.** CUAD's clauses that are not in the contract: abstained on 14 of
   16; ContractNLI's statements the NDA does not mention: 10 of 10.
-- **The evidence rule is a trade, not a gain.** Withholding answers no verified quote supports turned 7 wrong answers
-  (58 to 51) and 6 right ones (86 to 80) into abstentions. Where a wrong answer costs more than a missing one, as in
-  claim verification, that is the trade wanted. A real quote shows the model read the page, not that it read it
-  right: each of the 51 wrong answers left cites at least one quote that is really on its passage.
-- **The small judge barely tracks the ground truth.** Faithfulness separated right answers from wrong ones no better
-  than chance (AUROC 0.476 over 115 answers), and did not track the quote check either (0.507; 14 of the 115 had no
-  verified quote). Answer relevancy (0.525) and context recall (0.527) carried no signal to speak of; context
-  precision (0.63) and factual correctness (0.612), a little. RAGAS judged by a model this size is a prompt to look,
-  not a measurement; the ground truth stays the arbiter, and a stronger judge, measured the same way, is the next
-  step.
+- **The evidence rule is a trade, not a gain.** It withheld the 14 answers no verified quote supported: 7 wrong ones
+  (wrong answers 58 to 51) and 7 right ones; one of the wrong ones was on a question with no answer, where withholding
+  was right, so right outcomes went from 86 to 80. Where a wrong answer costs more than a missing one, as in claim
+  verification, that is the trade wanted. A real quote shows the model read the page, not that it read it right: each
+  of the 51 wrong answers left cites at least one quote that is really on its passage.
+- **Faithfulness was a weak stand-in for correctness.** Against the ground truth's right and wrong answers its AUROC
+  was 0.476 over 115 answers, and 0.507 against the quote check (only 14 of the 115 had no verified quote, so that
+  second figure is loose). Faithfulness measures whether an answer's statements are supported by the retrieved
+  passages, not whether the answer is right, so this says how far it can stand in for correctness on this sample, not
+  that the judge or RAGAS fails in general. Answer relevancy (0.525) and context recall (0.527) carried no signal to
+  speak of; context precision (0.63) and factual correctness (0.612), a little. The ground truth stays the arbiter;
+  the judge against human labels, and a stronger judge measured the same way, are next.
 - **Cost.** About 53 s per answer at the median on a 4-vCPU runner; the judge's 1,637 calls took about 14 runner-hours
   across sixteen runners. No GPU, no paid API.
 

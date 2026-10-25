@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 Stance = Literal["supports", "contradicts", "missing", "unclear"]
 Assessment = Literal["supported", "disputed", "unresolved"]
@@ -18,6 +18,15 @@ class Citation(BaseModel):
     document_id: int
     page: int = Field(ge=1)
     quote: str = Field(min_length=8, max_length=400)
+
+    @field_validator("quote")
+    @classmethod
+    def _words(cls, v: str) -> str:
+        # eight spaces are eight characters: the quote must be text from the page, whatever whitespace surrounds it
+        # (checked without changing the quote, or the schema the model is given)
+        if len(v.strip()) < 8 or not any(ch.isalnum() for ch in v):
+            raise ValueError("a quote must be at least eight characters of text from the page, not blank")
+        return v
 
 
 class Finding(BaseModel):

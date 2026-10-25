@@ -42,6 +42,11 @@ on:
       recording_release:
         description: the release whose assets hold the evidence recording, for a replay (suite evidence)
         default: v0.6.0
+      rescore:
+        description: with replay, score the recording again under the current code and write the report (with the
+          recorded run's timings) instead of checking it against the committed one (suite evidence)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -422,6 +427,7 @@ jobs:
     timeout-minutes: 30
     env:
       MODEL_MODE: ${{ inputs.model_mode }}
+      RESCORE: ${{ inputs.rescore }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -438,15 +444,19 @@ jobs:
       - name: Merge the shards, write the report, join the recordings
         run: |
           ls -la artifacts
-          testamur evidence report artifacts/evidence-[0-9]*.json
+          git show HEAD:reports/evidence-eval.json > committed-evidence-eval.json
+          if [ "$MODEL_MODE" = replay ] && [ "$RESCORE" = true ]; then
+            testamur evidence report artifacts/evidence-[0-9]*.json --timings-from committed-evidence-eval.json
+          else
+            testamur evidence report artifacts/evidence-[0-9]*.json
+          fi
           mkdir -p recording
           if [ "$MODEL_MODE" = record ]; then
             cat artifacts/evidence-answers-*.jsonl > recording/evidence-answers.jsonl
             cat artifacts/evidence-judge-*.jsonl > recording/evidence-judge.jsonl
             (cd recording && sha256sum evidence-answers.jsonl evidence-judge.jsonl | sed 's|  |  recording/|') \
               > recording/recording.sha256
-          else
-            git show HEAD:reports/evidence-eval.json > committed-evidence-eval.json
+          elif [ "$RESCORE" != true ]; then
             testamur evidence check artifacts/evidence-[0-9]*.json --against committed-evidence-eval.json
           fi
           cat reports/evidence-eval.md >> "$GITHUB_STEP_SUMMARY"

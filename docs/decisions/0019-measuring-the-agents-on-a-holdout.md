@@ -49,6 +49,9 @@ measures that count the dangerous error separately from the expensive one.
   is not evidence of a difference.
 - The cases are independent of the generator, not of the author: they were written by the person who built the
   system. Cases from people who did not are the next step.
+- Run 2 followed changes made after run 1 on the same cases, so since then they are a development set: a claim that
+  the agents generalise needs a fresh, sealed set. In v0.6.1 the recording of run 2 was scored again after the
+  coordinator was fixed ([ADR 0021](0021-the-v06-review.md)): no output moved.
 
 ## Alternatives considered
 - *Measure on the generated worlds.* Cheap and large, and the wrong question: it rewards fitting the generator.

@@ -242,6 +242,16 @@ def quote_in(quote: str, excerpt: str) -> bool:
     return len(q) >= 20 and q in _norm(excerpt)
 
 
+def quote_holds(quote: str, text: str) -> bool:
+    """A citation's quote is on the page: one of 20 characters or more anywhere in the text (quote_in), a shorter one
+    (a field value, a title) as it is written there. A quote without a letter or a digit, a blank one included, never
+    holds: it is in every text."""
+    if not any(ch.isalnum() for ch in _norm(quote)):
+        return False
+    short = quote.strip()
+    return quote_in(quote, text) or (len(short) < 20 and short.casefold() in text.casefold())
+
+
 def _ask(client: ModelClient, first: str, second: str, excerpt: str) -> tuple[dict, Reply]:
     user = ("Based only on the excerpt, which statement is true?\n"
             f"Statement 1: {first}\nStatement 2: {second}\n"

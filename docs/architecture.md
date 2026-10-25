@@ -241,7 +241,7 @@ testamur actionsim --world data/world --days 60        # days pass; creditors an
 ### The assistant
 Staff ask in their own words; the assistant answers from the engine's records wherever it can (standing, dates,
 amounts, findings), so it inherits the engine's readings and people's decisions, and it cites the page and line it
-read ([`assistant.py`](../testamur/assistant.py), [ADR 0013](decisions/0013-the-assistant-answers-from-the-records.md)).
+read wherever the reading has one ([`assistant.py`](../testamur/assistant.py), [ADR 0013](decisions/0013-the-assistant-answers-from-the-records.md)).
 Filters come before ranking: the tenant (the session), the process when the question names its debtor, the creditor
 (the capitalised name in the question, compared whole, asked back when a first word fits several), and the current
 document behind each requirement of each claim; a creditor with current documents in two processes is asked which one

@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import random
 import statistics
 import time
+from collections import Counter
 from pathlib import Path
 
 from . import metrics as m
@@ -122,7 +124,7 @@ def evaluate(manifest_path: str | Path, corpus_root: str | Path, generator, judg
 # ---------------------------------------------------------------------------------------------- the numbers
 
 def merge(parts: list[dict]) -> dict:
-    for key in ("manifest", "commit"):
+    for key in ("manifest", "commit", "embedder", "k"):
         values = {p[key] for p in parts}
         if len(values) > 1:
             raise ValueError(f"results of different {key}s: {sorted(values)}")
@@ -131,34 +133,87 @@ def merge(parts: list[dict]) -> dict:
         if len(values) > 1:
             raise ValueError(f"results of different {key}s")
     first = parts[0]
-    return {k: first[k] for k in ("manifest", "commit", "generator", "judge", "embedder", "k")} | {
-        "tasks": sorted((r for p in parts for r in p["tasks"]), key=lambda r: r["task"])}
+    tasks = sorted((r for p in parts for r in p["tasks"]), key=lambda r: r["task"])
+    twice = sorted(t for t, n in Counter(r["task"] for r in tasks).items() if n > 1)
+    if twice:
+        raise ValueError(f"tasks in more than one part: {twice[:5]}")
+    return {k: first[k] for k in ("manifest", "commit", "generator", "judge", "embedder", "k")} | {"tasks": tasks}
 
 
-# answer relevancy compares embeddings computed on the machine that replays, not recorded ones: another CPU moves
-# its last digit, so it is held to this; every verdict and every other score is held exactly
+def in_sample(merged: dict, manifest_path: str | Path, every: bool = False) -> None:
+    """Refuse results about another sample than the committed one, or holding a task it does not; with `every`, also
+    results that leave one of its tasks out."""
+    if manifest_digest(manifest_path) != merged["manifest"]:
+        raise ValueError(f"the results are about sample {merged['manifest']}, not the one in {manifest_path}")
+    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    ids = {i for d in manifest["datasets"].values() for i in d["tasks"]}
+    have = {r["task"] for r in merged["tasks"]}
+    if have - ids:
+        raise ValueError(f"tasks that are not in the sample: {sorted(have - ids)[:5]}")
+    if every and ids - have:
+        raise ValueError(f"tasks of the sample that are missing: {sorted(ids - have)[:5]}")
+
+
+def with_timings(merged: dict, recorded: dict) -> dict:
+    """A replay's results with the timings of the run whose recording it replayed, since a replay measures none of
+    its own: each task keeps everything it replayed, and takes the recorded run's seconds and its judge's."""
+    for key in ("manifest", "generator", "judge"):
+        if json.dumps(merged[key], sort_keys=True) != json.dumps(recorded[key], sort_keys=True):
+            raise ValueError(f"the replay and the recorded run differ in {key}")
+    by_task = {r["task"]: r for r in recorded["tasks"]}
+    missing = sorted(r["task"] for r in merged["tasks"] if r["task"] not in by_task)
+    if missing:
+        raise ValueError(f"the recorded run has no task {missing[:5]}")
+    tasks = []
+    for r in merged["tasks"]:
+        old = by_task[r["task"]]
+        row = {**r, "seconds": old["seconds"]}
+        if r.get("judge") and old.get("judge"):
+            row["judge"] = {**r["judge"], "seconds": old["judge"]["seconds"]}
+        tasks.append(row)
+    return {**merged, "tasks": tasks, "timings_from": recorded.get("timings_from") or recorded["commit"]}
+
+
+# what a replay must give exactly as committed: every field of a task but its timings, which a replay does not
+# measure, and answer relevancy, which compares embeddings computed on the machine that replays: another CPU moves
+# its last digit, so it is held to this
 LIVE_METRICS = {"answer_relevancy": 0.001}
 
 
+def _replayed(row: dict) -> dict:
+    ragas = row.get("ragas") or {}
+    return {k: v for k, v in row.items() if k not in ("seconds", "ragas", "judge")} | {
+        "judge": {k: v for k, v in (row.get("judge") or {}).items() if k != "seconds"},
+        "skipped": ragas.get("skipped") or {}}
+
+
 def differences(now: list[dict], then: list[dict]) -> list[str]:
-    """The tasks a replay scores otherwise than the committed report does."""
-    def scored(rows):
-        return {r["task"]: (r["correct"], (r.get("ragas") or {}).get("scores") or {}) for r in rows}
-    a, b = scored(now), scored(then)
-    out = []
-    for task in sorted(a.keys() | b.keys()):
-        if task not in a or task not in b or a[task][0] != b[task][0]:
-            out.append(task)
+    """The tasks a replay gives otherwise than the committed report: in its retrieval ranks, its answer and
+    citations, its verdicts, its tokens, its judge's calls or scores; and any task either side holds twice."""
+    out: set[str] = set()
+    sides = []
+    for rows in (now, then):
+        seen: dict[str, dict] = {}
+        for r in rows:
+            if r["task"] in seen:
+                out.add(r["task"])
+            seen[r["task"]] = r
+        sides.append(seen)
+    a, b = sides
+    for task in (a.keys() | b.keys()) - out:
+        if task not in a or task not in b or _replayed(a[task]) != _replayed(b[task]):
+            out.add(task)
             continue
-        x, y = a[task][1], b[task][1]
+        x = (a[task].get("ragas") or {}).get("scores") or {}
+        y = (b[task].get("ragas") or {}).get("scores") or {}
         for metric in x.keys() | y.keys():
             u, v = x.get(metric), y.get(metric)
             near = (metric in LIVE_METRICS and u is not None and v is not None
                     and abs(u - v) <= LIVE_METRICS[metric] + 1e-9)
             if u != v and not near:
-                out.append(task)
+                out.add(task)
                 break
-    return out
+    return sorted(out)
 
 
 def auroc(scores: list[float], positive: list[bool]) -> float | None:
@@ -169,6 +224,43 @@ def auroc(scores: list[float], positive: list[bool]) -> float | None:
         return None
     wins = sum((p > n) + 0.5 * (p == n) for p in pos for n in neg)
     return round(wins / (len(pos) * len(neg)), 3)
+
+
+def _auroc_by_ranks(scores: list[float], positive: list[bool]) -> float | None:
+    """The same AUROC from ranks (Mann-Whitney, ties averaged): fast enough to resample."""
+    n_pos = sum(positive)
+    n_neg = len(positive) - n_pos
+    if not n_pos or not n_neg:
+        return None
+    order = sorted(range(len(scores)), key=scores.__getitem__)
+    ranks = [0.0] * len(scores)
+    i = 0
+    while i < len(order):
+        j = i
+        while j + 1 < len(order) and scores[order[j + 1]] == scores[order[i]]:
+            j += 1
+        for k in range(i, j + 1):
+            ranks[order[k]] = (i + j) / 2 + 1
+        i = j + 1
+    return (sum(r for r, y in zip(ranks, positive, strict=True) if y) - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
+
+
+def auroc_interval(scores: list[float], positive: list[bool], rounds: int = 2000,
+                   seed: int = 2026) -> list[float] | None:
+    """A 95% bootstrap interval for the AUROC, resampling the answers with a fixed seed (the same data, the same
+    interval); None without right and wrong answers both."""
+    if auroc(scores, positive) is None:
+        return None
+    rng = random.Random(seed)
+    n = len(scores)
+    values = []
+    for _ in range(rounds):
+        idx = [rng.randrange(n) for _ in range(n)]
+        a = _auroc_by_ranks([scores[i] for i in idx], [positive[i] for i in idx])
+        if a is not None:
+            values.append(a)
+    values.sort()
+    return [round(values[int(0.025 * (len(values) - 1))], 3), round(values[int(0.975 * (len(values) - 1))], 3)]
 
 
 def summarise(rows: list[dict]) -> dict:
@@ -201,8 +293,10 @@ def summarise(rows: list[dict]) -> dict:
                      "factual_correctness"):
             pairs = [(r["ragas"]["scores"][name], r) for r in scored if r["ragas"]["scores"].get(name) is not None]
             values = [v for v, _ in pairs]
+            right = [r["correct"]["as_answered"] for _, r in pairs]
             ragas[name] = {"n": len(values), "mean": round(statistics.mean(values), 3) if values else None,
-                           "auroc_vs_right": auroc(values, [r["correct"]["as_answered"] for _, r in pairs]),
+                           "auroc_vs_right": auroc(values, right),
+                           "auroc_vs_right_95": auroc_interval(values, right),
                            "not_scored": sum(name in r["ragas"]["skipped"] for r in scored)}
         faith = [(r["ragas"]["scores"]["faithfulness"], r["answer"]["supported"]) for r in scored
                  if r["ragas"]["scores"].get("faithfulness") is not None]
@@ -241,9 +335,11 @@ def render(merged: dict, meta: dict) -> str:
     order = [d for d in ("cuad", "contractnli", "tatqa", "pubmedqa", "qasper") if d in s] + ["all"]
     domains = {r["dataset"]: r["domain"] for r in merged["tasks"]}
     g, j = merged["generator"], merged["judge"]
+    replayed = (f", which replayed the recording made by the runs at commit `{merged['timings_from']}` (the timings "
+                "below are those runs')" if merged.get("timings_from") else "")
     lines = ["# Evidence QA across four domains: ground truth and RAGAS", "",
              f"Generated {meta['generated']} at commit `{meta['commit']}` with `{meta['command']}`, from the runs at "
-             f"commit `{merged['commit']}`.", "",
+             f"commit `{merged['commit']}`{replayed}.", "",
              f"{s['all']['tasks']} tasks from public, expert-labelled datasets, a seeded and stratified sample committed "
              f"before any model ran on it (`evals/evidence/manifest.json`, digest `{merged['manifest']}`). The answers: "
              f"`{g['model']}` (fingerprint `{g['fingerprint']}`), given the hybrid retriever's top {merged['k']} "
@@ -270,7 +366,9 @@ def render(merged: dict, meta: dict) -> str:
     lines += ["", "## Retrieval", "",
               f"Whether the gold evidence is among the top {merged['k']} passages (the ones the model sees), and the "
               "mean reciprocal rank of its first passage in the top 10, over the answerable tasks. PubMedQA retrieves "
-              "from the pool of all 500 test abstracts; the others from the task's own document.", "",
+              "from the pool of all 500 test abstracts; the others from the task's own document. A hit is a heuristic: "
+              "a passage holding all of a short gold span's words or 60% of a long one's, any passage of PubMedQA's "
+              "right abstract; it does not establish that the passage holds everything the answer needs.", "",
               "| Dataset | BM25 | Dense | Hybrid | Hybrid MRR@10 |", "|---|---|---|---|---|"]
     for d in order:
         r = s[d]["retrieval"]
@@ -294,10 +392,14 @@ def render(merged: dict, meta: dict) -> str:
         lines += ["", "## How far the judge can be trusted", "",
                   "AUROC: the probability that a right answer (by the ground truth) scores higher than a wrong one, so "
                   "0.5 is a metric that cannot tell them apart. For faithfulness, also against TESTAMUR's deterministic "
-                  "quote check.", "",
-                  "| Metric | Scored | AUROC against right answers |", "|---|---|---|"]
+                  "quote check. Faithfulness measures whether an answer's statements are supported by the retrieved "
+                  "passages, not whether the answer is right: its AUROC against right answers says how useful it is as "
+                  "a stand-in for correctness on this sample, not how good the judge is in general.", "",
+                  "| Metric | Scored | AUROC against right answers | 95% interval (bootstrap) |", "|---|---|---|---|"]
         for k in metric_names:
-            lines.append(f"| {k.replace('_', ' ')} | {ra[k]['n']} | {ra[k]['auroc_vs_right'] or '-'} |")
+            ci = ra[k].get("auroc_vs_right_95")
+            lines.append(f"| {k.replace('_', ' ')} | {ra[k]['n']} | {ra[k]['auroc_vs_right'] or '-'} | "
+                         + (f"{ci[0]} to {ci[1]}" if ci else "-") + " |")
         lines += ["", f"Faithfulness against the verified-quote check: AUROC "
                       f"{ra['faithfulness'].get('auroc_vs_verified_quote') or '-'}."]
         jj = s["all"]["judge"]
@@ -315,9 +417,11 @@ def render(merged: dict, meta: dict) -> str:
               "statements are not mentioned), so the abstention numbers mean something; the proportions are not the "
               "datasets' own.",
               "- RAGAS's numbers are a small judge's opinion; the AUROC table says how much of it agrees with the ground "
-              "truth.",
-              "- TAT-QA's numbers are matched with their sign and within 0.5%; QASPER's free answers by token F1, which "
-              "undercounts paraphrases.",
+              "truth. A judge of another family avoids a model grading its own words, not errors the two share.",
+              "- The scoring is adapted from each dataset's, not the official evaluators: CUAD by Jaccard, TAT-QA's "
+              "numbers as the one quantity an answer states, in the gold's unit, with its sign and within 0.5%, "
+              "QASPER's free answers by token F1, which undercounts paraphrases. The numbers do not compare with "
+              "published benchmark results.",
               "", "## Sources", ""]
     for src in SOURCES:
         if src.name.endswith("-test"):

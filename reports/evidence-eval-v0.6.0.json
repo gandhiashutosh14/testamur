@@ -1,0 +1,8725 @@
+{
+ "manifest": "9fa7a5d18f6074e9",
+ "commit": "69d6462",
+ "generator": {
+  "model": "llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+  "fingerprint": "gguf:3605803b982cb64a|llama-cpp-python 0.3.36|ctx 8192"
+ },
+ "judge": {
+  "model": "llama.cpp:Phi-4-mini-instruct-Q4_K_M.gguf",
+  "fingerprint": "gguf:88c00229914083cd|llama-cpp-python 0.3.36|ctx 8192"
+ },
+ "embedder": "BAAI/bge-small-en-v1.5",
+ "k": 4,
+ "tasks": [
+  {
+   "task": "contractnli:060193b19f83",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "contradiction",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "entailment",
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 3,
+    "error": null,
+    "chars": 127
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 1055,
+    "completion": 249
+   },
+   "seconds": {
+    "retrieve": 0.58,
+    "answer": 53.9
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.8344,
+     "context_precision": 1.0,
+     "context_recall": 0.5,
+     "factual_correctness": 0.5
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13432,
+    "seconds": 315.77
+   }
+  },
+  {
+   "task": "contractnli:066293834a5e",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": false,
+   "gold_label": "not_mentioned",
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 149
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1138,
+    "completion": 41
+   },
+   "seconds": {
+    "retrieve": 0.86,
+    "answer": 49.45
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "contractnli:0e81cdf45d41",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "contradiction",
+   "ranks": {
+    "bm25": 3,
+    "dense": 4,
+    "hybrid": 3
+   },
+   "answer": {
+    "label": "contradiction",
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 101
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 1310,
+    "completion": 280
+   },
+   "seconds": {
+    "retrieve": 1.17,
+    "answer": 100.41
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.6667,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 15016,
+    "seconds": 583.88
+   }
+  },
+  {
+   "task": "contractnli:13f46e86b8d2",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": false,
+   "gold_label": "not_mentioned",
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 114
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1145,
+    "completion": 145
+   },
+   "seconds": {
+    "retrieve": 1.6,
+    "answer": 61.51
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "contractnli:2c25c6613975",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "entailment",
+   "ranks": {
+    "bm25": 4,
+    "dense": 2,
+    "hybrid": 2
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 151
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1158,
+    "completion": 42
+   },
+   "seconds": {
+    "retrieve": 3.98,
+    "answer": 59.13
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 1.0,
+     "context_recall": 1.0
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 7424,
+    "seconds": 252.22
+   }
+  },
+  {
+   "task": "contractnli:302300635098",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "entailment",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "contradiction",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 291
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 1420,
+    "completion": 169
+   },
+   "seconds": {
+    "retrieve": 2.11,
+    "answer": 92.64
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.75,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.29
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 15114,
+    "seconds": 605.33
+   }
+  },
+  {
+   "task": "contractnli:3067f24a77e8",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": false,
+   "gold_label": "not_mentioned",
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 148
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 871,
+    "completion": 41
+   },
+   "seconds": {
+    "retrieve": 0.49,
+    "answer": 46.03
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "contractnli:3f84f3ec41f4",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "contradiction",
+   "ranks": {
+    "bm25": 2,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "contradiction",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 178
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 1032,
+    "completion": 134
+   },
+   "seconds": {
+    "retrieve": 0.62,
+    "answer": 65.5
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.6667,
+     "answer_relevancy": 0.7991,
+     "context_precision": 0.8056,
+     "context_recall": 1.0,
+     "factual_correctness": 0.5
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13172,
+    "seconds": 479.57
+   }
+  },
+  {
+   "task": "contractnli:426577f13c14",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "contradiction",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 126
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1048,
+    "completion": 38
+   },
+   "seconds": {
+    "retrieve": 1.55,
+    "answer": 54.41
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 0.75,
+     "context_recall": 1.0
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 7762,
+    "seconds": 275.34
+   }
+  },
+  {
+   "task": "contractnli:48cd371e5875",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "entailment",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "entailment",
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 67
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 1121,
+    "completion": 86
+   },
+   "seconds": {
+    "retrieve": 1.33,
+    "answer": 64.03
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.9383,
+     "context_precision": 1.0,
+     "context_recall": 0.6667,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13175,
+    "seconds": 479.59
+   }
+  },
+  {
+   "task": "contractnli:4ca9b08b322f",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "contradiction",
+   "ranks": {
+    "bm25": 2,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "contradiction",
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 120
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 923,
+    "completion": 122
+   },
+   "seconds": {
+    "retrieve": 0.54,
+    "answer": 58.58
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.8118,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.8
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13096,
+    "seconds": 485.88
+   }
+  },
+  {
+   "task": "contractnli:5bb237e858ce",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "entailment",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "entailment",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 75
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 1019,
+    "completion": 169
+   },
+   "seconds": {
+    "retrieve": 1.06,
+    "answer": 69.07
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.9353,
+     "context_precision": 0.9167,
+     "context_recall": 1.0,
+     "factual_correctness": 0.5
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12827,
+    "seconds": 450.92
+   }
+  },
+  {
+   "task": "contractnli:5eaadef93979",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "entailment",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "entailment",
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 67
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 1027,
+    "completion": 83
+   },
+   "seconds": {
+    "retrieve": 0.56,
+    "answer": 49.72
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.9383,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.4
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13035,
+    "seconds": 395.49
+   }
+  },
+  {
+   "task": "contractnli:65d5b7499bc6",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "entailment",
+   "ranks": {
+    "bm25": 4,
+    "dense": 3,
+    "hybrid": 4
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 108
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1044,
+    "completion": 32
+   },
+   "seconds": {
+    "retrieve": 1.1,
+    "answer": 54.11
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 1.0,
+     "context_recall": 1.0
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 6998,
+    "seconds": 213.86
+   }
+  },
+  {
+   "task": "contractnli:66df7ced37e0",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "entailment",
+   "ranks": {
+    "bm25": 1,
+    "dense": 2,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "entailment",
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 150
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 1030,
+    "completion": 111
+   },
+   "seconds": {
+    "retrieve": 1.3,
+    "answer": 62.42
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.75,
+     "answer_relevancy": 0.6966,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.86
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13688,
+    "seconds": 515.35
+   }
+  },
+  {
+   "task": "contractnli:7032b24879b8",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "contradiction",
+   "ranks": {
+    "bm25": 3,
+    "dense": 2,
+    "hybrid": 2
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 166
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1100,
+    "completion": 43
+   },
+   "seconds": {
+    "retrieve": 1.69,
+    "answer": 57.95
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 1.0,
+     "context_recall": 1.0
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 7877,
+    "seconds": 283.71
+   }
+  },
+  {
+   "task": "contractnli:746592c98988",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "entailment",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "entailment",
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 211
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 1062,
+    "completion": 241
+   },
+   "seconds": {
+    "retrieve": 3.39,
+    "answer": 52.02
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.8269,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.6
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 16736,
+    "seconds": 492.56
+   }
+  },
+  {
+   "task": "contractnli:779ef2022c1c",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": false,
+   "gold_label": "not_mentioned",
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 282
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1110,
+    "completion": 302
+   },
+   "seconds": {
+    "retrieve": 0.62,
+    "answer": 77.7
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "contractnli:7b5040515a6d",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": false,
+   "gold_label": "not_mentioned",
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 148
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 713,
+    "completion": 40
+   },
+   "seconds": {
+    "retrieve": 0.3,
+    "answer": 34.64
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "contractnli:7c90e2404488",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": false,
+   "gold_label": "not_mentioned",
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 91
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1042,
+    "completion": 31
+   },
+   "seconds": {
+    "retrieve": 0.37,
+    "answer": 42.66
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "contractnli:8ac81df8fae1",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": false,
+   "gold_label": "not_mentioned",
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 134
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 926,
+    "completion": 42
+   },
+   "seconds": {
+    "retrieve": 0.51,
+    "answer": 45.19
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "contractnli:8d0de7fdf139",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "contradiction",
+   "ranks": {
+    "bm25": 5,
+    "dense": 4,
+    "hybrid": 5
+   },
+   "answer": {
+    "label": "contradiction",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 170
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 991,
+    "completion": 200
+   },
+   "seconds": {
+    "retrieve": 0.7,
+    "answer": 69.36
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.75,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.8056,
+     "context_recall": 0.0,
+     "factual_correctness": 0.33
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13542,
+    "seconds": 510.02
+   }
+  },
+  {
+   "task": "contractnli:8f775e60646a",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "contradiction",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "contradiction",
+    "abstained": false,
+    "supported": false,
+    "citations": 1,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 228
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1115,
+    "completion": 157
+   },
+   "seconds": {
+    "retrieve": 1.13,
+    "answer": 71.77
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.75,
+     "answer_relevancy": 0.7658,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.57
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 14982,
+    "seconds": 604.56
+   }
+  },
+  {
+   "task": "contractnli:a4c08ad035e0",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "contradiction",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "contradiction",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 178
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 1196,
+    "completion": 241
+   },
+   "seconds": {
+    "retrieve": 1.62,
+    "answer": 87.43
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.6667,
+     "answer_relevancy": 0.7568,
+     "context_precision": 0.6389,
+     "context_recall": 1.0,
+     "factual_correctness": 0.57
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 14619,
+    "seconds": 562.83
+   }
+  },
+  {
+   "task": "contractnli:b2d6d8fdf40e",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "entailment",
+   "ranks": {
+    "bm25": 3,
+    "dense": 2,
+    "hybrid": 3
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 137
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1174,
+    "completion": 39
+   },
+   "seconds": {
+    "retrieve": 3.24,
+    "answer": 59.84
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 0.8333,
+     "context_recall": 1.0
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 7661,
+    "seconds": 263.93
+   }
+  },
+  {
+   "task": "contractnli:b6aaebe69c22",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "entailment",
+   "ranks": {
+    "bm25": 2,
+    "dense": 1,
+    "hybrid": 2
+   },
+   "answer": {
+    "label": "entailment",
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 217
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 1060,
+    "completion": 118
+   },
+   "seconds": {
+    "retrieve": 0.91,
+    "answer": 63.24
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.6667,
+     "answer_relevancy": 0.8031,
+     "context_precision": 0.5,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13543,
+    "seconds": 501.32
+   }
+  },
+  {
+   "task": "contractnli:bd72f43ed370",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "contradiction",
+   "ranks": {
+    "bm25": 1,
+    "dense": 2,
+    "hybrid": 2
+   },
+   "answer": {
+    "label": "entailment",
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 83
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 1161,
+    "completion": 196
+   },
+   "seconds": {
+    "retrieve": 1.21,
+    "answer": 78.83
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.7396,
+     "context_precision": 0.5,
+     "context_recall": 0.0,
+     "factual_correctness": 0.5
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13481,
+    "seconds": 493.34
+   }
+  },
+  {
+   "task": "contractnli:c46a2f28db1d",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": false,
+   "gold_label": "not_mentioned",
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 128
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1144,
+    "completion": 37
+   },
+   "seconds": {
+    "retrieve": 1.47,
+    "answer": 57.53
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "contractnli:c628b6e1ce12",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": false,
+   "gold_label": "not_mentioned",
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 133
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 723,
+    "completion": 39
+   },
+   "seconds": {
+    "retrieve": 0.18,
+    "answer": 29.19
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "contractnli:ca93eefac392",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": false,
+   "gold_label": "not_mentioned",
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 116
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 974,
+    "completion": 35
+   },
+   "seconds": {
+    "retrieve": 0.37,
+    "answer": 48.1
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "contractnli:de1b3bf29985",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "contradiction",
+   "ranks": {
+    "bm25": 6,
+    "dense": 4,
+    "hybrid": 5
+   },
+   "answer": {
+    "label": "not_mentioned",
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 99
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1091,
+    "completion": 31
+   },
+   "seconds": {
+    "retrieve": 0.75,
+    "answer": 54.08
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 1.0,
+     "context_recall": 0.5
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 7672,
+    "seconds": 264.64
+   }
+  },
+  {
+   "task": "contractnli:f03dec809fc6",
+   "dataset": "contractnli",
+   "domain": "legal",
+   "kind": "nli",
+   "answerable": true,
+   "gold_label": "entailment",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "entailment",
+    "abstained": false,
+    "supported": false,
+    "citations": 1,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 293
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1101,
+    "completion": 168
+   },
+   "seconds": {
+    "retrieve": 1.14,
+    "answer": 72.72
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.8614,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.73
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 14646,
+    "seconds": 587.63
+   }
+  },
+  {
+   "task": "cuad:01130e0f4650",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1554,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 1.72,
+    "answer": 49.35
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:08a3951b6b6b",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1210,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 1.73,
+    "answer": 48.46
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:08a52b689daf",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1219,
+    "completion": 13
+   },
+   "seconds": {
+    "retrieve": 10.03,
+    "answer": 58.75
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:1f1c419cf95b",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 661
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.4848,
+   "tokens": {
+    "prompt": 1150,
+    "completion": 431
+   },
+   "seconds": {
+    "retrieve": 8.22,
+    "answer": 95.4
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.8462,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 17160,
+    "seconds": 627.38
+   }
+  },
+  {
+   "task": "cuad:1fdd121d5b95",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 3,
+    "dense": null,
+    "hybrid": 8
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 1028,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 8.17,
+    "answer": 46.85
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 0.0,
+     "context_recall": 0.5
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 7858,
+    "seconds": 288.48
+   }
+  },
+  {
+   "task": "cuad:21d475febf43",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 2,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 103
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.4444,
+   "tokens": {
+    "prompt": 1165,
+    "completion": 97
+   },
+   "seconds": {
+    "retrieve": 3.92,
+    "answer": 66.9
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.9167,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13743,
+    "seconds": 502.07
+   }
+  },
+  {
+   "task": "cuad:2cfe1827293b",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1294,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 3.3,
+    "answer": 63.96
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:452ccd8ab9da",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1161,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 1.36,
+    "answer": 56.43
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:47bc8203e609",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 416,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 0.11,
+    "answer": 17.08
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:65e5eb39571d",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 9,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 1219,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 20.75,
+    "answer": 59.24
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 1.0,
+     "context_recall": 1.0
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 7148,
+    "seconds": 217.75
+   }
+  },
+  {
+   "task": "cuad:6f783c9f61ea",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1196,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 4.2,
+    "answer": 58.21
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:7cc040180e90",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1118,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 1.23,
+    "answer": 53.69
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:8146326e721f",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1136,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 0.3,
+    "answer": 45.12
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:8855306ecedc",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": false,
+    "citations": 1,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 21
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.129,
+   "tokens": {
+    "prompt": 1260,
+    "completion": 116
+   },
+   "seconds": {
+    "retrieve": 4.73,
+    "answer": 75.81
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13803,
+    "seconds": 508.52
+   }
+  },
+  {
+   "task": "cuad:88995e11a4b7",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1109,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 44.36,
+    "answer": 54.33
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:8933d5cc04e9",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1199,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 13.55,
+    "answer": 58.53
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:9e65bf957dca",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 7,
+    "hybrid": 3
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 1090,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 2.42,
+    "answer": 32.61
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 1.0,
+     "context_recall": 1.0
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 7743,
+    "seconds": 160.35
+   }
+  },
+  {
+   "task": "cuad:a21951dbafc7",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1164,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 1.41,
+    "answer": 46.4
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:a274a1dd6f51",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": false,
+    "citations": 1,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 286
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.961,
+   "tokens": {
+    "prompt": 1232,
+    "completion": 162
+   },
+   "seconds": {
+    "retrieve": 1.3,
+    "answer": 78.92
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.6231,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 15310,
+    "seconds": 623.71
+   }
+  },
+  {
+   "task": "cuad:a5680dab744a",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 2,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": false,
+    "citations": 1,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 736
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.6483,
+   "tokens": {
+    "prompt": 1147,
+    "completion": 243
+   },
+   "seconds": {
+    "retrieve": 6.7,
+    "answer": 72.78
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.75,
+     "answer_relevancy": 0.7203,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 15218,
+    "seconds": 514.77
+   }
+  },
+  {
+   "task": "cuad:b943b18a1be2",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 2,
+    "hybrid": 4
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 1132,
+    "completion": 13
+   },
+   "seconds": {
+    "retrieve": 4.58,
+    "answer": 51.36
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 0.0,
+     "context_recall": 1.0
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 8285,
+    "seconds": 316.45
+   }
+  },
+  {
+   "task": "cuad:bfaec57c5365",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1479,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 0.97,
+    "answer": 73.82
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:c4af6e156a73",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": false,
+    "citations": 1,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 898
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1427,
+    "completion": 349
+   },
+   "seconds": {
+    "retrieve": 38.51,
+    "answer": 117.38
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0
+    },
+    "skipped": {
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 4942,
+    "seconds": 192.25
+   }
+  },
+  {
+   "task": "cuad:ca81be41bca1",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 79
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 1595,
+    "completion": 143
+   },
+   "seconds": {
+    "retrieve": 3.47,
+    "answer": 98.88
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0
+    },
+    "skipped": {
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 4098,
+    "seconds": 155.25
+   }
+  },
+  {
+   "task": "cuad:cdfbd3f6c92d",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 2,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 3,
+    "error": null,
+    "chars": 309
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.5741,
+   "tokens": {
+    "prompt": 1143,
+    "completion": 369
+   },
+   "seconds": {
+    "retrieve": 21.83,
+    "answer": 101.16
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.8031,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.5
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 14589,
+    "seconds": 577.52
+   }
+  },
+  {
+   "task": "cuad:ce721fc8950f",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1316,
+    "completion": 13
+   },
+   "seconds": {
+    "retrieve": 1.36,
+    "answer": 64.29
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "cuad:ea3bdc33c66c",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 3,
+    "error": null,
+    "chars": 563
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 1051,
+    "completion": 362
+   },
+   "seconds": {
+    "retrieve": 1.98,
+    "answer": 95.95
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.6645,
+     "context_precision": 0.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.77
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 16442,
+    "seconds": 719.0
+   }
+  },
+  {
+   "task": "cuad:efe971c2eb82",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": false,
+    "citations": 2,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 900
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.2154,
+   "tokens": {
+    "prompt": 1628,
+    "completion": 398
+   },
+   "seconds": {
+    "retrieve": 36.56,
+    "answer": 136.45
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.6667,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.46
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 18778,
+    "seconds": 833.96
+   }
+  },
+  {
+   "task": "cuad:f3319fcfd0ca",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 2,
+    "dense": 2,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": false,
+    "citations": 1,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 900
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.5465,
+   "tokens": {
+    "prompt": 1510,
+    "completion": 298
+   },
+   "seconds": {
+    "retrieve": 4.79,
+    "answer": 97.06
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.6496,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.5
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 16668,
+    "seconds": 580.88
+   }
+  },
+  {
+   "task": "cuad:f9b13cc87709",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 2,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 3,
+    "error": null,
+    "chars": 834
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.1102,
+   "tokens": {
+    "prompt": 1184,
+    "completion": 458
+   },
+   "seconds": {
+    "retrieve": 5.48,
+    "answer": 121.06
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.8598,
+     "context_precision": 0.5,
+     "context_recall": 1.0,
+     "factual_correctness": 0.73
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 14884,
+    "seconds": 604.13
+   }
+  },
+  {
+   "task": "cuad:fc8bd7fdf2f0",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 109
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 1243,
+    "completion": 83
+   },
+   "seconds": {
+    "retrieve": 16.18,
+    "answer": 69.07
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.8333,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13501,
+    "seconds": 427.62
+   }
+  },
+  {
+   "task": "cuad:fd5c6b6429cd",
+   "dataset": "cuad",
+   "domain": "legal",
+   "kind": "extract",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 2,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 900
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.628,
+   "tokens": {
+    "prompt": 1268,
+    "completion": 343
+   },
+   "seconds": {
+    "retrieve": 22.52,
+    "answer": 106.91
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.7146,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.46
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 18603,
+    "seconds": 831.75
+   }
+  },
+  {
+   "task": "pubmedqa:07accbcbbbf8",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "maybe",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 168
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 392,
+    "completion": 157
+   },
+   "seconds": {
+    "retrieve": 188.37,
+    "answer": 23.03
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.5,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.8
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11668,
+    "seconds": 281.16
+   }
+  },
+  {
+   "task": "pubmedqa:0acf43ffba80",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "maybe",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "yes",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 186
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 648,
+    "completion": 252
+   },
+   "seconds": {
+    "retrieve": 200.0,
+    "answer": 51.22
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.6667,
+     "answer_relevancy": 0.948,
+     "context_precision": 0.8333,
+     "context_recall": 1.0,
+     "factual_correctness": 0.4
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12154,
+    "seconds": 373.26
+   }
+  },
+  {
+   "task": "pubmedqa:1430f04a2710",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "no",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "yes",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 309
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 545,
+    "completion": 253
+   },
+   "seconds": {
+    "retrieve": 230.97,
+    "answer": 54.28
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.8874,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12868,
+    "seconds": 514.25
+   }
+  },
+  {
+   "task": "pubmedqa:1acaaed34254",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "yes",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 286
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 511,
+    "completion": 325
+   },
+   "seconds": {
+    "retrieve": 199.4,
+    "answer": 55.31
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.5833,
+     "context_recall": 0.75,
+     "factual_correctness": 0.57
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11972,
+    "seconds": 380.79
+   }
+  },
+  {
+   "task": "pubmedqa:1e64f564743e",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "maybe",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "no",
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 164
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 626,
+    "completion": 128
+   },
+   "seconds": {
+    "retrieve": 283.84,
+    "answer": 46.6
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.9889,
+     "context_precision": 0.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11846,
+    "seconds": 446.63
+   }
+  },
+  {
+   "task": "pubmedqa:1f15a687b805",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "maybe",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "yes",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 187
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 577,
+    "completion": 286
+   },
+   "seconds": {
+    "retrieve": 232.34,
+    "answer": 60.78
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.5,
+     "answer_relevancy": 0.761,
+     "context_precision": 1.0,
+     "context_recall": null,
+     "factual_correctness": 0.67
+    },
+    "skipped": {
+     "context_recall": "judge error: ValidationError"
+    }
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13142,
+    "seconds": 563.68
+   }
+  },
+  {
+   "task": "pubmedqa:20e200b5e91b",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "no",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "no",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 170
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0769,
+   "tokens": {
+    "prompt": 592,
+    "completion": 131
+   },
+   "seconds": {
+    "retrieve": 232.08,
+    "answer": 39.9
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.9167,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11563,
+    "seconds": 390.6
+   }
+  },
+  {
+   "task": "pubmedqa:2481c943d71b",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "maybe",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "no",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 145
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 572,
+    "completion": 173
+   },
+   "seconds": {
+    "retrieve": 232.21,
+    "answer": 46.27
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.75,
+     "answer_relevancy": 0.8139,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.57
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12745,
+    "seconds": 514.47
+   }
+  },
+  {
+   "task": "pubmedqa:251e66a762e3",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "yes",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 217
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 610,
+    "completion": 256
+   },
+   "seconds": {
+    "retrieve": 234.48,
+    "answer": 57.58
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.3333,
+     "context_recall": 1.0,
+     "factual_correctness": 0.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12558,
+    "seconds": 491.98
+   }
+  },
+  {
+   "task": "pubmedqa:2ba36d8793f1",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "no",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 112
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 507,
+    "completion": 39
+   },
+   "seconds": {
+    "retrieve": 230.52,
+    "answer": 27.0
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.6667,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.9167,
+     "context_recall": 0.6,
+     "factual_correctness": 0.2
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12535,
+    "seconds": 502.43
+   }
+  },
+  {
+   "task": "pubmedqa:40a288b3ef0b",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "yes",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 221
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 634,
+    "completion": 274
+   },
+   "seconds": {
+    "retrieve": 230.54,
+    "answer": 60.93
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12140,
+    "seconds": 443.43
+   }
+  },
+  {
+   "task": "pubmedqa:410bd85b694a",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "no",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "no",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 217
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0667,
+   "tokens": {
+    "prompt": 786,
+    "completion": 242
+   },
+   "seconds": {
+    "retrieve": 234.35,
+    "answer": 64.3
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.9734,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12751,
+    "seconds": 471.74
+   }
+  },
+  {
+   "task": "pubmedqa:4fd1ecc5f40c",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "no",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "no",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 112
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 664,
+    "completion": 158
+   },
+   "seconds": {
+    "retrieve": 200.0,
+    "answer": 41.55
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.8581,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12277,
+    "seconds": 369.79
+   }
+  },
+  {
+   "task": "pubmedqa:587834aeccff",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "maybe",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "yes",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 165
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 604,
+    "completion": 210
+   },
+   "seconds": {
+    "retrieve": 250.25,
+    "answer": 55.12
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 1.0,
+     "context_precision": 1.0,
+     "context_recall": 0.5,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11541,
+    "seconds": 394.02
+   }
+  },
+  {
+   "task": "pubmedqa:59cd1547bd95",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "yes",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "yes",
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 133
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0952,
+   "tokens": {
+    "prompt": 550,
+    "completion": 104
+   },
+   "seconds": {
+    "retrieve": 231.89,
+    "answer": 34.86
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.615,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.29
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11800,
+    "seconds": 420.95
+   }
+  },
+  {
+   "task": "pubmedqa:611f254f47f5",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "no",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 229
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 793,
+    "completion": 271
+   },
+   "seconds": {
+    "retrieve": 233.07,
+    "answer": 74.86
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.86
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12980,
+    "seconds": 492.86
+   }
+  },
+  {
+   "task": "pubmedqa:6af4afbbe472",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "no",
+   "ranks": {
+    "bm25": 2,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 66
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 385,
+    "completion": 129
+   },
+   "seconds": {
+    "retrieve": 0.05,
+    "answer": 19.68
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.8056,
+     "context_recall": 1.0,
+     "factual_correctness": 0.29
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11469,
+    "seconds": 273.3
+   }
+  },
+  {
+   "task": "pubmedqa:7e03db186a17",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "no",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 192
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 633,
+    "completion": 245
+   },
+   "seconds": {
+    "retrieve": 0.06,
+    "answer": 56.37
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.8
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12035,
+    "seconds": 368.99
+   }
+  },
+  {
+   "task": "pubmedqa:8155a82c6066",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "yes",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "yes",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 154
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.087,
+   "tokens": {
+    "prompt": 507,
+    "completion": 177
+   },
+   "seconds": {
+    "retrieve": 0.1,
+    "answer": 40.19
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.9123,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.75
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11553,
+    "seconds": 406.03
+   }
+  },
+  {
+   "task": "pubmedqa:843d63968f0d",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "yes",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "yes",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 208
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0667,
+   "tokens": {
+    "prompt": 443,
+    "completion": 185
+   },
+   "seconds": {
+    "retrieve": 0.19,
+    "answer": 33.82
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.9412,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11269,
+    "seconds": 327.77
+   }
+  },
+  {
+   "task": "pubmedqa:874475c59745",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "no",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "no",
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 278
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 811,
+    "completion": 401
+   },
+   "seconds": {
+    "retrieve": 0.06,
+    "answer": 98.24
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.33
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13042,
+    "seconds": 548.66
+   }
+  },
+  {
+   "task": "pubmedqa:8ad15b0b4aff",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "yes",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 254
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 418,
+    "completion": 191
+   },
+   "seconds": {
+    "retrieve": 0.09,
+    "answer": 37.59
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.5,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11455,
+    "seconds": 395.55
+   }
+  },
+  {
+   "task": "pubmedqa:908287cdb7dd",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "yes",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "yes",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 173
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 587,
+    "completion": 170
+   },
+   "seconds": {
+    "retrieve": 0.06,
+    "answer": 44.49
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.8687,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.5
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12160,
+    "seconds": 457.28
+   }
+  },
+  {
+   "task": "pubmedqa:a2e8ba1caca4",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "yes",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 160
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 473,
+    "completion": 269
+   },
+   "seconds": {
+    "retrieve": 0.12,
+    "answer": 51.5
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.5,
+     "answer_relevancy": 0.7552,
+     "context_precision": 0.9167,
+     "context_recall": 1.0,
+     "factual_correctness": 0.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12107,
+    "seconds": 460.28
+   }
+  },
+  {
+   "task": "pubmedqa:b0068167ba3f",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "maybe",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 166
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 555,
+    "completion": 208
+   },
+   "seconds": {
+    "retrieve": 0.08,
+    "answer": 47.79
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.5
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11591,
+    "seconds": 402.4
+   }
+  },
+  {
+   "task": "pubmedqa:bc5a595dfc1f",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "yes",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "yes",
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 169
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 699,
+    "completion": 122
+   },
+   "seconds": {
+    "retrieve": 0.1,
+    "answer": 44.09
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.9411,
+     "context_precision": 0.9167,
+     "context_recall": 1.0,
+     "factual_correctness": 0.29
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 13038,
+    "seconds": 502.27
+   }
+  },
+  {
+   "task": "pubmedqa:bd735426de9d",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "no",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "no",
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 3,
+    "error": null,
+    "chars": 121
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0952,
+   "tokens": {
+    "prompt": 571,
+    "completion": 211
+   },
+   "seconds": {
+    "retrieve": 0.08,
+    "answer": 48.54
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.5,
+     "answer_relevancy": 0.732,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11564,
+    "seconds": 404.61
+   }
+  },
+  {
+   "task": "pubmedqa:bfa90aa061a7",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "yes",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 3,
+    "error": null,
+    "chars": 242
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 527,
+    "completion": 360
+   },
+   "seconds": {
+    "retrieve": 0.1,
+    "answer": 65.69
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.5,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.8056,
+     "context_recall": 1.0,
+     "factual_correctness": 0.57
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12172,
+    "seconds": 454.28
+   }
+  },
+  {
+   "task": "pubmedqa:d17b66d66355",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "no",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "yes",
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 163
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 430,
+    "completion": 271
+   },
+   "seconds": {
+    "retrieve": 0.08,
+    "answer": 41.76
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.9562,
+     "context_precision": 0.8333,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11689,
+    "seconds": 354.04
+   }
+  },
+  {
+   "task": "pubmedqa:e0513a0e33cc",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "maybe",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "no",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 110
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 532,
+    "completion": 169
+   },
+   "seconds": {
+    "retrieve": 0.1,
+    "answer": 43.15
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.9229,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11686,
+    "seconds": 424.28
+   }
+  },
+  {
+   "task": "pubmedqa:e278e3d5dedc",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "no",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 218
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 635,
+    "completion": 230
+   },
+   "seconds": {
+    "retrieve": 0.06,
+    "answer": 54.15
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.6667,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11953,
+    "seconds": 421.9
+   }
+  },
+  {
+   "task": "pubmedqa:fdfa67a8cc89",
+   "dataset": "pubmedqa",
+   "domain": "biomedical",
+   "kind": "yesno",
+   "answerable": true,
+   "gold_label": "yes",
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": "maybe",
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 371
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 694,
+    "completion": 281
+   },
+   "seconds": {
+    "retrieve": 0.09,
+    "answer": 63.99
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.9167,
+     "context_recall": 1.0,
+     "factual_correctness": 0.33
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12662,
+    "seconds": 471.4
+   }
+  },
+  {
+   "task": "qasper:066952b7b891",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 8,
+    "dense": 7,
+    "hybrid": 6
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 204
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.1628,
+   "tokens": {
+    "prompt": 422,
+    "completion": 176
+   },
+   "seconds": {
+    "retrieve": 3.71,
+    "answer": 25.33
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.967,
+     "context_precision": 0.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12896,
+    "seconds": 343.56
+   }
+  },
+  {
+   "task": "qasper:07097b232364",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 6,
+    "dense": 4,
+    "hybrid": 3
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 70
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.5,
+   "tokens": {
+    "prompt": 516,
+    "completion": 110
+   },
+   "seconds": {
+    "retrieve": 2.05,
+    "answer": 29.37
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.3333,
+     "context_recall": 1.0,
+     "factual_correctness": 0.5
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10965,
+    "seconds": 301.29
+   }
+  },
+  {
+   "task": "qasper:0a1c3adecad3",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 4,
+    "dense": null,
+    "hybrid": 7
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 399,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 4.9,
+    "answer": 16.23
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 0.5,
+     "context_recall": null
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_recall": "judge error: ValidationError",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 6627,
+    "seconds": 280.46
+   }
+  },
+  {
+   "task": "qasper:12540c689975",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 7
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 914,
+    "completion": 163
+   },
+   "seconds": {
+    "retrieve": 9.6,
+    "answer": 52.0
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "qasper:258574ed58e8",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 2,
+    "dense": null,
+    "hybrid": 4
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 20
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0317,
+   "tokens": {
+    "prompt": 758,
+    "completion": 199
+   },
+   "seconds": {
+    "retrieve": 13.37,
+    "answer": 62.05
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": null
+    },
+    "skipped": {
+     "factual_correctness": "judge error: ValidationError"
+    }
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 14758,
+    "seconds": 745.06
+   }
+  },
+  {
+   "task": "qasper:26cd3c5e2119",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": 1,
+    "hybrid": 3
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 3,
+    "error": null,
+    "chars": 31
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 800,
+    "completion": 269
+   },
+   "seconds": {
+    "retrieve": 9.0,
+    "answer": 68.25
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 0.75,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12740,
+    "seconds": 477.77
+   }
+  },
+  {
+   "task": "qasper:2fc51b0014c9",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 2,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 12
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.2857,
+   "tokens": {
+    "prompt": 457,
+    "completion": 158
+   },
+   "seconds": {
+    "retrieve": 8.88,
+    "answer": 35.66
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10529,
+    "seconds": 323.58
+   }
+  },
+  {
+   "task": "qasper:31746b3ab794",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 2,
+    "dense": 3,
+    "hybrid": 2
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 14
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.2353,
+   "tokens": {
+    "prompt": 362,
+    "completion": 120
+   },
+   "seconds": {
+    "retrieve": 7.53,
+    "answer": 26.96
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.9167,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10733,
+    "seconds": 351.99
+   }
+  },
+  {
+   "task": "qasper:359afab1b869",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 4,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": false,
+    "citations": 1,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 46
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.8235,
+   "tokens": {
+    "prompt": 701,
+    "completion": 67
+   },
+   "seconds": {
+    "retrieve": 4.8,
+    "answer": 37.92
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11454,
+    "seconds": 379.13
+   }
+  },
+  {
+   "task": "qasper:3a8aa2c8045e",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 7,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": false,
+    "citations": 1,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 103
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.2,
+   "tokens": {
+    "prompt": 772,
+    "completion": 145
+   },
+   "seconds": {
+    "retrieve": 5.62,
+    "answer": 51.4
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.7688,
+     "context_precision": 0.9167,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11867,
+    "seconds": 399.27
+   }
+  },
+  {
+   "task": "qasper:429a9e765510",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 815,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 10.56,
+    "answer": 37.49
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "qasper:54f0685aaa8a",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": 5,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 503,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 9.16,
+    "answer": 20.94
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 0.25,
+     "context_recall": 1.0
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 5920,
+    "seconds": 169.91
+   }
+  },
+  {
+   "task": "qasper:562009eec6a2",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 3,
+    "error": null,
+    "chars": 4
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 1131,
+    "completion": 150
+   },
+   "seconds": {
+    "retrieve": 7.69,
+    "answer": 60.03
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12456,
+    "seconds": 347.87
+   }
+  },
+  {
+   "task": "qasper:5e1095651bca",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 10,
+    "dense": 3,
+    "hybrid": 6
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 16
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 558,
+    "completion": 149
+   },
+   "seconds": {
+    "retrieve": 9.36,
+    "answer": 42.71
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 0.5,
+     "factual_correctness": 0.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11773,
+    "seconds": 430.51
+   }
+  },
+  {
+   "task": "qasper:60eab0309917",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": 9,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 686,
+    "completion": 178
+   },
+   "seconds": {
+    "retrieve": 6.48,
+    "answer": 50.26
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 0.8333,
+     "context_recall": 1.0
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 6055,
+    "seconds": 172.85
+   }
+  },
+  {
+   "task": "qasper:6304ac49326c",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 65
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 835,
+    "completion": 187
+   },
+   "seconds": {
+    "retrieve": 11.85,
+    "answer": 59.97
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0
+    },
+    "skipped": {
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 3205,
+    "seconds": 105.43
+   }
+  },
+  {
+   "task": "qasper:655b680bab63",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 618,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 1.31,
+    "answer": 17.45
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "qasper:7e204da506ca",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 580,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 8.15,
+    "answer": 21.23
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 0.0,
+     "context_recall": 1.0
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 5955,
+    "seconds": 141.54
+   }
+  },
+  {
+   "task": "qasper:84d85c6ac081",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 10,
+    "dense": 3,
+    "hybrid": 4
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 296
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.4643,
+   "tokens": {
+    "prompt": 710,
+    "completion": 319
+   },
+   "seconds": {
+    "retrieve": 5.63,
+    "answer": 69.14
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.9002,
+     "context_precision": 0.9167,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12043,
+    "seconds": 411.33
+   }
+  },
+  {
+   "task": "qasper:86b6758d34b5",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 209
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 827,
+    "completion": 206
+   },
+   "seconds": {
+    "retrieve": 5.01,
+    "answer": 53.4
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0
+    },
+    "skipped": {
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 3398,
+    "seconds": 96.66
+   }
+  },
+  {
+   "task": "qasper:8abf16fd1bc4",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 9,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 57
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.1176,
+   "tokens": {
+    "prompt": 472,
+    "completion": 79
+   },
+   "seconds": {
+    "retrieve": 6.75,
+    "answer": 29.02
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 0.0,
+     "context_recall": 1.0
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 5567,
+    "seconds": 154.49
+   }
+  },
+  {
+   "task": "qasper:91fe8014a207",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 669,
+    "completion": 241
+   },
+   "seconds": {
+    "retrieve": 2.14,
+    "answer": 57.03
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "qasper:96c049b5e647",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 330
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.2182,
+   "tokens": {
+    "prompt": 818,
+    "completion": 201
+   },
+   "seconds": {
+    "retrieve": 6.01,
+    "answer": 60.45
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.822,
+     "context_precision": 0.3333,
+     "context_recall": 1.0,
+     "factual_correctness": 0.57
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12946,
+    "seconds": 492.6
+   }
+  },
+  {
+   "task": "qasper:9c2564f1133e",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 5,
+    "dense": 1,
+    "hybrid": 2
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 74
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 512,
+    "completion": 228
+   },
+   "seconds": {
+    "retrieve": 3.24,
+    "answer": 47.22
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.6444,
+     "context_precision": 0.5,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10954,
+    "seconds": 301.02
+   }
+  },
+  {
+   "task": "qasper:9f1ff08c45c5",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 298
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0909,
+   "tokens": {
+    "prompt": 593,
+    "completion": 249
+   },
+   "seconds": {
+    "retrieve": 6.53,
+    "answer": 54.38
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.9991,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.86
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11666,
+    "seconds": 402.91
+   }
+  },
+  {
+   "task": "qasper:ae3dce17666e",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 311,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 4.88,
+    "answer": 12.33
+   },
+   "ragas": {
+    "scores": {
+     "context_precision": 0.0,
+     "context_recall": 1.0
+    },
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "factual_correctness": "no answer"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 5327,
+    "seconds": 139.67
+   }
+  },
+  {
+   "task": "qasper:bf2b0207ffd8",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 4,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 152
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.303,
+   "tokens": {
+    "prompt": 1031,
+    "completion": 262
+   },
+   "seconds": {
+    "retrieve": 8.89,
+    "answer": 80.96
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.6667,
+     "answer_relevancy": 0.88,
+     "context_precision": 0.8333,
+     "context_recall": 1.0,
+     "factual_correctness": 0.5
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12986,
+    "seconds": 468.89
+   }
+  },
+  {
+   "task": "qasper:d22274174b41",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": true,
+    "supported": false,
+    "citations": 0,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 0
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": true,
+   "f1": null,
+   "tokens": {
+    "prompt": 1229,
+    "completion": 16
+   },
+   "seconds": {
+    "retrieve": 8.41,
+    "answer": 59.59
+   },
+   "ragas": {
+    "scores": {},
+    "skipped": {
+     "faithfulness": "no answer",
+     "answer_relevancy": "no answer",
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 0,
+    "tokens": 0,
+    "seconds": 0.0
+   }
+  },
+  {
+   "task": "qasper:e4dc47972512",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 2,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 3,
+    "error": null,
+    "chars": 162
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.1379,
+   "tokens": {
+    "prompt": 525,
+    "completion": 356
+   },
+   "seconds": {
+    "retrieve": 7.39,
+    "answer": 56.59
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.7462,
+     "context_precision": 0.4167,
+     "context_recall": 0.0,
+     "factual_correctness": 0.61
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12133,
+    "seconds": 407.73
+   }
+  },
+  {
+   "task": "qasper:ea9d11e74073",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 82
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.5333,
+   "tokens": {
+    "prompt": 746,
+    "completion": 252
+   },
+   "seconds": {
+    "retrieve": 6.33,
+    "answer": 67.12
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11934,
+    "seconds": 436.29
+   }
+  },
+  {
+   "task": "qasper:ef8710559a59",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": 3,
+    "hybrid": 5
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 29
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.2,
+   "tokens": {
+    "prompt": 507,
+    "completion": 266
+   },
+   "seconds": {
+    "retrieve": 5.77,
+    "answer": 50.86
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.5833,
+     "context_recall": 1.0,
+     "factual_correctness": 0.4
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11379,
+    "seconds": 384.15
+   }
+  },
+  {
+   "task": "qasper:ff70eaf8e106",
+   "dataset": "qasper",
+   "domain": "science",
+   "kind": "answer",
+   "answerable": false,
+   "gold_label": null,
+   "ranks": {
+    "bm25": null,
+    "dense": null,
+    "hybrid": null
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 3,
+    "valid_citations": 3,
+    "error": null,
+    "chars": 10
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": null,
+   "tokens": {
+    "prompt": 499,
+    "completion": 248
+   },
+   "seconds": {
+    "retrieve": 0.97,
+    "answer": 48.21
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.5,
+     "answer_relevancy": 0.0
+    },
+    "skipped": {
+     "context_precision": "no reference",
+     "context_recall": "no reference",
+     "factual_correctness": "no reference"
+    }
+   },
+   "judge": {
+    "calls": 5,
+    "tokens": 2921,
+    "seconds": 97.62
+   }
+  },
+  {
+   "task": "tatqa:29a056ca6928",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 6
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 544,
+    "completion": 70
+   },
+   "seconds": {
+    "retrieve": 0.09,
+    "answer": 20.08
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10712,
+    "seconds": 218.1
+   }
+  },
+  {
+   "task": "tatqa:2dd9d9697f03",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 14
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.8,
+   "tokens": {
+    "prompt": 448,
+    "completion": 70
+   },
+   "seconds": {
+    "retrieve": 0.15,
+    "answer": 20.92
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.8
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 13,
+    "tokens": 9769,
+    "seconds": 284.38
+   }
+  },
+  {
+   "task": "tatqa:304c62c0e9fd",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 3,
+    "dense": 4,
+    "hybrid": 4
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": false,
+    "citations": 1,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 1
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 571,
+    "completion": 214
+   },
+   "seconds": {
+    "retrieve": 0.22,
+    "answer": 49.49
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.0,
+     "context_recall": 0.0,
+     "factual_correctness": 0.33
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11012,
+    "seconds": 362.71
+   }
+  },
+  {
+   "task": "tatqa:38c96453e2fb",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 3
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 1140,
+    "completion": 92
+   },
+   "seconds": {
+    "retrieve": 0.8,
+    "answer": 54.1
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.8333,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12430,
+    "seconds": 349.5
+   }
+  },
+  {
+   "task": "tatqa:3aa96fab5ce6",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 12
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 544,
+    "completion": 105
+   },
+   "seconds": {
+    "retrieve": 0.11,
+    "answer": 37.29
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10747,
+    "seconds": 308.35
+   }
+  },
+  {
+   "task": "tatqa:4047965336a0",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 3
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 421,
+    "completion": 149
+   },
+   "seconds": {
+    "retrieve": 0.09,
+    "answer": 32.92
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.5163,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10208,
+    "seconds": 306.22
+   }
+  },
+  {
+   "task": "tatqa:492f6b7b91e8",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 17
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 736,
+    "completion": 101
+   },
+   "seconds": {
+    "retrieve": 0.51,
+    "answer": 43.72
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11562,
+    "seconds": 395.15
+   }
+  },
+  {
+   "task": "tatqa:5269bd141603",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 3,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 5
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 715,
+    "completion": 86
+   },
+   "seconds": {
+    "retrieve": 0.43,
+    "answer": 40.61
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.9167,
+     "context_recall": 1.0,
+     "factual_correctness": 0.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10973,
+    "seconds": 343.82
+   }
+  },
+  {
+   "task": "tatqa:55514207c5ab",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": false,
+    "citations": 1,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 79
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.7778,
+   "tokens": {
+    "prompt": 535,
+    "completion": 92
+   },
+   "seconds": {
+    "retrieve": 0.16,
+    "answer": 32.77
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 13,
+    "tokens": 10134,
+    "seconds": 354.65
+   }
+  },
+  {
+   "task": "tatqa:594657ea424e",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 3,
+    "dense": 3,
+    "hybrid": 3
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 6
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 378,
+    "completion": 70
+   },
+   "seconds": {
+    "retrieve": 0.71,
+    "answer": 21.55
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.5833,
+     "context_recall": 1.0,
+     "factual_correctness": 0.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10602,
+    "seconds": 347.44
+   }
+  },
+  {
+   "task": "tatqa:5aac5e92fb42",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 6
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 499,
+    "completion": 70
+   },
+   "seconds": {
+    "retrieve": 0.18,
+    "answer": 27.07
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10956,
+    "seconds": 359.33
+   }
+  },
+  {
+   "task": "tatqa:5dbc3dcd6f59",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 143
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.2,
+   "tokens": {
+    "prompt": 612,
+    "completion": 291
+   },
+   "seconds": {
+    "retrieve": 0.21,
+    "answer": 61.38
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.7222,
+     "context_precision": 0.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11254,
+    "seconds": 373.38
+   }
+  },
+  {
+   "task": "tatqa:610511278bcf",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 1
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 387,
+    "completion": 67
+   },
+   "seconds": {
+    "retrieve": 0.08,
+    "answer": 18.74
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.0,
+     "context_recall": 0.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 13,
+    "tokens": 9372,
+    "seconds": 258.56
+   }
+  },
+  {
+   "task": "tatqa:624f2e499a37",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 2,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 7
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 438,
+    "completion": 178
+   },
+   "seconds": {
+    "retrieve": 0.21,
+    "answer": 39.12
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10543,
+    "seconds": 341.73
+   }
+  },
+  {
+   "task": "tatqa:651fb4fd83e7",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 2,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 6
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 480,
+    "completion": 103
+   },
+   "seconds": {
+    "retrieve": 0.16,
+    "answer": 29.7
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10727,
+    "seconds": 341.71
+   }
+  },
+  {
+   "task": "tatqa:69681936e2c5",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 100
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.5106,
+   "tokens": {
+    "prompt": 938,
+    "completion": 130
+   },
+   "seconds": {
+    "retrieve": 0.7,
+    "answer": 58.2
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.8333,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12630,
+    "seconds": 451.81
+   }
+  },
+  {
+   "task": "tatqa:72ce07d44ab1",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 4
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 418,
+    "completion": 63
+   },
+   "seconds": {
+    "retrieve": 0.08,
+    "answer": 14.83
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 13,
+    "tokens": 9571,
+    "seconds": 213.09
+   }
+  },
+  {
+   "task": "tatqa:75060156270a",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 5
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 464,
+    "completion": 84
+   },
+   "seconds": {
+    "retrieve": 0.1,
+    "answer": 23.28
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 13,
+    "tokens": 9416,
+    "seconds": 216.1
+   }
+  },
+  {
+   "task": "tatqa:7a154362a8c7",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 13
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.8,
+   "tokens": {
+    "prompt": 670,
+    "completion": 122
+   },
+   "seconds": {
+    "retrieve": 0.34,
+    "answer": 42.26
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 13,
+    "tokens": 10113,
+    "seconds": 347.37
+   }
+  },
+  {
+   "task": "tatqa:7d141f80b4b5",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 5
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 779,
+    "completion": 136
+   },
+   "seconds": {
+    "retrieve": 0.3,
+    "answer": 42.47
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.5
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11522,
+    "seconds": 316.45
+   }
+  },
+  {
+   "task": "tatqa:7f4e0441ccc5",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 12
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 900,
+    "completion": 95
+   },
+   "seconds": {
+    "retrieve": 3.21,
+    "answer": 53.43
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11477,
+    "seconds": 352.12
+   }
+  },
+  {
+   "task": "tatqa:8bcba4ca00e1",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 2,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 4
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 614,
+    "completion": 172
+   },
+   "seconds": {
+    "retrieve": 0.16,
+    "answer": 45.93
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 0.0,
+     "factual_correctness": 0.5
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11024,
+    "seconds": 359.09
+   }
+  },
+  {
+   "task": "tatqa:9804bd186f70",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 16
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.8,
+   "tokens": {
+    "prompt": 494,
+    "completion": 69
+   },
+   "seconds": {
+    "retrieve": 0.22,
+    "answer": 26.8
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.8333,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10829,
+    "seconds": 351.81
+   }
+  },
+  {
+   "task": "tatqa:9e886a59b1a5",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 12
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 518,
+    "completion": 179
+   },
+   "seconds": {
+    "retrieve": 0.13,
+    "answer": 42.59
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.3333,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10971,
+    "seconds": 362.1
+   }
+  },
+  {
+   "task": "tatqa:af7d9f350c5d",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 167
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 625,
+    "completion": 104
+   },
+   "seconds": {
+    "retrieve": 0.19,
+    "answer": 38.43
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.1667,
+     "answer_relevancy": 0.7902,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.93
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 12157,
+    "seconds": 469.43
+   }
+  },
+  {
+   "task": "tatqa:b5aa8d31da84",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 6
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": false,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 522,
+    "completion": 163
+   },
+   "seconds": {
+    "retrieve": 0.12,
+    "answer": 40.31
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11048,
+    "seconds": 365.02
+   }
+  },
+  {
+   "task": "tatqa:b9b23aab137d",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 10
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.8,
+   "tokens": {
+    "prompt": 703,
+    "completion": 388
+   },
+   "seconds": {
+    "retrieve": 0.24,
+    "answer": 79.37
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.75
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11461,
+    "seconds": 390.72
+   }
+  },
+  {
+   "task": "tatqa:d430a2cfc944",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 3
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 734,
+    "completion": 182
+   },
+   "seconds": {
+    "retrieve": 0.27,
+    "answer": 53.31
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.0,
+     "answer_relevancy": 0.5454,
+     "context_precision": 0.9167,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11295,
+    "seconds": 369.54
+   }
+  },
+  {
+   "task": "tatqa:e0b323579dc1",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 2,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 1,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 5
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 501,
+    "completion": 63
+   },
+   "seconds": {
+    "retrieve": 0.35,
+    "answer": 22.48
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 10612,
+    "seconds": 275.93
+   }
+  },
+  {
+   "task": "tatqa:f00c68571536",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 1,
+    "error": null,
+    "chars": 16
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 1.0,
+   "tokens": {
+    "prompt": 611,
+    "completion": 124
+   },
+   "seconds": {
+    "retrieve": 0.23,
+    "answer": 40.31
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 1.0,
+     "answer_relevancy": 0.0,
+     "context_precision": 0.5,
+     "context_recall": 1.0,
+     "factual_correctness": 1.0
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 13,
+    "tokens": 10316,
+    "seconds": 384.14
+   }
+  },
+  {
+   "task": "tatqa:fc983a4bdf7e",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 1,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": false,
+    "citations": 1,
+    "valid_citations": 0,
+    "error": null,
+    "chars": 46
+   },
+   "correct": {
+    "as_answered": false,
+    "evidence_rule": false
+   },
+   "abstained_under_rule": true,
+   "f1": 0.0,
+   "tokens": {
+    "prompt": 610,
+    "completion": 86
+   },
+   "seconds": {
+    "retrieve": 0.23,
+    "answer": 35.42
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.5,
+     "answer_relevancy": 0.6531,
+     "context_precision": 0.8333,
+     "context_recall": 1.0,
+     "factual_correctness": 0.33
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 13,
+    "tokens": 10362,
+    "seconds": 371.75
+   }
+  },
+  {
+   "task": "tatqa:fd32e042258c",
+   "dataset": "tatqa",
+   "domain": "finance",
+   "kind": "answer",
+   "answerable": true,
+   "gold_label": null,
+   "ranks": {
+    "bm25": 1,
+    "dense": 2,
+    "hybrid": 1
+   },
+   "answer": {
+    "label": null,
+    "abstained": false,
+    "supported": true,
+    "citations": 2,
+    "valid_citations": 2,
+    "error": null,
+    "chars": 57
+   },
+   "correct": {
+    "as_answered": true,
+    "evidence_rule": true
+   },
+   "abstained_under_rule": false,
+   "f1": 0.2222,
+   "tokens": {
+    "prompt": 762,
+    "completion": 179
+   },
+   "seconds": {
+    "retrieve": 0.62,
+    "answer": 54.85
+   },
+   "ragas": {
+    "scores": {
+     "faithfulness": 0.0,
+     "answer_relevancy": 0.8941,
+     "context_precision": 1.0,
+     "context_recall": 1.0,
+     "factual_correctness": 0.67
+    },
+    "skipped": {}
+   },
+   "judge": {
+    "calls": 14,
+    "tokens": 11476,
+    "seconds": 376.95
+   }
+  }
+ ],
+ "summary": {
+  "contractnli": {
+   "tasks": 32,
+   "as_answered": {
+    "right": 23,
+    "wrong_answers": 3,
+    "abstained": 16,
+    "abstained_where_right": 10,
+    "not_answerable": 10
+   },
+   "evidence_rule": {
+    "right": 21,
+    "wrong_answers": 3,
+    "abstained": 18,
+    "abstained_where_right": 10,
+    "not_answerable": 10
+   },
+   "supported": 14,
+   "answered": 16,
+   "errors": 0,
+   "retrieval": {
+    "bm25": {
+     "n": 22,
+     "hit@1": 12,
+     "hit@4": 20,
+     "hit@10": 22,
+     "mrr@10": 0.698
+    },
+    "dense": {
+     "n": 22,
+     "hit@1": 13,
+     "hit@4": 22,
+     "hit@10": 22,
+     "mrr@10": 0.754
+    },
+    "hybrid": {
+     "n": 22,
+     "hit@1": 13,
+     "hit@4": 20,
+     "hit@10": 22,
+     "mrr@10": 0.742
+    }
+   },
+   "ragas": {
+    "faithfulness": {
+     "n": 16,
+     "mean": 0.854,
+     "auroc_vs_right": 0.346,
+     "not_scored": 16,
+     "auroc_vs_verified_quote": 0.429
+    },
+    "answer_relevancy": {
+     "n": 16,
+     "mean": 0.669,
+     "auroc_vs_right": 0.667,
+     "not_scored": 16
+    },
+    "context_precision": {
+     "n": 22,
+     "mean": 0.898,
+     "auroc_vs_right": 0.483,
+     "not_scored": 10
+    },
+    "context_recall": {
+     "n": 22,
+     "mean": 0.848,
+     "auroc_vs_right": 0.594,
+     "not_scored": 10
+    },
+    "factual_correctness": {
+     "n": 16,
+     "mean": 0.593,
+     "auroc_vs_right": 0.846,
+     "not_scored": 16
+    }
+   },
+   "judge": {
+    "calls": 254,
+    "tokens": 269498,
+    "seconds": 9617.7
+   },
+   "answer_seconds": {
+    "p50": 58.9,
+    "p95": 87.4
+   },
+   "tokens": 37726
+  },
+  "cuad": {
+   "tasks": 32,
+   "as_answered": {
+    "right": 20,
+    "wrong_answers": 8,
+    "abstained": 18,
+    "abstained_where_right": 14,
+    "not_answerable": 16
+   },
+   "evidence_rule": {
+    "right": 18,
+    "wrong_answers": 5,
+    "abstained": 24,
+    "abstained_where_right": 15,
+    "not_answerable": 16
+   },
+   "supported": 8,
+   "answered": 14,
+   "errors": 0,
+   "retrieval": {
+    "bm25": {
+     "n": 16,
+     "hit@1": 12,
+     "hit@4": 16,
+     "hit@10": 16,
+     "mrr@10": 0.865
+    },
+    "dense": {
+     "n": 16,
+     "hit@1": 8,
+     "hit@4": 13,
+     "hit@10": 15,
+     "mrr@10": 0.672
+    },
+    "hybrid": {
+     "n": 16,
+     "hit@1": 13,
+     "hit@4": 15,
+     "hit@10": 16,
+     "mrr@10": 0.857
+    }
+   },
+   "ragas": {
+    "faithfulness": {
+     "n": 14,
+     "mean": 0.958,
+     "auroc_vs_right": 0.49,
+     "not_scored": 18,
+     "auroc_vs_verified_quote": 0.667
+    },
+    "answer_relevancy": {
+     "n": 14,
+     "mean": 0.42,
+     "auroc_vs_right": 0.573,
+     "not_scored": 18
+    },
+    "context_precision": {
+     "n": 16,
+     "mean": 0.703,
+     "auroc_vs_right": 0.592,
+     "not_scored": 16
+    },
+    "context_recall": {
+     "n": 16,
+     "mean": 0.969,
+     "auroc_vs_right": 0.55,
+     "not_scored": 16
+    },
+    "factual_correctness": {
+     "n": 12,
+     "mean": 0.758,
+     "auroc_vs_right": 0.444,
+     "not_scored": 20
+    }
+   },
+   "judge": {
+    "calls": 198,
+    "tokens": 228773,
+    "seconds": 8681.8
+   },
+   "answer_seconds": {
+    "p50": 64.1,
+    "p95": 117.4
+   },
+   "tokens": 43174
+  },
+  "pubmedqa": {
+   "tasks": 32,
+   "as_answered": {
+    "right": 12,
+    "wrong_answers": 20,
+    "abstained": 0,
+    "abstained_where_right": 0,
+    "not_answerable": 0
+   },
+   "evidence_rule": {
+    "right": 12,
+    "wrong_answers": 19,
+    "abstained": 1,
+    "abstained_where_right": 0,
+    "not_answerable": 0
+   },
+   "supported": 31,
+   "answered": 32,
+   "errors": 0,
+   "retrieval": {
+    "bm25": {
+     "n": 32,
+     "hit@1": 31,
+     "hit@4": 32,
+     "hit@10": 32,
+     "mrr@10": 0.984
+    },
+    "dense": {
+     "n": 32,
+     "hit@1": 32,
+     "hit@4": 32,
+     "hit@10": 32,
+     "mrr@10": 1.0
+    },
+    "hybrid": {
+     "n": 32,
+     "hit@1": 32,
+     "hit@4": 32,
+     "hit@10": 32,
+     "mrr@10": 1.0
+    }
+   },
+   "ragas": {
+    "faithfulness": {
+     "n": 32,
+     "mean": 0.867,
+     "auroc_vs_right": 0.6,
+     "not_scored": 0,
+     "auroc_vs_verified_quote": 0.774
+    },
+    "answer_relevancy": {
+     "n": 32,
+     "mean": 0.465,
+     "auroc_vs_right": 0.571,
+     "not_scored": 0
+    },
+    "context_precision": {
+     "n": 32,
+     "mean": 0.868,
+     "auroc_vs_right": 0.635,
+     "not_scored": 0
+    },
+    "context_recall": {
+     "n": 31,
+     "mean": 0.963,
+     "auroc_vs_right": 0.579,
+     "not_scored": 1
+    },
+    "factual_correctness": {
+     "n": 32,
+     "mean": 0.482,
+     "auroc_vs_right": 0.577,
+     "not_scored": 0
+    }
+   },
+   "judge": {
+    "calls": 448,
+    "tokens": 387985,
+    "seconds": 13725.1
+   },
+   "answer_seconds": {
+    "p50": 48.2,
+    "p95": 65.7
+   },
+   "tokens": 25389
+  },
+  "qasper": {
+   "tasks": 32,
+   "as_answered": {
+    "right": 9,
+    "wrong_answers": 17,
+    "abstained": 11,
+    "abstained_where_right": 5,
+    "not_answerable": 8
+   },
+   "evidence_rule": {
+    "right": 8,
+    "wrong_answers": 16,
+    "abstained": 13,
+    "abstained_where_right": 5,
+    "not_answerable": 8
+   },
+   "supported": 19,
+   "answered": 21,
+   "errors": 0,
+   "retrieval": {
+    "bm25": {
+     "n": 24,
+     "hit@1": 5,
+     "hit@4": 11,
+     "hit@10": 18,
+     "mrr@10": 0.341
+    },
+    "dense": {
+     "n": 24,
+     "hit@1": 9,
+     "hit@4": 15,
+     "hit@10": 18,
+     "mrr@10": 0.481
+    },
+    "hybrid": {
+     "n": 24,
+     "hit@1": 8,
+     "hit@4": 14,
+     "hit@10": 18,
+     "mrr@10": 0.452
+    }
+   },
+   "ragas": {
+    "faithfulness": {
+     "n": 21,
+     "mean": 0.96,
+     "auroc_vs_right": 0.559,
+     "not_scored": 11,
+     "auroc_vs_verified_quote": 0.447
+    },
+    "answer_relevancy": {
+     "n": 21,
+     "mean": 0.32,
+     "auroc_vs_right": 0.368,
+     "not_scored": 11
+    },
+    "context_precision": {
+     "n": 24,
+     "mean": 0.597,
+     "auroc_vs_right": 0.625,
+     "not_scored": 8
+    },
+    "context_recall": {
+     "n": 23,
+     "mean": 0.924,
+     "auroc_vs_right": 0.579,
+     "not_scored": 9
+    },
+    "factual_correctness": {
+     "n": 17,
+     "mean": 0.674,
+     "auroc_vs_right": 0.519,
+     "not_scored": 15
+    }
+   },
+   "judge": {
+    "calls": 297,
+    "tokens": 261187,
+    "seconds": 8763.6
+   },
+   "answer_seconds": {
+    "p50": 50.6,
+    "p95": 68.2
+   },
+   "tokens": 26366
+  },
+  "tatqa": {
+   "tasks": 32,
+   "as_answered": {
+    "right": 22,
+    "wrong_answers": 10,
+    "abstained": 0,
+    "abstained_where_right": 0,
+    "not_answerable": 0
+   },
+   "evidence_rule": {
+    "right": 21,
+    "wrong_answers": 8,
+    "abstained": 3,
+    "abstained_where_right": 0,
+    "not_answerable": 0
+   },
+   "supported": 29,
+   "answered": 32,
+   "errors": 0,
+   "retrieval": {
+    "bm25": {
+     "n": 32,
+     "hit@1": 27,
+     "hit@4": 32,
+     "hit@10": 32,
+     "mrr@10": 0.911
+    },
+    "dense": {
+     "n": 32,
+     "hit@1": 27,
+     "hit@4": 32,
+     "hit@10": 32,
+     "mrr@10": 0.904
+    },
+    "hybrid": {
+     "n": 32,
+     "hit@1": 30,
+     "hit@4": 32,
+     "hit@10": 32,
+     "mrr@10": 0.956
+    }
+   },
+   "ragas": {
+    "faithfulness": {
+     "n": 32,
+     "mean": 0.646,
+     "auroc_vs_right": 0.507,
+     "not_scored": 0,
+     "auroc_vs_verified_quote": 0.414
+    },
+    "answer_relevancy": {
+     "n": 32,
+     "mean": 0.129,
+     "auroc_vs_right": 0.491,
+     "not_scored": 0
+    },
+    "context_precision": {
+     "n": 32,
+     "mean": 0.831,
+     "auroc_vs_right": 0.657,
+     "not_scored": 0
+    },
+    "context_recall": {
+     "n": 32,
+     "mean": 0.906,
+     "auroc_vs_right": 0.432,
+     "not_scored": 0
+    },
+    "factual_correctness": {
+     "n": 32,
+     "mean": 0.713,
+     "auroc_vs_right": 0.668,
+     "not_scored": 0
+    }
+   },
+   "judge": {
+    "calls": 440,
+    "tokens": 347281,
+    "seconds": 10918.5
+   },
+   "answer_seconds": {
+    "p50": 39.7,
+    "p95": 58.2
+   },
+   "tokens": 23408
+  },
+  "all": {
+   "tasks": 160,
+   "as_answered": {
+    "right": 86,
+    "wrong_answers": 58,
+    "abstained": 45,
+    "abstained_where_right": 29,
+    "not_answerable": 34
+   },
+   "evidence_rule": {
+    "right": 80,
+    "wrong_answers": 51,
+    "abstained": 59,
+    "abstained_where_right": 30,
+    "not_answerable": 34
+   },
+   "supported": 101,
+   "answered": 115,
+   "errors": 0,
+   "retrieval": {
+    "bm25": {
+     "n": 126,
+     "hit@1": 87,
+     "hit@4": 111,
+     "hit@10": 120,
+     "mrr@10": 0.778
+    },
+    "dense": {
+     "n": 126,
+     "hit@1": 89,
+     "hit@4": 114,
+     "hit@10": 119,
+     "mrr@10": 0.792
+    },
+    "hybrid": {
+     "n": 126,
+     "hit@1": 96,
+     "hit@4": 113,
+     "hit@10": 120,
+     "mrr@10": 0.821
+    }
+   },
+   "ragas": {
+    "faithfulness": {
+     "n": 115,
+     "mean": 0.832,
+     "auroc_vs_right": 0.476,
+     "not_scored": 45,
+     "auroc_vs_verified_quote": 0.507
+    },
+    "answer_relevancy": {
+     "n": 115,
+     "mean": 0.368,
+     "auroc_vs_right": 0.525,
+     "not_scored": 45
+    },
+    "context_precision": {
+     "n": 126,
+     "mean": 0.791,
+     "auroc_vs_right": 0.63,
+     "not_scored": 34
+    },
+    "context_recall": {
+     "n": 124,
+     "mean": 0.922,
+     "auroc_vs_right": 0.527,
+     "not_scored": 36
+    },
+    "factual_correctness": {
+     "n": 109,
+     "mean": 0.626,
+     "auroc_vs_right": 0.612,
+     "not_scored": 51
+    }
+   },
+   "judge": {
+    "calls": 1637,
+    "tokens": 1494724,
+    "seconds": 51706.7
+   },
+   "answer_seconds": {
+    "p50": 52.7,
+    "p95": 97.1
+   },
+   "tokens": 156063
+  }
+ },
+ "meta": {
+  "generated": "2026-10-25 02:08 UTC",
+  "commit": "69d6462",
+  "command": "testamur evidence report evidence-0.json evidence-1.json evidence-10.json evidence-11.json evidence-12.json evidence-13.json evidence-14.json evidence-15.json evidence-2.json evidence-3.json evidence-4.json evidence-5.json evidence-6.json evidence-7.json evidence-8.json evidence-9.json"
+ }
+}

@@ -13,7 +13,7 @@ import json
 import time
 from dataclasses import dataclass, field
 
-from ..modeltier import ask, quote_in
+from ..modeltier import CassetteMiss, ask, quote_in
 from .schema import LABELS, Passage, Task
 
 MAX_TOKENS = 500
@@ -91,6 +91,8 @@ def answer(model, task: Task, passages: list[Passage]) -> Answer:
     t0 = time.perf_counter()
     try:
         reply = ask(model, messages(task, passages), MAX_TOKENS, schema(task, ids))
+    except CassetteMiss:
+        raise                     # a replay without the recorded call is no measurement: it fails, it is not scored
     except Exception as exc:  # noqa: BLE001 - a model failure is an answer that was not given, recorded as such
         return Answer("", None, True, [], error=f"{type(exc).__name__}", seconds=time.perf_counter() - t0)
     try:

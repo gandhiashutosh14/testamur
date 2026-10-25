@@ -14,7 +14,7 @@ from testamur.evidence import convert, sample
 from testamur.evidence import metrics as m
 from testamur.evidence.answer import Answer, answer, schema
 from testamur.evidence.retrieve import HashEmbedder, Index
-from testamur.evidence.run import auroc, by_dataset, differences, evaluate, merge, render
+from testamur.evidence.run import auroc, auroc_interval, by_dataset, differences, evaluate, merge, render
 from testamur.evidence.schema import Passage, Task
 from testamur.evidence.sources import BY_NAME, path_of
 from testamur.modeltier import Cassette, Reply
@@ -274,6 +274,20 @@ def test_a_replay_is_held_to_every_verdict_exactly_and_to_embedding_scores_nearl
     assert differences([but(faithfulness=0.9999)], [row]) == ["t"]        # a recorded judgement: exactly
     assert differences([{**row, "correct": {"as_answered": False, "evidence_rule": True}}], [row]) == ["t"]
     assert differences([], [row]) == ["t"]
+
+
+def test_the_auroc_interval_is_seeded_holds_the_estimate_and_needs_both_kinds():
+    import random
+    rng = random.Random(7)
+    scores = [rng.random() for _ in range(80)]
+    right = [s + rng.gauss(0, 0.4) > 0.5 for s in scores]
+    lo, hi = auroc_interval(scores, right)
+    assert lo <= auroc(scores, right) <= hi and 0 < hi - lo < 0.5
+    assert auroc_interval(scores, right) == [lo, hi]                       # the same data, the same interval
+    assert auroc_interval([0.3, 0.6], [True, True]) is None
+    from testamur.evidence.run import _auroc_by_ranks
+    tied = [round(s, 1) for s in scores]
+    assert round(_auroc_by_ranks(tied, right), 3) == auroc(tied, right)        # ties counted half, both ways
 
 
 def test_auroc_is_the_chance_a_right_answer_outscores_a_wrong_one():

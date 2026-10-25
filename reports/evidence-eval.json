@@ -1,6 +1,6 @@
 {
  "manifest": "9fa7a5d18f6074e9",
- "commit": "69d6462",
+ "commit": "e9f9d40",
  "generator": {
   "model": "llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
   "fingerprint": "gguf:3605803b982cb64a|llama-cpp-python 0.3.36|ctx 8192"
@@ -3122,7 +3122,7 @@
    "ragas": {
     "scores": {
      "faithfulness": 1.0,
-     "answer_relevancy": 0.6496,
+     "answer_relevancy": 0.6497,
      "context_precision": 1.0,
      "context_recall": 1.0,
      "factual_correctness": 0.5
@@ -7149,8 +7149,8 @@
     "chars": 143
    },
    "correct": {
-    "as_answered": false,
-    "evidence_rule": false
+    "as_answered": true,
+    "evidence_rule": true
    },
    "abstained_under_rule": false,
    "f1": 0.2,
@@ -7914,8 +7914,8 @@
     "chars": 10
    },
    "correct": {
-    "as_answered": true,
-    "evidence_rule": true
+    "as_answered": false,
+    "evidence_rule": false
    },
    "abstained_under_rule": false,
    "f1": 0.8,
@@ -8199,6 +8199,7 @@
    }
   }
  ],
+ "timings_from": "69d6462",
  "summary": {
   "contractnli": {
    "tasks": 32,
@@ -8247,6 +8248,10 @@
      "n": 16,
      "mean": 0.854,
      "auroc_vs_right": 0.346,
+     "auroc_vs_right_95": [
+      0.133,
+      0.656
+     ],
      "not_scored": 16,
      "auroc_vs_verified_quote": 0.429
     },
@@ -8254,24 +8259,40 @@
      "n": 16,
      "mean": 0.669,
      "auroc_vs_right": 0.667,
+     "auroc_vs_right_95": [
+      0.267,
+      0.967
+     ],
      "not_scored": 16
     },
     "context_precision": {
      "n": 22,
      "mean": 0.898,
      "auroc_vs_right": 0.483,
+     "auroc_vs_right_95": [
+      0.271,
+      0.705
+     ],
      "not_scored": 10
     },
     "context_recall": {
      "n": 22,
      "mean": 0.848,
      "auroc_vs_right": 0.594,
+     "auroc_vs_right_95": [
+      0.406,
+      0.786
+     ],
      "not_scored": 10
     },
     "factual_correctness": {
      "n": 16,
      "mean": 0.593,
      "auroc_vs_right": 0.846,
+     "auroc_vs_right_95": [
+      0.607,
+      1.0
+     ],
      "not_scored": 16
     }
    },
@@ -8333,6 +8354,10 @@
      "n": 14,
      "mean": 0.958,
      "auroc_vs_right": 0.49,
+     "auroc_vs_right_95": [
+      0.25,
+      0.673
+     ],
      "not_scored": 18,
      "auroc_vs_verified_quote": 0.667
     },
@@ -8340,24 +8365,40 @@
      "n": 14,
      "mean": 0.42,
      "auroc_vs_right": 0.573,
+     "auroc_vs_right_95": [
+      0.263,
+      0.9
+     ],
      "not_scored": 18
     },
     "context_precision": {
      "n": 16,
      "mean": 0.703,
      "auroc_vs_right": 0.592,
+     "auroc_vs_right_95": [
+      0.325,
+      0.842
+     ],
      "not_scored": 16
     },
     "context_recall": {
      "n": 16,
      "mean": 0.969,
      "auroc_vs_right": 0.55,
+     "auroc_vs_right_95": [
+      0.5,
+      0.667
+     ],
      "not_scored": 16
     },
     "factual_correctness": {
      "n": 12,
      "mean": 0.758,
      "auroc_vs_right": 0.444,
+     "auroc_vs_right_95": [
+      0.111,
+      0.806
+     ],
      "not_scored": 20
     }
    },
@@ -8419,6 +8460,10 @@
      "n": 32,
      "mean": 0.867,
      "auroc_vs_right": 0.6,
+     "auroc_vs_right_95": [
+      0.429,
+      0.765
+     ],
      "not_scored": 0,
      "auroc_vs_verified_quote": 0.774
     },
@@ -8426,24 +8471,40 @@
      "n": 32,
      "mean": 0.465,
      "auroc_vs_right": 0.571,
+     "auroc_vs_right_95": [
+      0.377,
+      0.768
+     ],
      "not_scored": 0
     },
     "context_precision": {
      "n": 32,
      "mean": 0.868,
      "auroc_vs_right": 0.635,
+     "auroc_vs_right_95": [
+      0.45,
+      0.795
+     ],
      "not_scored": 0
     },
     "context_recall": {
      "n": 31,
      "mean": 0.963,
      "auroc_vs_right": 0.579,
+     "auroc_vs_right_95": [
+      0.5,
+      0.667
+     ],
      "not_scored": 1
     },
     "factual_correctness": {
      "n": 32,
      "mean": 0.482,
      "auroc_vs_right": 0.577,
+     "auroc_vs_right_95": [
+      0.362,
+      0.769
+     ],
      "not_scored": 0
     }
    },
@@ -8505,6 +8566,10 @@
      "n": 21,
      "mean": 0.96,
      "auroc_vs_right": 0.559,
+     "auroc_vs_right_95": [
+      0.5,
+      0.643
+     ],
      "not_scored": 11,
      "auroc_vs_verified_quote": 0.447
     },
@@ -8512,24 +8577,40 @@
      "n": 21,
      "mean": 0.32,
      "auroc_vs_right": 0.368,
+     "auroc_vs_right_95": [
+      0.194,
+      0.602
+     ],
      "not_scored": 11
     },
     "context_precision": {
      "n": 24,
      "mean": 0.597,
      "auroc_vs_right": 0.625,
+     "auroc_vs_right_95": [
+      0.287,
+      0.909
+     ],
      "not_scored": 8
     },
     "context_recall": {
      "n": 23,
      "mean": 0.924,
      "auroc_vs_right": 0.579,
+     "auroc_vs_right_95": [
+      0.5,
+      0.667
+     ],
      "not_scored": 9
     },
     "factual_correctness": {
      "n": 17,
      "mean": 0.674,
      "auroc_vs_right": 0.519,
+     "auroc_vs_right_95": [
+      0.25,
+      0.798
+     ],
      "not_scored": 15
     }
    },
@@ -8590,32 +8671,52 @@
     "faithfulness": {
      "n": 32,
      "mean": 0.646,
-     "auroc_vs_right": 0.507,
+     "auroc_vs_right": 0.584,
+     "auroc_vs_right_95": [
+      0.393,
+      0.777
+     ],
      "not_scored": 0,
      "auroc_vs_verified_quote": 0.414
     },
     "answer_relevancy": {
      "n": 32,
      "mean": 0.129,
-     "auroc_vs_right": 0.491,
+     "auroc_vs_right": 0.566,
+     "auroc_vs_right_95": [
+      0.433,
+      0.682
+     ],
      "not_scored": 0
     },
     "context_precision": {
      "n": 32,
      "mean": 0.831,
-     "auroc_vs_right": 0.657,
+     "auroc_vs_right": 0.564,
+     "auroc_vs_right_95": [
+      0.379,
+      0.753
+     ],
      "not_scored": 0
     },
     "context_recall": {
      "n": 32,
      "mean": 0.906,
      "auroc_vs_right": 0.432,
+     "auroc_vs_right_95": [
+      0.357,
+      0.5
+     ],
      "not_scored": 0
     },
     "factual_correctness": {
      "n": 32,
      "mean": 0.713,
-     "auroc_vs_right": 0.668,
+     "auroc_vs_right": 0.716,
+     "auroc_vs_right_95": [
+      0.514,
+      0.913
+     ],
      "not_scored": 0
     }
    },
@@ -8676,32 +8777,52 @@
     "faithfulness": {
      "n": 115,
      "mean": 0.832,
-     "auroc_vs_right": 0.476,
+     "auroc_vs_right": 0.497,
+     "auroc_vs_right_95": [
+      0.411,
+      0.586
+     ],
      "not_scored": 45,
      "auroc_vs_verified_quote": 0.507
     },
     "answer_relevancy": {
      "n": 115,
      "mean": 0.368,
-     "auroc_vs_right": 0.525,
+     "auroc_vs_right": 0.538,
+     "auroc_vs_right_95": [
+      0.444,
+      0.632
+     ],
      "not_scored": 45
     },
     "context_precision": {
      "n": 126,
      "mean": 0.791,
-     "auroc_vs_right": 0.63,
+     "auroc_vs_right": 0.608,
+     "auroc_vs_right_95": [
+      0.52,
+      0.7
+     ],
      "not_scored": 34
     },
     "context_recall": {
      "n": 124,
      "mean": 0.922,
      "auroc_vs_right": 0.527,
+     "auroc_vs_right_95": [
+      0.472,
+      0.582
+     ],
      "not_scored": 36
     },
     "factual_correctness": {
      "n": 109,
      "mean": 0.626,
-     "auroc_vs_right": 0.612,
+     "auroc_vs_right": 0.62,
+     "auroc_vs_right_95": [
+      0.514,
+      0.721
+     ],
      "not_scored": 51
     }
    },
@@ -8718,8 +8839,8 @@
   }
  },
  "meta": {
-  "generated": "2026-10-25 02:08 UTC",
-  "commit": "69d6462",
-  "command": "testamur evidence report evidence-0.json evidence-1.json evidence-10.json evidence-11.json evidence-12.json evidence-13.json evidence-14.json evidence-15.json evidence-2.json evidence-3.json evidence-4.json evidence-5.json evidence-6.json evidence-7.json evidence-8.json evidence-9.json"
+  "generated": "2026-10-25 15:29 UTC",
+  "commit": "0dea509",
+  "command": "testamur evidence report evidence-0.json evidence-1.json evidence-10.json evidence-11.json evidence-12.json evidence-13.json evidence-14.json evidence-15.json evidence-2.json evidence-3.json evidence-4.json evidence-5.json evidence-6.json evidence-7.json evidence-8.json evidence-9.json --timings-from evidence-eval-v0.6.0.json"
  }
 }

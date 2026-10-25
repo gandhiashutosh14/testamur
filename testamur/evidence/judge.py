@@ -18,7 +18,7 @@ import typing as t
 from ragas.embeddings.base import BaseRagasEmbedding
 from ragas.llms.base import InstructorBaseRagasLLM
 
-from ..modeltier import ask
+from ..modeltier import CassetteMiss, ask
 
 METRICS = ("faithfulness", "answer_relevancy", "context_precision", "context_recall", "factual_correctness")
 
@@ -28,6 +28,7 @@ class RagasLLM(InstructorBaseRagasLLM):
         self.model, self.max_tokens = model, max_tokens
         self.calls = self.failures = self.prompt_tokens = self.completion_tokens = 0
         self.seconds = 0.0
+        self.missed = False                 # a call a replay's recording did not have (RAGAS may wrap the error)
 
     def generate(self, prompt: str, response_model: type[t.Any]) -> t.Any:
         t0 = time.perf_counter()
@@ -38,8 +39,9 @@ class RagasLLM(InstructorBaseRagasLLM):
             self.prompt_tokens += reply.prompt_tokens
             self.completion_tokens += reply.completion_tokens
             return response_model.model_validate_json(reply.text)
-        except Exception:
+        except Exception as exc:
             self.failures += 1
+            self.missed = self.missed or isinstance(exc, CassetteMiss)
             raise
         finally:
             self.seconds += time.perf_counter() - t0
@@ -103,6 +105,8 @@ class Judge:
                 if out["scores"][name] is None:
                     out["skipped"][name] = "the judge gave no score"
             except Exception as exc:  # noqa: BLE001 - a judge that cannot answer is recorded, not hidden
+                if self.llm.missed:   # ... but a replay without the recorded judgement is no measurement: it fails
+                    raise CassetteMiss(f"a judgement for {name} is not in the recording") from exc
                 out["scores"][name] = None
                 out["skipped"][name] = f"judge error: {type(exc).__name__}"
         return out
