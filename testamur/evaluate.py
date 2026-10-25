@@ -633,7 +633,9 @@ def render(merged: dict, meta: dict, fault_rows: list[dict] | None = None, earli
               f"- {n} cases is a small set: a difference of one or two cases between arms is not evidence of a "
               "difference. The set is for finding where each arm goes wrong, case by case, more than for a rate.",
               "- The cases were written by the author of the system, before any agent ran on them; they are "
-              "independent of the generator, not of the author.",
+              "independent of the generator, not of the author. Run 2 followed changes made after run 1 on the "
+              "same cases, so they are a development set now: a claim that the agents generalise needs a fresh, "
+              "sealed set.",
               "- Latency is wall-clock on one GitHub-hosted runner (4 vCPU, no GPU), the model through llama.cpp. A "
               "replay from the recorded calls reproduces every output above, not the timings.",
               "- A proposal is only a proposal: in the service a person approves or rejects it, against the evidence "
