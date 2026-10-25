@@ -121,8 +121,7 @@ MUTANTS = [
     ("a repeated webhook message is processed again", "testamur/actions.py",
      "if wid in self.seen:", "if False:", "tests/test_actions.py"),
     ("the assistant cites a quote that is not on the page", "testamur/assistant.py",
-     "if quote_in(q, text) or (len(q) < 20 and q.casefold() in text.casefold()):", "if True:",
-     "tests/test_assistant.py"),
+     "if quote_holds(q, text):", "if True:", "tests/test_assistant.py"),
     ("the assistant quotes text aimed at automated readers", "testamur/assistant.py",
      "if not any(h.search(screen_text(text)) for h in hostile):", "if True:", "tests/test_assistant.py"),
     ("the assistant guesses between creditors that share a name", "testamur/assistant.py",
@@ -202,8 +201,7 @@ MUTANTS = [
      "tests/test_model_tier.py"),
     # v0.5: the investigator-verifier workflow
     ("a citation whose words are not on its page is accepted", "testamur/investigate/coordinator.py",
-     "    if not (quote_in(c.quote, text) or (len(c.quote.strip()) < 20 and c.quote.strip().casefold() in "
-     "text.casefold())):", "    if False:", "tests/test_investigate.py"),
+     "    if not quote_holds(c.quote, text):", "    if False:", "tests/test_investigate.py"),
     ("an agent disputing a rule's verdict is taken as agreeing", "testamur/investigate/coordinator.py",
      "                if engine_v.verdict != agent_v:", "                if False:", "tests/test_investigate.py"),
     ("a finding the verifier disputes becomes a proposal", "testamur/investigate/coordinator.py",
