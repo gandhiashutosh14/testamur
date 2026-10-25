@@ -6,7 +6,8 @@ name or a paper's title. Choices made here, and why:
   (Document Name, Parties, Agreement Date), and so are supply, manufacturing, distribution, outsourcing and reseller
   agreements, which sit closest to a domain this project keeps away from.
 - ContractNLI: the official test split; a hypothesis "not mentioned" by the NDA is a task where abstaining is right.
-- TAT-QA: the dev split (the test split's answers are not public); a table becomes a passage of rows.
+- TAT-QA: the dev split (chosen when the test split's answers were not public; they were released in January
+  2024, and the sample stays on dev); a table becomes a passage of rows.
 - PubMedQA: the official test split of the expert-labelled questions; the 500 abstracts form one pool to search.
 - QASPER: the dev split; a question whose annotators disagree about whether the paper answers it is left out."""
 from __future__ import annotations

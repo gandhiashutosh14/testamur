@@ -304,7 +304,7 @@ class Investigations:
                 out = agents.decide(self.engine, st["tenant_id"], d["proposal"], d["by"], d["approve"],
                                     seen=d.get("digest"))
             except (KeyError, ValueError) as exc:            # already decided, not what was shown, gone
-                out = f"refused: {exc}"
+                out = self._decided(st["tenant_id"], d) or f"refused: {exc}"
             outcomes.append({"proposal": d["proposal"], "approve": d["approve"], "by": d["by"], "outcome": out})
         if any(o["approve"] and not o["outcome"].startswith("refused") and o["outcome"] not in ("stale", "expired")
                for o in outcomes):
@@ -317,6 +317,26 @@ class Investigations:
         return {"status": status}
 
     # ------------------------------------------------------------------ helpers
+    def _decided(self, tenant_id: int, d: dict) -> str | None:
+        """What this decision already came to, when the apply step runs again after a crash that followed its commit:
+        the proposal's recorded outcome, if the proposal was decided the way this decision decides it and by this
+        person; None if it was not (then the refusal stands)."""
+        with self.engine.store.tenant(tenant_id) as s:
+            p = s.get(Proposal, d["proposal"])
+            if p is None:
+                return None
+            if p.status == "expired":
+                return "expired"
+            if p.decided_by != d["by"]:
+                return None
+            if d["approve"] and p.status == "applied":
+                return p.outcome
+            if d["approve"] and p.status == "stale":
+                return "stale"
+            if not d["approve"] and p.status == "declined":
+                return "declined"
+            return None
+
     def _agent(self, st: RunState, role: str, system: str, task: str, contract, budget):
         gateway = ToolGateway(self.engine, st["tenant_id"], st["claim_id"], role, max_calls=self.budgets.tool_calls)
         if self.model is None:

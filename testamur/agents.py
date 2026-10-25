@@ -275,7 +275,7 @@ def decide(engine: Engine, tenant_id: int, proposal: int, person: str, confirm: 
         if p is None:
             raise KeyError(f"no proposal {proposal} for this tenant")
         if p.status != "proposed":
-            raise ValueError(f"proposal {proposal} is already {p.status}")
+            raise ValueError(f"proposal {proposal} is already {p.status}" + (f" by {p.decided_by}" if p.decided_by else ""))
         if seen is not None and seen != p.binding_digest:
             raise StaleProposal(f"proposal {proposal} is not the one you were shown")
         if p.expires_at < now:

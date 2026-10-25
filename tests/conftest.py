@@ -30,7 +30,7 @@ ALLOWED_SKIPS: dict[str, str] = {
             "needs a Postgres server: runs in the postgres CI job",
     }),
 }
-MIN_TESTS = 298
+MIN_TESTS = 392
 
 
 def pytest_collection_finish(session):

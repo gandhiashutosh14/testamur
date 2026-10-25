@@ -14,6 +14,7 @@ import hashlib
 import json
 import statistics
 import time
+from collections import Counter
 from pathlib import Path
 
 from . import metrics as m
@@ -122,7 +123,7 @@ def evaluate(manifest_path: str | Path, corpus_root: str | Path, generator, judg
 # ---------------------------------------------------------------------------------------------- the numbers
 
 def merge(parts: list[dict]) -> dict:
-    for key in ("manifest", "commit"):
+    for key in ("manifest", "commit", "embedder", "k"):
         values = {p[key] for p in parts}
         if len(values) > 1:
             raise ValueError(f"results of different {key}s: {sorted(values)}")
@@ -131,34 +132,87 @@ def merge(parts: list[dict]) -> dict:
         if len(values) > 1:
             raise ValueError(f"results of different {key}s")
     first = parts[0]
-    return {k: first[k] for k in ("manifest", "commit", "generator", "judge", "embedder", "k")} | {
-        "tasks": sorted((r for p in parts for r in p["tasks"]), key=lambda r: r["task"])}
+    tasks = sorted((r for p in parts for r in p["tasks"]), key=lambda r: r["task"])
+    twice = sorted(t for t, n in Counter(r["task"] for r in tasks).items() if n > 1)
+    if twice:
+        raise ValueError(f"tasks in more than one part: {twice[:5]}")
+    return {k: first[k] for k in ("manifest", "commit", "generator", "judge", "embedder", "k")} | {"tasks": tasks}
 
 
-# answer relevancy compares embeddings computed on the machine that replays, not recorded ones: another CPU moves
-# its last digit, so it is held to this; every verdict and every other score is held exactly
+def in_sample(merged: dict, manifest_path: str | Path, every: bool = False) -> None:
+    """Refuse results about another sample than the committed one, or holding a task it does not; with `every`, also
+    results that leave one of its tasks out."""
+    if manifest_digest(manifest_path) != merged["manifest"]:
+        raise ValueError(f"the results are about sample {merged['manifest']}, not the one in {manifest_path}")
+    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    ids = {i for d in manifest["datasets"].values() for i in d["tasks"]}
+    have = {r["task"] for r in merged["tasks"]}
+    if have - ids:
+        raise ValueError(f"tasks that are not in the sample: {sorted(have - ids)[:5]}")
+    if every and ids - have:
+        raise ValueError(f"tasks of the sample that are missing: {sorted(ids - have)[:5]}")
+
+
+def with_timings(merged: dict, recorded: dict) -> dict:
+    """A replay's results with the timings of the run whose recording it replayed, since a replay measures none of
+    its own: each task keeps everything it replayed, and takes the recorded run's seconds and its judge's."""
+    for key in ("manifest", "generator", "judge"):
+        if json.dumps(merged[key], sort_keys=True) != json.dumps(recorded[key], sort_keys=True):
+            raise ValueError(f"the replay and the recorded run differ in {key}")
+    by_task = {r["task"]: r for r in recorded["tasks"]}
+    missing = sorted(r["task"] for r in merged["tasks"] if r["task"] not in by_task)
+    if missing:
+        raise ValueError(f"the recorded run has no task {missing[:5]}")
+    tasks = []
+    for r in merged["tasks"]:
+        old = by_task[r["task"]]
+        row = {**r, "seconds": old["seconds"]}
+        if r.get("judge") and old.get("judge"):
+            row["judge"] = {**r["judge"], "seconds": old["judge"]["seconds"]}
+        tasks.append(row)
+    return {**merged, "tasks": tasks, "timings_from": recorded.get("timings_from") or recorded["commit"]}
+
+
+# what a replay must give exactly as committed: every field of a task but its timings, which a replay does not
+# measure, and answer relevancy, which compares embeddings computed on the machine that replays: another CPU moves
+# its last digit, so it is held to this
 LIVE_METRICS = {"answer_relevancy": 0.001}
 
 
+def _replayed(row: dict) -> dict:
+    ragas = row.get("ragas") or {}
+    return {k: v for k, v in row.items() if k not in ("seconds", "ragas", "judge")} | {
+        "judge": {k: v for k, v in (row.get("judge") or {}).items() if k != "seconds"},
+        "skipped": ragas.get("skipped") or {}}
+
+
 def differences(now: list[dict], then: list[dict]) -> list[str]:
-    """The tasks a replay scores otherwise than the committed report does."""
-    def scored(rows):
-        return {r["task"]: (r["correct"], (r.get("ragas") or {}).get("scores") or {}) for r in rows}
-    a, b = scored(now), scored(then)
-    out = []
-    for task in sorted(a.keys() | b.keys()):
-        if task not in a or task not in b or a[task][0] != b[task][0]:
-            out.append(task)
+    """The tasks a replay gives otherwise than the committed report: in its retrieval ranks, its answer and
+    citations, its verdicts, its tokens, its judge's calls or scores; and any task either side holds twice."""
+    out: set[str] = set()
+    sides = []
+    for rows in (now, then):
+        seen: dict[str, dict] = {}
+        for r in rows:
+            if r["task"] in seen:
+                out.add(r["task"])
+            seen[r["task"]] = r
+        sides.append(seen)
+    a, b = sides
+    for task in (a.keys() | b.keys()) - out:
+        if task not in a or task not in b or _replayed(a[task]) != _replayed(b[task]):
+            out.add(task)
             continue
-        x, y = a[task][1], b[task][1]
+        x = (a[task].get("ragas") or {}).get("scores") or {}
+        y = (b[task].get("ragas") or {}).get("scores") or {}
         for metric in x.keys() | y.keys():
             u, v = x.get(metric), y.get(metric)
             near = (metric in LIVE_METRICS and u is not None and v is not None
                     and abs(u - v) <= LIVE_METRICS[metric] + 1e-9)
             if u != v and not near:
-                out.append(task)
+                out.add(task)
                 break
-    return out
+    return sorted(out)
 
 
 def auroc(scores: list[float], positive: list[bool]) -> float | None:
@@ -241,9 +295,11 @@ def render(merged: dict, meta: dict) -> str:
     order = [d for d in ("cuad", "contractnli", "tatqa", "pubmedqa", "qasper") if d in s] + ["all"]
     domains = {r["dataset"]: r["domain"] for r in merged["tasks"]}
     g, j = merged["generator"], merged["judge"]
+    replayed = (f", which replayed the recording made by the runs at commit `{merged['timings_from']}` (the timings "
+                "below are those runs')" if merged.get("timings_from") else "")
     lines = ["# Evidence QA across four domains: ground truth and RAGAS", "",
              f"Generated {meta['generated']} at commit `{meta['commit']}` with `{meta['command']}`, from the runs at "
-             f"commit `{merged['commit']}`.", "",
+             f"commit `{merged['commit']}`{replayed}.", "",
              f"{s['all']['tasks']} tasks from public, expert-labelled datasets, a seeded and stratified sample committed "
              f"before any model ran on it (`evals/evidence/manifest.json`, digest `{merged['manifest']}`). The answers: "
              f"`{g['model']}` (fingerprint `{g['fingerprint']}`), given the hybrid retriever's top {merged['k']} "

@@ -626,7 +626,9 @@ def evaluate_report(results: list[str], cases: str = "evals/holdout/cases.yaml",
                     report: str = "reports/holdout-eval.md", data: str = "reports/holdout-eval.json",
                     work: str = "data/holdout-faults",
                     earlier: list[str] | None = typer.Option(None, help="an earlier run's report data, oldest first"),
-                    change: list[str] | None = typer.Option(None, help="what changed after each earlier run, in order")):
+                    change: list[str] | None = typer.Option(None, help="what changed after each earlier run, in order"),
+                    timings_from: str = typer.Option(None, help="for a replay, which measures no timings: the report "
+                                                                "data of the run whose recording it replayed")):
     """Merge the shards' results, force the fault scenarios, and write the report and its data."""
     import json
     import re
@@ -638,6 +640,8 @@ def evaluate_report(results: list[str], cases: str = "evals/holdout/cases.yaml",
     merged = ev.merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])
     if merged["set"] != hs.digest:
         raise typer.BadParameter(f"the results are about case set {merged['set']}, the file is {hs.digest}")
+    if timings_from:
+        merged = ev.with_timings(merged, json.loads(Path(timings_from).read_text(encoding="utf-8")))
     before, change = [], change or []
     for i, path in enumerate(earlier or []):
         prior = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -649,7 +653,8 @@ def evaluate_report(results: list[str], cases: str = "evals/holdout/cases.yaml",
     rows = ev.faults(hs, work)
     meta = {"generated": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"), "commit": git_stamp(Path.cwd()),
             "command": "testamur evaluate report " + " ".join(Path(p).name for p in results)
-            + "".join(f" --earlier {Path(p).name}" for p in earlier or [])}
+            + "".join(f" --earlier {Path(p).name}" for p in earlier or [])
+            + (f" --timings-from {Path(timings_from).name}" if timings_from else "")}
     Path(report).write_text(ev.render(merged, meta, rows, before), encoding="utf-8", newline="\n")
     Path(data).write_text(json.dumps({**merged, "summary": ev.summarise(merged), "faults": rows,
                                       "earlier": before, "meta": meta}, indent=1), encoding="utf-8", newline="\n")
@@ -658,19 +663,23 @@ def evaluate_report(results: list[str], cases: str = "evals/holdout/cases.yaml",
 
 @eval_app.command("check")
 def evaluate_check(results: list[str], against: str = "reports/holdout-eval.json"):
-    """Fail unless these results give every case the outputs the committed report gives it (a replay's check)."""
+    """Fail unless these results give every case what the committed report gives it (a replay's check): every arm's
+    output and every run's path (status, steps, tool calls, citations, recommendations, tokens), timings aside, and no
+    case twice."""
     import json
 
     from . import evaluate as ev
-    merged = ev.merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])
+    try:
+        merged = ev.merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])
+    except ValueError as exc:
+        typer.echo(f"the results do not merge: {exc}")
+        raise typer.Exit(1) from None
     committed = json.loads(Path(against).read_text(encoding="utf-8"))
-    now = {c["case"]: c["outputs"] for c in merged["cases"]}
-    then = {c["case"]: c["outputs"] for c in committed["cases"]}
-    differ = sorted(k for k in now.keys() | then.keys() if now.get(k) != then.get(k))
+    differ = ev.differences(merged["cases"], committed["cases"])
     if merged["set"] != committed["set"] or differ:
-        typer.echo(f"the outputs differ from {against}: set {merged['set']} vs {committed['set']}; cases {differ}")
+        typer.echo(f"the cases differ from {against}: set {merged['set']} vs {committed['set']}; cases {differ}")
         raise typer.Exit(1)
-    typer.echo(f"{len(now)} cases: every output as committed")
+    typer.echo(f"{len(merged['cases'])} cases: every one as committed")
 
 
 corpus_app = typer.Typer(help="The public datasets the evidence QA is measured on: fetched, verified, converted.",
@@ -746,16 +755,23 @@ def evidence_run(manifest: str = "evals/evidence/manifest.json", corpus: str = "
 
 @evidence_app.command("report")
 def evidence_report(results: list[str], report: str = "reports/evidence-eval.md",
-                    data: str = "reports/evidence-eval.json"):
+                    data: str = "reports/evidence-eval.json",
+                    timings_from: str = typer.Option(None, help="for a replay, which measures no timings: the report "
+                                                                "data of the run whose recording it replayed"),
+                    manifest: str = "evals/evidence/manifest.json"):
     """Merge the shards' results and write the report and its data."""
     import json
     from datetime import UTC, datetime
 
-    from .evidence.run import by_dataset, merge, render
+    from .evidence.run import by_dataset, in_sample, merge, render, with_timings
     from .harness import git_stamp
     merged = merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])
+    in_sample(merged, manifest)
+    if timings_from:
+        merged = with_timings(merged, json.loads(Path(timings_from).read_text(encoding="utf-8")))
     meta = {"generated": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"), "commit": git_stamp(Path.cwd()),
-            "command": "testamur evidence report " + " ".join(Path(p).name for p in results)}
+            "command": "testamur evidence report " + " ".join(Path(p).name for p in results)
+            + (f" --timings-from {Path(timings_from).name}" if timings_from else "")}
     Path(report).write_text(render(merged, meta), encoding="utf-8", newline="\n")
     Path(data).write_text(json.dumps({**merged, "summary": by_dataset(merged), "meta": meta}, indent=1),
                           encoding="utf-8", newline="\n")
@@ -763,18 +779,26 @@ def evidence_report(results: list[str], report: str = "reports/evidence-eval.md"
 
 
 @evidence_app.command("check")
-def evidence_check(results: list[str], against: str = "reports/evidence-eval.json"):
-    """Fail unless these results score every task as the committed report does (a replay's check): every verdict and
-    judgement exactly, answer relevancy (embeddings computed where it replays) within 0.001."""
+def evidence_check(results: list[str], against: str = "reports/evidence-eval.json",
+                   manifest: str = "evals/evidence/manifest.json"):
+    """Fail unless these results give every task what the committed report gives it (a replay's check): retrieval,
+    answer, citations, verdicts, tokens and judgements exactly, answer relevancy (embeddings computed where it replays)
+    within 0.001, and no task twice."""
     import json
 
-    from .evidence.run import differences, merge
-    now = merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])["tasks"]
+    from .evidence.run import differences, in_sample, merge
+    try:
+        merged = merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])
+        in_sample(merged, manifest, every=True)
+    except ValueError as exc:
+        typer.echo(f"the results do not hold: {exc}")
+        raise typer.Exit(1) from None
+    now = merged["tasks"]
     differ = differences(now, json.loads(Path(against).read_text(encoding="utf-8"))["tasks"])
     if differ:
-        typer.echo(f"{len(differ)} task(s) scored differently from {against}: {differ[:10]}")
+        typer.echo(f"{len(differ)} task(s) differ from {against}: {differ[:10]}")
         raise typer.Exit(1)
-    typer.echo(f"{len(now)} tasks: every score as committed")
+    typer.echo(f"{len(now)} tasks: every one as committed")
 
 
 if __name__ == "__main__":

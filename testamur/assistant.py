@@ -28,7 +28,7 @@ from .engine import Engine
 from .match import ACCEPT as ACCEPT_NAME
 from .match import EXACT as EXACT_NAME
 from .model import Extraction, Status, Verdict
-from .modeltier import passages, quote_in
+from .modeltier import passages, quote_holds
 from .store import Claim, Creditor, Document, Matter, RequirementState
 from .textnorm import format_inr, name_similarity, normalize_name
 from .understand import screen_text
@@ -321,7 +321,7 @@ class Assistant:
         ex = self._extraction(s, doc)
         text = ex.text(page) if page else ex.text()
         q = quote.split(" (read by ")[0]
-        if quote_in(q, text) or (len(q) < 20 and q.casefold() in text.casefold()):
+        if quote_holds(q, text):
             return Citation(doc.id, page, q)
         return None
 

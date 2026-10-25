@@ -26,6 +26,7 @@ import random
 import shutil
 import statistics
 import time
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -258,8 +259,55 @@ def merge(parts: list[dict]) -> dict:
     if len(commits) > 1:
         raise ValueError(f"results of different commits: {commits}")
     cases = sorted((c for p in parts for c in p["cases"]), key=lambda c: c["case"])
+    twice = sorted(k for k, n in Counter(c["case"] for c in cases).items() if n > 1)
+    if twice:
+        raise ValueError(f"cases in more than one part: {twice}")
     return {"set": sets.pop(), "cases": cases, "model": next((p["model"] for p in parts if p.get("model")), None),
             "fingerprint": next(iter(fingerprints), None), "commit": commits[0] if commits else None}
+
+
+_TIMINGS = ("seconds", "agent_seconds")         # what a replay does not measure
+
+
+def with_timings(merged: dict, recorded: dict) -> dict:
+    """A replay's results with the timings of the run whose recording it replayed, since a replay measures none of
+    its own: each arm's run keeps everything it replayed and takes the recorded run's seconds."""
+    if merged["set"] != recorded["set"] or merged.get("fingerprint") != recorded.get("fingerprint"):
+        raise ValueError("the replay and the recorded run differ in their cases or their model")
+    by_case = {c["case"]: c for c in recorded["cases"]}
+    cases = []
+    for c in merged["cases"]:
+        old = by_case.get(c["case"])
+        if old is None:
+            raise ValueError(f"the recorded run has no case {c['case']}")
+        runs = {}
+        for arm, run in c["runs"].items():
+            if arm not in old["runs"]:
+                raise ValueError(f"the recorded run has no {arm} run on {c['case']}")
+            runs[arm] = {**run, **{k: old["runs"][arm][k] for k in _TIMINGS}}
+        cases.append({**c, "runs": runs})
+    return {**merged, "cases": cases, "timings_from": recorded.get("timings_from") or recorded["commit"]}
+
+
+def differences(now: list[dict], then: list[dict]) -> list[str]:
+    """The cases a replay gives otherwise than the committed report: in any arm's output, or in any run's path (its
+    status, stops, steps, tool calls and refusals, citations and how many held, recommendations, tokens), timings
+    aside; and any case either side holds twice."""
+    def path(c: dict) -> dict:
+        return {k: v for k, v in c.items() if k != "runs"} | {
+            "runs": {arm: {k: v for k, v in run.items() if k not in _TIMINGS} for arm, run in c["runs"].items()}}
+    out: set[str] = set()
+    sides = []
+    for rows in (now, then):
+        seen: dict[str, dict] = {}
+        for c in rows:
+            if c["case"] in seen:
+                out.add(c["case"])
+            seen[c["case"]] = c
+        sides.append(seen)
+    a, b = sides
+    out |= {k for k in (a.keys() | b.keys()) - out if k not in a or k not in b or path(a[k]) != path(b[k])}
+    return sorted(out)
 
 
 def summarise(merged: dict) -> dict[str, dict]:
@@ -510,9 +558,12 @@ def render(merged: dict, meta: dict, fault_rows: list[dict] | None = None, earli
     s = summarise(merged)
     cats = by_category(merged)
     n = len(merged["cases"])
+    replayed = (f", which replayed the recording made by the arms run at commit `{merged['timings_from']}` (the "
+                "timings below are that run's)" if merged.get("timings_from") else "")
     lines = ["# The agents against the rules: a holdout comparison", "",
              f"Generated {meta['generated']} at commit `{meta['commit']}` with `{meta['command']}`"
-             + (f", from the arms run at commit `{merged['commit']}`" if merged.get("commit") else "") + ".", "",
+             + (f", from the arms run at commit `{merged['commit']}`" if merged.get("commit") else "") + replayed
+             + ".", "",
              f"Cases: {n}, written by hand in `evals/holdout/cases.yaml` (set `{merged['set']}`), independently of "
              "the world generator. Model: " + (f"`{merged['model']}` (fingerprint `{merged['fingerprint']}`)"
                                                if merged.get("model") else "none (the rules alone)") + ".", "",

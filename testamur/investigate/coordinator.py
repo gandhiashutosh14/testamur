@@ -16,7 +16,7 @@ from sqlalchemy import select
 from .. import agents
 from ..engine import Engine
 from ..model import Verdict
-from ..modeltier import quote_in
+from ..modeltier import quote_holds
 from ..store import Proposal
 from .contracts import Citation, EvidencePacket, Finding, Recommendation, VerificationReport
 from .tools import ToolGateway
@@ -70,7 +70,9 @@ def _citation_problem(engine: Engine, s, tenant_id: int, docs: dict, c: Citation
     if page is None:
         return f"document {c.document_id} has no page {c.page}"
     text = "\n".join(line.text for line in page.lines)
-    if not (quote_in(c.quote, text) or (len(c.quote.strip()) < 20 and c.quote.strip().casefold() in text.casefold())):
+    if not any(ch.isalnum() for ch in c.quote):
+        return "the quote is empty"
+    if not quote_holds(c.quote, text):
         return "the quote is not on that page"
     return None
 
@@ -100,7 +102,10 @@ def reconcile(engine: Engine, tenant_id: int, claim_id: int, packet: EvidencePac
             st, results = engine._verdicts(s, tenant_id, claim_id, f.requirement)
             verdicts = {r.check_id: r for r in results}
             review = reviews.get(i)
-            agreement = "both" if (review and review.assessment == "supported") else (
+            # the verifier's support is a second reading only with a citation of its own that holds (its citations
+            # are the verified ones by now); support it could not cite leaves the finding unresolved
+            backed = review is not None and review.assessment == "supported" and bool(review.citations)
+            agreement = "both" if backed else (
                 "investigator_only" if mode == "single" else
                 ("disputed" if review and review.assessment == "disputed" else "unresolved"))
             if f.check is None or f.stance in ("missing", "unclear"):
@@ -128,7 +133,9 @@ def reconcile(engine: Engine, tenant_id: int, claim_id: int, packet: EvidencePac
                                            verdict=agent_v.value, reason=f.statement, citations=f.citations,
                                            agreement=agreement))
             else:
-                why = review.reason if review else "the verifier did not assess it"
+                why = ("the verifier did not assess it" if review is None else
+                       "it agreed without a citation that could be verified" if review.assessment == "supported" else
+                       review.reason)
                 recs.append(Recommendation(requirement=f.requirement, check=f.check, action="ask_person",
                                            reason=f"the agents disagree on {f.check} ({agreement}): {f.statement}; "
                                                   f"verifier: {why}", citations=f.citations, agreement=agreement))
