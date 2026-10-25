@@ -673,6 +673,112 @@ def evaluate_check(results: list[str], against: str = "reports/holdout-eval.json
     typer.echo(f"{len(now)} cases: every output as committed")
 
 
+corpus_app = typer.Typer(help="The public datasets the evidence QA is measured on: fetched, verified, converted.",
+                         no_args_is_help=True)
+evidence_app = typer.Typer(help="Evidence QA across four domains, scored against ground truth and by RAGAS.",
+                           no_args_is_help=True)
+app.add_typer(corpus_app, name="corpus")
+app.add_typer(evidence_app, name="evidence")
+
+
+@corpus_app.command("fetch")
+def corpus_fetch(root: str = "data/corpus", only: str = typer.Option("", help="comma-separated: cuad,tatqa,...")):
+    """Download what is missing (about 100 MB in all), verify each file against its pinned checksum, and convert."""
+    from .evidence.sample import build
+    from .evidence.sources import fetch
+    for src, path, downloaded in fetch(root, [x for x in only.split(",") if x] or None):
+        typer.echo(f"{'downloaded' if downloaded else 'verified  '} {src.name:14} {src.licence:9} {path}")
+    for name, st in build(root).items():
+        typer.echo(f"  {name:12} {st['documents']:4} documents, {st['passages']:6} passages, {st['tasks']:5} tasks "
+                   f"({st['answerable']} answerable)")
+
+
+@corpus_app.command("sample")
+def corpus_sample(root: str = "data/corpus", out: str = "evals/evidence/manifest.json"):
+    """Draw the stratified, seeded sample the evaluation runs on (commit it before any model runs)."""
+    import json
+
+    from .evidence.sample import manifest
+    m = manifest(root)
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text(json.dumps(m, indent=1) + "\n", encoding="utf-8", newline="\n")
+    typer.echo(f"{sum(len(d['tasks']) for d in m['datasets'].values())} tasks -> {out}")
+
+
+def _cpu_model(path: str | None, cassette: str | None, ctx: int, threads: int | None):
+    from .modeltier import Cassette, LlamaCppClient
+    inner = LlamaCppClient(path, n_ctx=ctx, threads=threads) if path else None
+    if cassette:
+        return Cassette(cassette, inner=inner)
+    if inner is None:
+        raise typer.BadParameter("a model path, a recording to replay, or both")
+    return inner
+
+
+@evidence_app.command("run")
+def evidence_run(manifest: str = "evals/evidence/manifest.json", corpus: str = "data/corpus",
+                 out: str = "artifacts/evidence-0.json", shard: str = typer.Option("0/1", help="this shard of n: i/n"),
+                 limit: int = typer.Option(None, help="the first n tasks of the shard only"),
+                 model_path: str = typer.Option(None, help="the answering model's GGUF file"),
+                 cassette: str = typer.Option(None, help="record the answers here; replay-only without a model"),
+                 judge_path: str = typer.Option(None, help="the RAGAS judge's GGUF file (another model family)"),
+                 judge_cassette: str = typer.Option(None, help="record the judge's calls here"),
+                 no_ragas: bool = typer.Option(False, "--no-ragas", help="ground-truth metrics only"),
+                 embedder: str = typer.Option("fastembed", help="fastembed (bge-small) or hash (no download)"),
+                 threads: int = typer.Option(None), ctx: int = 8192):
+    """Run one shard of the sample: retrieval, answers, ground truth and RAGAS; write its results."""
+    import json
+
+    from .evidence.retrieve import FastEmbedder, HashEmbedder
+    from .evidence.run import evaluate
+    emb = FastEmbedder() if embedder == "fastembed" else HashEmbedder()
+    generator = _cpu_model(model_path, cassette, ctx, threads)
+    judge = None
+    if not no_ragas:
+        from .evidence.judge import Judge
+        judge = Judge(_cpu_model(judge_path, judge_cassette, ctx, threads), emb)
+    i, n = (int(x) for x in shard.split("/"))
+    result = evaluate(manifest, corpus, generator, judge, emb, shard=(i, n), limit=limit)
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text(json.dumps(result, indent=1), encoding="utf-8", newline="\n")
+    typer.echo(f"{len(result['tasks'])} task(s) -> {out}")
+
+
+@evidence_app.command("report")
+def evidence_report(results: list[str], report: str = "reports/evidence-eval.md",
+                    data: str = "reports/evidence-eval.json"):
+    """Merge the shards' results and write the report and its data."""
+    import json
+    from datetime import UTC, datetime
+
+    from .evidence.run import by_dataset, merge, render
+    from .harness import git_stamp
+    merged = merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])
+    meta = {"generated": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"), "commit": git_stamp(Path.cwd()),
+            "command": "testamur evidence report " + " ".join(Path(p).name for p in results)}
+    Path(report).write_text(render(merged, meta), encoding="utf-8", newline="\n")
+    Path(data).write_text(json.dumps({**merged, "summary": by_dataset(merged), "meta": meta}, indent=1),
+                          encoding="utf-8", newline="\n")
+    typer.echo(f"{report}: {len(merged['tasks'])} tasks")
+
+
+@evidence_app.command("check")
+def evidence_check(results: list[str], against: str = "reports/evidence-eval.json"):
+    """Fail unless these results score every task as the committed report does (a replay's check)."""
+    import json
+
+    from .evidence.run import merge
+    now = {r["task"]: (r["correct"], r.get("ragas", {}).get("scores"))
+           for r in merge([json.loads(Path(p).read_text(encoding="utf-8")) for p in results])["tasks"]}
+    then = {r["task"]: (r["correct"], r.get("ragas", {}).get("scores"))
+            for r in json.loads(Path(against).read_text(encoding="utf-8"))["tasks"]}
+    differ = sorted(k for k in now.keys() | then.keys() if now.get(k) != then.get(k))
+    if differ:
+        typer.echo(f"{len(differ)} task(s) scored differently from {against}: {differ[:10]}")
+        raise typer.Exit(1)
+    typer.echo(f"{len(now)} tasks: every score as committed")
+
+
 if __name__ == "__main__":
     app()
     Path  # noqa: B018
