@@ -85,8 +85,10 @@ biomedical abstracts (PubMedQA) and scientific papers (QASPER) answered with quo
 scored against each dataset's ground truth. Without a model, replay the recording attached to the v0.6.0 release:
 
 ```bash
-testamur evidence run --cassette evidence-answers.jsonl --judge-cassette evidence-judge.jsonl --out data/e.json
-testamur evidence check data/e.json
+gh release download v0.6.0 --repo gandhiashutosh14/testamur --pattern "evidence-*.jsonl" --dir recording
+sha256sum -c evals/evidence/recording.sha256          # the recording is the one the report was made from
+testamur evidence run --cassette recording/evidence-answers.jsonl --judge-cassette recording/evidence-judge.jsonl --out data/e.json
+testamur evidence check data/e.json                   # every task scored as the committed report scores it
 ```
 
 [`reports/evidence-eval.md`](../reports/evidence-eval.md) reads in this order: right answers by dataset (as answered,

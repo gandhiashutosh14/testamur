@@ -43,6 +43,28 @@ can an LLM judge's scores be trusted when the ground truth is known.
 - The recordings hold quotes from the datasets, so they live with the run's artifacts (and a release), not in the
   repository: replaying needs them downloaded.
 
+## What the first run found
+The run at commit `69d6462` ([report](../../reports/evidence-eval.md)), 160 tasks:
+- **Finding the evidence was mostly not the problem; reading it was.** The gold evidence was among the four passages
+  the model saw for 113 of the 126 answerable tasks, yet 86 of 160 answers were right; 49 of the 58 wrong answers
+  were given with the gold evidence among those four passages (counted from the report's data). PubMedQA shows it most
+  clearly: the right abstract retrieved 32 times of 32, the right yes, no or maybe 12 times. QASPER is the
+  exception: long papers, the evidence retrieved for 14 of 24, and token F1 undercounts paraphrased answers.
+- **Abstaining works where the answer is absent.** CUAD's clauses that are not in the contract: abstained on 14 of
+  16; ContractNLI's statements the NDA does not mention: 10 of 10.
+- **The evidence rule is a trade, not a gain.** Withholding answers no verified quote supports turned 7 wrong answers
+  (58 to 51) and 6 right ones (86 to 80) into abstentions. Where a wrong answer costs more than a missing one, as in
+  claim verification, that is the trade wanted. A real quote shows the model read the page, not that it read it
+  right: each of the 51 wrong answers left cites at least one quote that is really on its passage.
+- **The small judge barely tracks the ground truth.** Faithfulness separated right answers from wrong ones no better
+  than chance (AUROC 0.476 over 115 answers), and did not track the quote check either (0.507; 14 of the 115 had no
+  verified quote). Answer relevancy (0.525) and context recall (0.527) carried no signal to speak of; context
+  precision (0.63) and factual correctness (0.612), a little. RAGAS judged by a model this size is a prompt to look,
+  not a measurement; the ground truth stays the arbiter, and a stronger judge, measured the same way, is the next
+  step.
+- **Cost.** About 53 s per answer at the median on a 4-vCPU runner; the judge's 1,637 calls took about 14 runner-hours
+  across sixteen runners. No GPU, no paid API.
+
 ## Alternatives considered
 - *RAGAS alone.* Its numbers are a model's opinion; without the ground truth beside them there is no telling a good
   judge from a bad one.

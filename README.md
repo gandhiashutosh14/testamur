@@ -8,7 +8,7 @@ person, turn findings into work, and never say PASS without evidence.*
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Compute](https://img.shields.io/badge/compute-CPU%20only-lightgrey)
-![Status](https://img.shields.io/badge/status-v0.5-blue)
+![Status](https://img.shields.io/badge/status-v0.6-blue)
 
 > **In plain English:** when a company goes into insolvency in India, everyone it owes money to must prove what they
 > are owed. A resolution professional checks every claim against a short statutory clock, and the result decides who
@@ -434,11 +434,18 @@ domain on the engine built in v0.1 and v0.2. Next:
    rules' wrong PASSes by sending them to a person, and no verdict of theirs replaced the rules'. A stronger model,
    or one narrow question per check instead of one open investigation per claim, before the verifier's cost is
    worth paying.
-3. **Cases from other people.** The holdout is independent of the generator, not of its author.
-4. **Operational creditors.** A full pack for Form B claims: invoices, delivery records and the demand notice.
-5. **Records from an information utility.** Read the record of default as evidence beside the creditor's own.
-6. **Real agreements.** Measure the clause tier on expert-labelled public contracts, not only synthetic clauses.
-7. **Accuracy from fewer labels.** Prediction-powered inference, combining the audit sample with the engine's other
+3. **A judge worth trusting.** On the public datasets the small local judge's RAGAS scores barely tracked the ground
+   truth ([what the run found](docs/decisions/0020-evidence-qa-on-public-datasets.md#what-the-first-run-found)). A
+   stronger judge, measured against the same ground truth before its scores count for more than a prompt to look.
+4. **Reading, not finding.** For most of the wrong answers the evidence had been retrieved (biomedical abstracts
+   most of all): a stronger answering model, or a question split into the checks it needs; for long papers,
+   retrieval that follows their sections.
+5. **Cases from other people.** The holdout is independent of the generator, not of its author.
+6. **Operational creditors.** A full pack for Form B claims: invoices, delivery records and the demand notice.
+7. **Records from an information utility.** Read the record of default as evidence beside the creditor's own.
+8. **The clause tier's verdicts on real agreements.** v0.6 measured finding and quoting clauses in CUAD's and
+   ContractNLI's contracts; the tier's verdicts (does this clause grant a vote) still rest on synthetic clauses.
+9. **Accuracy from fewer labels.** Prediction-powered inference, combining the audit sample with the engine's other
    verdicts, for tighter per-check intervals.
 
 ## What this is not
