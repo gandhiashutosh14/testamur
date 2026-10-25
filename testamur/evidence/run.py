@@ -20,7 +20,7 @@ from . import metrics as m
 from .answer import answer
 from .convert import PUBMEDQA_POOL
 from .retrieve import Index
-from .schema import LABELS, Document, Passage, Task, read_documents, read_tasks
+from .schema import Document, Passage, Task, read_documents, read_tasks
 
 K = 4                         # passages given to the model
 DEPTH = 10                    # how deep retrieval is scored
@@ -44,6 +44,20 @@ class Corpus:
         ids = [d for d in self.documents if d.startswith("pubmedqa:")] if task.documents == [PUBMEDQA_POOL] \
             else task.documents
         return [p for d in ids for p in self.documents[d].passages]
+
+
+VERDICT_WORDS = {"entailment": "The document supports the statement.",
+                 "contradiction": "The document contradicts the statement.",
+                 "not_mentioned": "The document does not mention it."}
+
+
+def said(kind: str, label: str | None, text: str) -> str:
+    """The answer as a sentence, the way RAGAS's judge reads responses: a label task's label in words, not a code."""
+    if kind == "nli":
+        return f"{VERDICT_WORDS.get(label, '')} {text}".strip()
+    if kind == "yesno" and label:
+        return f"{label.capitalize()}. {text}" if text else f"{label.capitalize()}."
+    return text
 
 
 def _evidence_rank(task: Task, ranked: list[Passage]) -> int | None:
@@ -91,8 +105,7 @@ def evaluate(manifest_path: str | Path, corpus_root: str | Path, generator, judg
                "seconds": {"retrieve": round(t_retrieve, 2), "answer": round(a.seconds, 2)}}
         if judge is not None:
             before = (judge.llm.calls, judge.llm.prompt_tokens + judge.llm.completion_tokens, judge.llm.seconds)
-            response = None if a.abstained or not a.answer else (
-                f"{a.label}. {a.answer}" if task.kind in LABELS else a.answer)
+            response = None if a.abstained or not a.answer else said(task.kind, a.label, a.answer)
             row["ragas"] = judge.score(task.question, response, [p.text for p in passages], task.reference)
             row["judge"] = {"calls": judge.llm.calls - before[0],
                             "tokens": judge.llm.prompt_tokens + judge.llm.completion_tokens - before[1],

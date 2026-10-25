@@ -78,6 +78,10 @@ class ProposalDecision(BaseModel):
     digest: str = Field(min_length=16, max_length=128)
 
 
+class Question(BaseModel):
+    question: str = Field(min_length=3, max_length=500)
+
+
 # ---------------------------------------------------------------------------------------------- who
 
 @router.get("/me", response_model=Me)
@@ -204,6 +208,30 @@ def page_view(rt, tenant_id: int, document_id: int, page: int) -> dict:
             raise HTTPException(404, f"document {document_id} has {len(pages)} page(s)")
         return {"document": d.id, "type": d.doc_type, "page": page, "of": len(pages),
                 "quarantined": bool(d.hostile and not d.cleared), "lines": [line.text for line in p.lines]}
+
+
+@router.post("/documents/{document_id}/ask")
+def ask_document(request: Request, document_id: int, body: Question, who: Principal = Depends(reviewer)) -> dict:
+    """Ask the document a question: an answer with quotes checked to be on their pages, or an abstention. The
+    pipeline the evidence evaluation measures (reports/evidence-eval.md), on this document's pages."""
+    return ask_view(_rt(request), who.tenant_id, document_id, body.question)
+
+
+def ask_view(rt, tenant_id: int, document_id: int, question: str) -> dict:
+    from ..evidence.ask import ask_pages
+    from ..telemetry import span
+    if rt.engine.model is None:
+        raise HTTPException(503, "no model is configured for this service (TESTAMUR_MODEL)")
+    with rt.store.tenant(tenant_id) as s:
+        d = _doc(s, document_id)
+        if d.hostile and not d.cleared:
+            raise HTTPException(409, "this document carries text aimed at automated readers: no model is shown it "
+                                     "until a person has cleared it")
+        pages = rt.engine._extraction(s, tenant_id, d.sha256).pages
+    with span("ask", tenant_id=tenant_id, document_id=document_id) as note:
+        out = ask_pages(rt.engine.model, question, pages)
+        note(outcome="abstained" if out["abstained"] else "answered", count=len(out["citations"]))
+    return {"document": document_id, "question": question, **out}
 
 
 @router.get("/documents/{document_id}/file")

@@ -256,6 +256,33 @@ def render() -> str:
             out += ["", f"Faults forced on purpose with a scripted model (a model timeout, an agent reaching outside "
                     f"its claim, approval of changed evidence, a decision delivered twice, a worker finishing after its "
                     f"lease was taken over): {sum(f['held'] for f in faults)} of {len(faults)} contained."]
+    ev = _load("evidence-eval.json")
+    if ev and ev.get("summary"):
+        s, names = ev["summary"], {"cuad": "CUAD", "contractnli": "ContractNLI", "tatqa": "TAT-QA",
+                                   "pubmedqa": "PubMedQA", "qasper": "QASPER"}
+        domains = {r["dataset"]: r["domain"] for r in ev["tasks"]}
+        order = [d for d in names if d in s]
+        out += ["", f"### Evidence QA on public datasets ([report](reports/evidence-eval.md), commit `{ev['commit']}`)",
+                "", f"{s['all']['tasks']} tasks from five expert-labelled datasets in four domains, a stratified sample "
+                f"fixed before any model ran. Answers by `{ev['generator']['model']}` from the hybrid retriever's top "
+                f"{ev['k']} passages, every quote checked against its passage; RAGAS judged by "
+                f"`{(ev.get('judge') or {}).get('model', 'none')}`, a model of another family, on the same CPUs.", "",
+                "| Dataset | Domain | Right, as answered | Right, evidence rule | Wrong answers, as answered | Wrong "
+                "answers, evidence rule | Gold evidence retrieved (hybrid, top 4) |", "|---|---|---|---|---|---|---|"]
+        for d in order + ["all"]:
+            x = s[d]
+            a, e, r = x["as_answered"], x["evidence_rule"], x["retrieval"].get("hybrid")
+            out.append(f"| {names.get(d, 'All')} | {domains.get(d, '')} | {a['right']} of {x['tasks']} | "
+                       f"{e['right']} of {x['tasks']} | {a['wrong_answers']} | {e['wrong_answers']} | "
+                       + (f"{r['hit@4']} of {r['n']}" if r else "-") + " |")
+        rg = s["all"].get("ragas")
+        if rg:
+            def show(k):
+                return f"{rg[k]['mean']}" + (f" (AUROC {rg[k]['auroc_vs_right']})" if rg[k]["auroc_vs_right"] else "")
+            out += ["", "RAGAS over all tasks, with each metric's AUROC against the ground truth's right and wrong "
+                    f"answers (0.5: it cannot tell them apart): faithfulness {show('faithfulness')}, answer relevancy "
+                    f"{show('answer_relevancy')}, context precision {show('context_precision')}, context recall "
+                    f"{show('context_recall')}, factual correctness {show('factual_correctness')}."]
     jc = REPORTS / "judge-comparison.md"
     if jc.exists():
         rows = [r for r in jc.read_text(encoding="utf-8").splitlines() if r.startswith("| ") and "| clean |" in r]

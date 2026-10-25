@@ -306,6 +306,24 @@ docker compose logs seed                   # the synthetic world's sign-in keys
 python scripts/dev_service.py              # or one process on SQLite, no Docker
 ```
 
+### Evidence QA, beyond insolvency
+The skill underneath every check (find the evidence, answer with words that are on the page, or abstain) is also a
+component of its own, measured on other people's documents ([`evidence/`](../testamur/evidence/),
+[ADR 0020](decisions/0020-evidence-qa-on-public-datasets.md)): retrieval by BM25, by meaning (bge-small, ONNX on the
+CPU) and hybrid (reciprocal rank fusion); an answer whose decoding is constrained to a JSON contract with citations
+first and the passage ids as an enumeration; every quote checked against its passage with the clause tier's check;
+and the evidence rule, which turns an answer no verified quote supports into an abstention. It is scored on five
+public, expert-labelled datasets in four domains (contracts, annual reports, biomedical abstracts, scientific
+papers) against each dataset's ground truth, and by RAGAS with a judge of another model family, the judge itself
+measured against the ground truth. The service's "ask this document" runs the same pipeline on a document's pages,
+and never on a document that addresses automated readers.
+
+```bash
+testamur corpus fetch                         # the five datasets, pinned and verified (about 100 MB)
+testamur evidence run --limit 2 --model-path Qwen3-4B-Instruct-2507-Q4_K_M.gguf --no-ragas --embedder hash
+testamur evidence report artifacts/evidence-0.json
+```
+
 ### Revisions and retries
 Verdicts are stored per claim, requirement, check, document and engine version. A transient failure (a timeout,
 a provider error) is recorded as a transient ABSTAIN, retried on the next pass, and never overwrites a conclusive

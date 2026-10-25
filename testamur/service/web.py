@@ -125,6 +125,20 @@ def document_page(request: Request, document_id: int, page: int, q: str = "",
     return _page(request, "document.html", d=view, lines=marked, q=q)
 
 
+@router.post("/documents/{document_id}/pages/{page}/ask", response_class=HTMLResponse)
+def document_ask(request: Request, document_id: int, page: int, question: str = Form(...), csrf: str = Form(""),
+                 who: Principal = Depends(session_reviewer)):
+    check_csrf(request, csrf)
+    from .api import ask_view
+    try:
+        asked = ask_view(request.app.state.runtime, who.tenant_id, document_id, question.strip()[:500])
+    except HTTPException as exc:
+        asked = {"question": question, "answer": "", "abstained": True, "citations": [], "reason": exc.detail}
+    view = page_view(request.app.state.runtime, who.tenant_id, document_id, page)
+    return _page(request, "document.html", d=view, lines=[(i, line, False) for i, line in enumerate(view["lines"], 1)],
+                 q="", asked=asked)
+
+
 @router.get("/documents/{document_id}/file")
 def document_file(request: Request, document_id: int, who: Principal = Depends(session_reviewer)):
     from .api import file_response

@@ -62,3 +62,6 @@ legend { padding: 0 4px; font-weight: 600; }
 .pager { display: flex; gap: 16px; }
 ol.lines { font: 13px/1.6 ui-monospace, Consolas, monospace; padding-left: 3.2em; }
 ol.lines li.hit { background: var(--hit); }
+.banner { background: var(--neutral-bg); border-radius: 6px; padding: 8px 12px; margin: 10px 0; }
+form.row input[type=text] { flex: 1; min-width: 200px; padding: 7px; border: 1px solid var(--line); border-radius: 6px;
+                            background: var(--bg); color: var(--ink); font: inherit; }

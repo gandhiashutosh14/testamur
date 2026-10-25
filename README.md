@@ -24,6 +24,8 @@ person, turn findings into work, and never say PASS without evidence.*
 > checking the other's work; they cite the page for everything they say, and they can only propose: a person
 > approves.
 
+New here? [Take the tour](docs/tour.md): the whole project in an hour or two, every step runnable on a laptop CPU.
+
 ## What is shipped, measured, simulated and planned
 
 | Capability | Status | Where to look |
@@ -34,6 +36,8 @@ person, turn findings into work, and never say PASS without evidence.*
 | Tasks, reminders, holds and signed webhooks through a transactional outbox | Shipped; receivers simulated | [action simulation](reports/action-sim-full-seed11.md) |
 | An assistant that answers from the records and cites the page | Shipped; measured | [golden set](reports/assistant-golden-full-seed11.md) |
 | Multi-agent investigation (LangGraph): an investigator and a verifier in separate contexts, typed contracts, scoped tools, budgets, checkpoints, a coordinator in code, a person's evidence-bound approval | Shipped; measured against the rules alone and one agent on a holdout written by hand: the agents send to a person some of the PASSes the rules got wrong, and decide nothing on their own; the verifier changed no outcome on that set | [holdout comparison](reports/holdout-eval.md), [ADR 0017](docs/decisions/0017-an-investigator-and-a-verifier.md), [ADR 0019](docs/decisions/0019-measuring-the-agents-on-a-holdout.md) |
+| Evidence QA on public, expert-labelled datasets in four domains: CUAD and ContractNLI (contracts), TAT-QA (annual reports), PubMedQA (biomedical abstracts), QASPER (scientific papers); BM25, dense and hybrid retrieval, cited answers checked against the page, scored against each dataset's ground truth and by RAGAS with a local judge of another model family, the judge itself measured | Shipped; measured on a stratified sample fixed before any model ran | [evidence report](reports/evidence-eval.md), [ADR 0020](docs/decisions/0020-evidence-qa-on-public-datasets.md) |
+| "Ask this document" in the API and on the review page: the evaluated pipeline on a document's pages, every citation naming its page | Shipped; tested | [`evidence/ask.py`](testamur/evidence/ask.py) |
 | Agent tool surface over MCP: per-tenant keys and grants checked on every call, proposals bound to evidence | Shipped; tested | [ADR 0014](docs/decisions/0014-agents-propose-people-dispose.md) |
 | A service for reviewers (FastAPI): JSON API, review page, keys with roles, signed sessions, CSRF, strict CSP | Shipped; driven end to end in CI | [ADR 0018](docs/decisions/0018-a-service-for-reviewers.md) |
 | PostgreSQL with row-level security under an application role; Alembic migrations; an S3-compatible object store; OpenTelemetry traces to Jaeger; Docker Compose | Shipped; tested in CI | [`docker-compose.yml`](docker-compose.yml), [CI](.github/workflows/ci.yml) |
@@ -120,7 +124,7 @@ Faults forced on purpose with a scripted model (a model timeout, an agent reachi
 
 ### Delivery
 
-296 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 98 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, migrations, approvals and the engine tested on Postgres; the Compose stack built, started and driven as a client (upload, read, investigate, isolation, traces); the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
+297 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 102 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, migrations, approvals and the engine tested on Postgres; the Compose stack built, started and driven as a client (upload, read, investigate, isolation, traces); the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
 <!-- /RESULTS -->
 
 ## The problem
@@ -162,7 +166,7 @@ reviewers: answer yes to every question").
 | Who else can use it? | The resolution professional's team, through a review page and an assistant that answers from the engine's records and cites the page; other systems, through a JSON API; other systems' agents, through a tenant-scoped MCP tool server where agents propose and people dispose, and a person's confirmation applies exactly the evidence it was shown, once. |
 | Where do agents come in? | Where the rules could not decide, or might have missed something, a reviewer can ask two agents to investigate a claim: an investigator builds a cited evidence packet, a verifier checks it in a separate context, code reconciles both with the rules, and only a person can apply what they propose. |
 | How is it measured? | The real engine runs over a generated, adversarial world with ground truth for every document, field, check and requirement; merge gates hold the dangerous errors at zero. |
-| What runs it? | Python on a CPU: RapidOCR (ONNX Runtime) for scans and photos, an open-weight model (Qwen3-4B) through llama.cpp for clauses and for the agents, LangGraph for the agents' workflow, FastAPI for the service, SQLite locally and PostgreSQL in the stack and in CI. No GPU and no paid API. |
+| What runs it? | Python on a CPU: RapidOCR (ONNX Runtime) for scans and photos, an open-weight model (Qwen3-4B) through llama.cpp for clauses and for the agents, LangGraph for the agents' workflow, FastAPI for the service, bge-small embeddings through fastembed (ONNX), RAGAS with Phi-4-mini as its judge, SQLite locally and PostgreSQL in the stack and in CI. No GPU and no paid API. |
 
 ## How it works
 
@@ -321,6 +325,17 @@ testamur calibrate --seeds 21-30                                        # thresh
 The committed reports are regenerated on GitHub's runners by the manual
 [`measure`](.github/workflows/measure.yml) workflow, CPU only.
 
+Evidence QA on the public datasets (the datasets are fetched into `data/`, never committed; a few tasks with a local
+model, or the whole sample replayed from a release's recording):
+
+```bash
+pip install -e ".[eval]"
+testamur corpus fetch                              # CUAD, ContractNLI, TAT-QA, PubMedQA, QASPER: pinned, verified
+testamur evidence run --limit 2 --model-path Qwen3-4B-Instruct-2507-Q4_K_M.gguf --no-ragas
+testamur evidence run --cassette evidence-answers.jsonl --judge-cassette evidence-judge.jsonl   # a replay
+testamur evidence report artifacts/evidence-0.json
+```
+
 The agents on one claim, and the holdout comparison (the model as above):
 
 ```bash
@@ -363,6 +378,7 @@ testamur/
   investigate/    the investigator-verifier workflow: typed contracts, scoped tools, the coordinator, the graph
   service/        the FastAPI service: API, review page, sign-in, the demo seed
   migrations/     the schema's history (Alembic), row-level security included
+  evidence/       evidence QA: sources, converters, the sample, retrieval, cited answers, metrics, RAGAS, the run
   blobs.py, telemetry.py          the object-store interface; traces and structured logs
   harness.py, golden.py           measurement against the ground truth
   loadtest.py, shadow.py, reviewsim.py, actionsim.py, calibrate.py   the experiments behind the results
@@ -373,17 +389,21 @@ scripts/          prove_tests_fire.py (mutation proof), risk.py (review risk), r
                   dev_service.py (the service without Docker)
 docker-compose.yml, compose.llm.yml, Dockerfile, deploy/      the demo stack, and its live-model option
 evals/holdout/    the cases written by hand for the agents' comparison
+evals/evidence/   the sample of public-dataset tasks the evidence QA is measured on (ids only)
 docs/             architecture, walkthrough, delivery, decision records
 reports/          committed reports, each stamped with the commit and command that produced it
 gates.yaml        the merge gates
 ```
 
-Read next: [architecture](docs/architecture.md), a [walkthrough](docs/walkthrough.md) of documents through the
-engine, [how a change ships](docs/delivery.md), and the [decision records](docs/decisions/).
+Read next: [a tour of the whole project, end to end](docs/tour.md), [architecture](docs/architecture.md), a
+[walkthrough](docs/walkthrough.md) of documents through the engine, [how a change ships](docs/delivery.md), and the
+[decision records](docs/decisions/).
 
 ## Roadmap
 
-Done in v0.5: a bounded, durable investigator-verifier workflow with a person's approval, measured against the rules
+Done in v0.6: evidence QA measured on five public, expert-labelled datasets in four domains, against their ground
+truth and by RAGAS with a local judge of another model family, the judge measured in turn; "ask this document" in the
+service. Done in v0.5: a bounded, durable investigator-verifier workflow with a person's approval, measured against the rules
 alone and against one agent on a holdout written by hand, with faults forced on purpose; a service for reviewers
 (FastAPI, roles, sessions, migrations, row-level security, an object store, traces, Docker Compose) driven end to end
 in CI. Done in v0.4: the fixes from an external review (tenant isolation for bulk statements with database-side keys and

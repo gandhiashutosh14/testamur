@@ -91,10 +91,11 @@ class Judge:
             if reference else None,
             "factual_correctness": dict(response=response, reference=reference) if response and reference else None,
         }
+        needs_reference = {"context_precision", "context_recall", "factual_correctness"}
         out: dict = {"scores": {}, "skipped": {}}
         for name, kwargs in args.items():
             if kwargs is None:
-                out["skipped"][name] = "no answer" if not response else "no reference"
+                out["skipped"][name] = "no reference" if name in needs_reference and not reference else "no answer"
                 continue
             try:
                 value = self.metrics[name].score(**kwargs).value

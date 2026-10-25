@@ -12,6 +12,20 @@
     {% if d.page < d.of %}<a href="/documents/{{ d.document }}/pages/{{ d.page + 1 }}?q={{ q|urlencode }}">page {{ d.page + 1 }} →</a>{% endif %}
     <a href="/documents/{{ d.document }}/file">download the file</a>
   </p>
+  <form method="post" action="/documents/{{ d.document }}/pages/{{ d.page }}/ask" class="row">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="question">Ask this document</label>
+    <input id="question" name="question" type="text" maxlength="500" required>
+    <button type="submit">Ask</button>
+  </form>
+  {% if asked %}
+  <div class="banner {{ 'warn' if asked.abstained else '' }}">
+    <p><strong>{{ asked.question }}</strong></p>
+    {% if asked.abstained %}<p>No answer{% if asked.reason %}: {{ asked.reason }}{% else %}: the document does not say, as far as the passages read show{% endif %}.</p>
+    {% else %}<p>{{ asked.answer }}</p>{% endif %}
+    {% for c in asked.citations %}<p class="quote"><a href="/documents/{{ d.document }}/pages/{{ c.page }}?q={{ c.quote|urlencode }}">page {{ c.page }}</a>: “{{ c.quote }}”</p>{% endfor %}
+  </div>
+  {% endif %}
   {% if q %}<p class="muted">Highlighting: “{{ q }}”</p>{% endif %}
   <ol class="lines">
     {% for i, line, hit in lines %}<li class="{{ 'hit' if hit else '' }}" value="{{ i }}">{{ line }}</li>{% endfor %}
