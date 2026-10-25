@@ -326,7 +326,9 @@ def render(merged: dict, meta: dict) -> str:
     lines += ["", "## Retrieval", "",
               f"Whether the gold evidence is among the top {merged['k']} passages (the ones the model sees), and the "
               "mean reciprocal rank of its first passage in the top 10, over the answerable tasks. PubMedQA retrieves "
-              "from the pool of all 500 test abstracts; the others from the task's own document.", "",
+              "from the pool of all 500 test abstracts; the others from the task's own document. A hit is a heuristic: "
+              "a passage holding all of a short gold span's words or 60% of a long one's, any passage of PubMedQA's "
+              "right abstract; it does not establish that the passage holds everything the answer needs.", "",
               "| Dataset | BM25 | Dense | Hybrid | Hybrid MRR@10 |", "|---|---|---|---|---|"]
     for d in order:
         r = s[d]["retrieval"]
@@ -350,7 +352,9 @@ def render(merged: dict, meta: dict) -> str:
         lines += ["", "## How far the judge can be trusted", "",
                   "AUROC: the probability that a right answer (by the ground truth) scores higher than a wrong one, so "
                   "0.5 is a metric that cannot tell them apart. For faithfulness, also against TESTAMUR's deterministic "
-                  "quote check.", "",
+                  "quote check. Faithfulness measures whether an answer's statements are supported by the retrieved "
+                  "passages, not whether the answer is right: its AUROC against right answers says how useful it is as "
+                  "a stand-in for correctness on this sample, not how good the judge is in general.", "",
                   "| Metric | Scored | AUROC against right answers |", "|---|---|---|"]
         for k in metric_names:
             lines.append(f"| {k.replace('_', ' ')} | {ra[k]['n']} | {ra[k]['auroc_vs_right'] or '-'} |")
@@ -371,9 +375,11 @@ def render(merged: dict, meta: dict) -> str:
               "statements are not mentioned), so the abstention numbers mean something; the proportions are not the "
               "datasets' own.",
               "- RAGAS's numbers are a small judge's opinion; the AUROC table says how much of it agrees with the ground "
-              "truth.",
-              "- TAT-QA's numbers are matched with their sign and within 0.5%; QASPER's free answers by token F1, which "
-              "undercounts paraphrases.",
+              "truth. A judge of another family avoids a model grading its own words, not errors the two share.",
+              "- The scoring is adapted from each dataset's, not the official evaluators: CUAD by Jaccard, TAT-QA's "
+              "numbers as the one quantity an answer states, in the gold's unit, with its sign and within 0.5%, "
+              "QASPER's free answers by token F1, which undercounts paraphrases. The numbers do not compare with "
+              "published benchmark results.",
               "", "## Sources", ""]
     for src in SOURCES:
         if src.name.endswith("-test"):

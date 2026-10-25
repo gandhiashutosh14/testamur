@@ -266,12 +266,14 @@ def merge(parts: list[dict]) -> dict:
             "fingerprint": next(iter(fingerprints), None), "commit": commits[0] if commits else None}
 
 
-_TIMINGS = ("seconds", "agent_seconds")         # what a replay does not measure
+# what a replay does not reproduce: the time a run took, and how many calls were spared the model (a replay spares
+# them all)
+_UNREPLAYED = ("seconds", "agent_seconds", "cached_calls")
 
 
 def with_timings(merged: dict, recorded: dict) -> dict:
     """A replay's results with the timings of the run whose recording it replayed, since a replay measures none of
-    its own: each arm's run keeps everything it replayed and takes the recorded run's seconds."""
+    its own: each arm's run keeps everything it replayed and takes the recorded run's seconds and cached calls."""
     if merged["set"] != recorded["set"] or merged.get("fingerprint") != recorded.get("fingerprint"):
         raise ValueError("the replay and the recorded run differ in their cases or their model")
     by_case = {c["case"]: c for c in recorded["cases"]}
@@ -284,18 +286,18 @@ def with_timings(merged: dict, recorded: dict) -> dict:
         for arm, run in c["runs"].items():
             if arm not in old["runs"]:
                 raise ValueError(f"the recorded run has no {arm} run on {c['case']}")
-            runs[arm] = {**run, **{k: old["runs"][arm][k] for k in _TIMINGS}}
+            runs[arm] = {**run, **{k: old["runs"][arm][k] for k in _UNREPLAYED}}
         cases.append({**c, "runs": runs})
     return {**merged, "cases": cases, "timings_from": recorded.get("timings_from") or recorded["commit"]}
 
 
 def differences(now: list[dict], then: list[dict]) -> list[str]:
     """The cases a replay gives otherwise than the committed report: in any arm's output, or in any run's path (its
-    status, stops, steps, tool calls and refusals, citations and how many held, recommendations, tokens), timings
-    aside; and any case either side holds twice."""
+    status, stops, steps, tool calls and refusals, citations and how many held, recommendations, tokens), its
+    timings and cached calls aside; and any case either side holds twice."""
     def path(c: dict) -> dict:
         return {k: v for k, v in c.items() if k != "runs"} | {
-            "runs": {arm: {k: v for k, v in run.items() if k not in _TIMINGS} for arm, run in c["runs"].items()}}
+            "runs": {arm: {k: v for k, v in run.items() if k not in _UNREPLAYED} for arm, run in c["runs"].items()}}
     out: set[str] = set()
     sides = []
     for rows in (now, then):

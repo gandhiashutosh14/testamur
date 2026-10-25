@@ -27,7 +27,8 @@ testamur explain 1 authority --db data/harness_tiny.db --tenant 1
 
 **You will see** the documents of a few insolvency processes read (scans and phone photos through OCR), matched to
 their creditors and checked; the report's gates (no false vouching, no vote or payout permitted that the truth
-withholds, no wrong match); and every check behind one status, each with the line of the page it read.
+withholds, no wrong match); and every check behind one status, each with its evidence: the line of the page it
+read, where it read one.
 **It proves** the engine against a world with ground truth for every document, field and check.
 **Code:** [`engine.py`](../testamur/engine.py), [`checks.py`](../testamur/checks.py), the domain as data in
 [`pack.yaml`](../testamur/packs/insolvency_claims/pack.yaml). Read next: [the walkthrough](walkthrough.md).
@@ -103,18 +104,22 @@ Open [`.github/workflows/ci.yml`](../.github/workflows/ci.yml): lint, the tests 
 broken on purpose, the harness gates replayed from a recording, the queue, isolation and migrations on PostgreSQL, the
 holdout replayed, the Compose stack driven as a client, and the pipeline itself checked by zizmor and actionlint; one
 check, `gate`, passes only if all of them did. Every number in the README is written from a committed report by
-[`scripts/results.py`](../scripts/results.py), and a test fails if the two disagree. Read
+[`scripts/results.py`](../scripts/results.py), and a test fails if the two disagree. An independent review of v0.6
+found five gaps; its seven failing tests are in
+[`tests/test_v06_independent_review.py`](../tests/test_v06_independent_review.py), passing now, and
+[ADR 0021](decisions/0021-the-v06-review.md) says what changed and what the rescoring moved. Read
 [how a change ships](delivery.md).
 
 ## What to say about it, in five lines
 
 1. A claim-verification engine for India's insolvency process: OCR, matching, rule-first checks, a model only where
-   language must be read, and every verdict with the line of the page it rests on.
+   language must be read, and evidence-backed verdicts with the line of the page wherever there is one.
 2. Two agents (LangGraph) that read a claim's evidence and can only propose; a person applies a proposal, atomically,
    against the evidence it was bound to.
 3. A service shaped for deployment: FastAPI, PostgreSQL row-level security by migration, an object store, traces, a
    Compose stack tested end to end in CI.
-4. Measured on documents nobody here wrote: five public datasets in four domains, against their ground truth and by
-   RAGAS with a judge of another family, the judge itself measured.
+4. Measured on documents nobody here wrote: five public datasets in four domains, against their ground truth (with
+   adapted scoring) and by RAGAS with a judge of another family, the judge itself measured; an independent review's
+   regression tests in the suite, and the recordings scored again after its fixes.
 5. Honest about what it does not do: synthetic insolvency data, small samples, simulated payments and votes, and the
    reports say where it fails.

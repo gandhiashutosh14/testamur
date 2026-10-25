@@ -627,6 +627,7 @@ def evaluate_report(results: list[str], cases: str = "evals/holdout/cases.yaml",
                     work: str = "data/holdout-faults",
                     earlier: list[str] | None = typer.Option(None, help="an earlier run's report data, oldest first"),
                     change: list[str] | None = typer.Option(None, help="what changed after each earlier run, in order"),
+                    label: list[str] | None = typer.Option(None, help="each earlier run's name, in order (run 1, ...)"),
                     timings_from: str = typer.Option(None, help="for a replay, which measures no timings: the report "
                                                                 "data of the run whose recording it replayed")):
     """Merge the shards' results, force the fault scenarios, and write the report and its data."""
@@ -648,7 +649,8 @@ def evaluate_report(results: list[str], cases: str = "evals/holdout/cases.yaml",
         if prior["set"] != hs.digest:
             raise typer.BadParameter(f"{path} is about case set {prior['set']}, not {hs.digest}")
         stamp = re.search(r"at commit `([^`]+)`", Path(path).with_suffix(".md").read_text(encoding="utf-8"))
-        before.append({"label": f"run {i + 1}", "commit": stamp.group(1) if stamp else "?",
+        before.append({"label": (label or [])[i] if i < len(label or []) else f"run {i + 1}",
+                       "commit": stamp.group(1) if stamp else "?",
                        "summary": prior["summary"], "change": change[i] if i < len(change) else ""})
     rows = ev.faults(hs, work)
     meta = {"generated": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"), "commit": git_stamp(Path.cwd()),

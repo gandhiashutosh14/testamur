@@ -22,10 +22,11 @@ ways an agent that wrote it could be wrong.
 | One required check | `gate` runs always and passes only if every job above succeeded; a skipped job would otherwise report success to a required check | [`ci.yml`](../.github/workflows/ci.yml) |
 
 Branch protection should require `gate` and code-owner review; those are repository settings, not code, and are
-listed here so they are not forgotten. As of v0.5 they are not enforced on `main` (an external review checked): until
-they are, `gate` is the check a merge is held to by practice, not by the platform. On a repository with one
-maintainer an approving review cannot come from the author, so the `risk` check's hold on a high-risk change is
-released by the maintainer's merge, not by GitHub.
+listed here so they are not forgotten. As of v0.6.1 they are still not enforced on `main` (two external reviews
+checked): until they are, `gate` is the check a merge is held to by practice, not by the platform. On a repository
+with one maintainer an approving review cannot come from the author, so the `risk` check's hold on a high-risk
+change is released by the maintainer's merge, not by GitHub: pull requests 1 to 4 were merged that way, every other
+check green. A red `risk` check released by its author is not an independent review.
 
 ## Risk and review
 

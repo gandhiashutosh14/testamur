@@ -211,10 +211,14 @@ def render() -> str:
         def row(label, fn):
             return f"| {label} | " + " | ".join(fn(s[a]) for a in arms) + " |"
         faults = ho.get("faults") or []
+        rescored = (f", scored again from the recording made at `{ho['timings_from']}`" if ho.get("timings_from")
+                    else "")
         out += ["", f"### The agents against the rules ([holdout comparison](reports/holdout-eval.md), commit "
-                f"`{measured}`)", "",
+                f"`{measured}`{rescored})", "",
                 f"{n} cases written by hand for this comparison, independently of the generator, and fixed before "
-                f"any agent ran on them (set `{ho['set']}`). The agents' model: `{ho.get('model') or 'none'}` on "
+                f"any agent ran on them (set `{ho['set']}`); run 2 followed changes made after run 1 on the same "
+                "cases, so they are development cases now, and a claim that the agents generalise needs a fresh, "
+                "sealed set. The agents' model: `{ho.get('model') or 'none'}` on "
                 "GitHub's CPU runners, every call recorded and replayed in CI; the engine's own clause tier off, so "
                 "the agents are the only model reading. A proposal is counted as the output, as if approved.", "",
                 "| | " + " | ".join({"rules": "Rules", "single": "One agent", "pair": "Investigator and verifier"}[a]
@@ -262,13 +266,16 @@ def render() -> str:
                                    "pubmedqa": "PubMedQA", "qasper": "QASPER"}
         domains = {r["dataset"]: r["domain"] for r in ev["tasks"]}
         order = [d for d in names if d in s]
-        out += ["", f"### Evidence QA on public datasets ([report](reports/evidence-eval.md), commit `{ev['commit']}`)",
+        rescored = (f", scored again from the recording made at `{ev['timings_from']}`" if ev.get("timings_from")
+                    else "")
+        out += ["", f"### Evidence QA on public datasets ([report](reports/evidence-eval.md), commit `{ev['commit']}`"
+                f"{rescored})",
                 "", f"{s['all']['tasks']} tasks from five expert-labelled datasets in four domains, a stratified sample "
                 f"fixed before any model ran. Answers by `{ev['generator']['model']}` from the hybrid retriever's top "
                 f"{ev['k']} passages, every quote checked against its passage; RAGAS judged by "
                 f"`{(ev.get('judge') or {}).get('model', 'none')}`, a model of another family, on the same CPUs.", "",
                 "| Dataset | Domain | Right, as answered | Right, evidence rule | Wrong answers, as answered | Wrong "
-                "answers, evidence rule | Gold evidence retrieved (hybrid, top 4) |", "|---|---|---|---|---|---|---|"]
+                "answers, evidence rule | Gold evidence hit (hybrid, top 4) |", "|---|---|---|---|---|---|---|"]
         for d in order + ["all"]:
             x = s[d]
             a, e, r = x["as_answered"], x["evidence_rule"], x["retrieval"].get("hybrid")
@@ -282,7 +289,10 @@ def render() -> str:
             out += ["", "RAGAS over all tasks, with each metric's AUROC against the ground truth's right and wrong "
                     f"answers (0.5: it cannot tell them apart): faithfulness {show('faithfulness')}, answer relevancy "
                     f"{show('answer_relevancy')}, context precision {show('context_precision')}, context recall "
-                    f"{show('context_recall')}, factual correctness {show('factual_correctness')}."]
+                    f"{show('context_recall')}, factual correctness {show('factual_correctness')}. Faithfulness "
+                    "measures support in the retrieved passages, not correctness: its AUROC says how far it can stand "
+                    "in for correctness here. A hit is the report's heuristic (the gold span's words in a passage), "
+                    "and the scoring is adapted from each dataset's, not its official evaluator."]
     jc = REPORTS / "judge-comparison.md"
     if jc.exists():
         rows = [r for r in jc.read_text(encoding="utf-8").splitlines() if r.startswith("| ") and "| clean |" in r]
