@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import random
 import statistics
 import time
 from collections import Counter
@@ -225,6 +226,43 @@ def auroc(scores: list[float], positive: list[bool]) -> float | None:
     return round(wins / (len(pos) * len(neg)), 3)
 
 
+def _auroc_by_ranks(scores: list[float], positive: list[bool]) -> float | None:
+    """The same AUROC from ranks (Mann-Whitney, ties averaged): fast enough to resample."""
+    n_pos = sum(positive)
+    n_neg = len(positive) - n_pos
+    if not n_pos or not n_neg:
+        return None
+    order = sorted(range(len(scores)), key=scores.__getitem__)
+    ranks = [0.0] * len(scores)
+    i = 0
+    while i < len(order):
+        j = i
+        while j + 1 < len(order) and scores[order[j + 1]] == scores[order[i]]:
+            j += 1
+        for k in range(i, j + 1):
+            ranks[order[k]] = (i + j) / 2 + 1
+        i = j + 1
+    return (sum(r for r, y in zip(ranks, positive, strict=True) if y) - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
+
+
+def auroc_interval(scores: list[float], positive: list[bool], rounds: int = 2000,
+                   seed: int = 2026) -> list[float] | None:
+    """A 95% bootstrap interval for the AUROC, resampling the answers with a fixed seed (the same data, the same
+    interval); None without right and wrong answers both."""
+    if auroc(scores, positive) is None:
+        return None
+    rng = random.Random(seed)
+    n = len(scores)
+    values = []
+    for _ in range(rounds):
+        idx = [rng.randrange(n) for _ in range(n)]
+        a = _auroc_by_ranks([scores[i] for i in idx], [positive[i] for i in idx])
+        if a is not None:
+            values.append(a)
+    values.sort()
+    return [round(values[int(0.025 * (len(values) - 1))], 3), round(values[int(0.975 * (len(values) - 1))], 3)]
+
+
 def summarise(rows: list[dict]) -> dict:
     n = len(rows)
     out: dict = {"tasks": n}
@@ -255,8 +293,10 @@ def summarise(rows: list[dict]) -> dict:
                      "factual_correctness"):
             pairs = [(r["ragas"]["scores"][name], r) for r in scored if r["ragas"]["scores"].get(name) is not None]
             values = [v for v, _ in pairs]
+            right = [r["correct"]["as_answered"] for _, r in pairs]
             ragas[name] = {"n": len(values), "mean": round(statistics.mean(values), 3) if values else None,
-                           "auroc_vs_right": auroc(values, [r["correct"]["as_answered"] for _, r in pairs]),
+                           "auroc_vs_right": auroc(values, right),
+                           "auroc_vs_right_95": auroc_interval(values, right),
                            "not_scored": sum(name in r["ragas"]["skipped"] for r in scored)}
         faith = [(r["ragas"]["scores"]["faithfulness"], r["answer"]["supported"]) for r in scored
                  if r["ragas"]["scores"].get("faithfulness") is not None]
@@ -355,9 +395,11 @@ def render(merged: dict, meta: dict) -> str:
                   "quote check. Faithfulness measures whether an answer's statements are supported by the retrieved "
                   "passages, not whether the answer is right: its AUROC against right answers says how useful it is as "
                   "a stand-in for correctness on this sample, not how good the judge is in general.", "",
-                  "| Metric | Scored | AUROC against right answers |", "|---|---|---|"]
+                  "| Metric | Scored | AUROC against right answers | 95% interval (bootstrap) |", "|---|---|---|---|"]
         for k in metric_names:
-            lines.append(f"| {k.replace('_', ' ')} | {ra[k]['n']} | {ra[k]['auroc_vs_right'] or '-'} |")
+            ci = ra[k].get("auroc_vs_right_95")
+            lines.append(f"| {k.replace('_', ' ')} | {ra[k]['n']} | {ra[k]['auroc_vs_right'] or '-'} | "
+                         + (f"{ci[0]} to {ci[1]}" if ci else "-") + " |")
         lines += ["", f"Faithfulness against the verified-quote check: AUROC "
                       f"{ra['faithfulness'].get('auroc_vs_verified_quote') or '-'}."]
         jj = s["all"]["judge"]

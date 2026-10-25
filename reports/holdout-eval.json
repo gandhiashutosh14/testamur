@@ -1356,7 +1356,7 @@
        "check": null,
        "action": "ask_person",
        "verdict": null,
-       "agreement": "both"
+       "agreement": "unresolved"
       },
       {
        "requirement": "proof_of_claim",
@@ -1458,7 +1458,7 @@
        "check": null,
        "action": "ask_person",
        "verdict": null,
-       "agreement": "both"
+       "agreement": "unresolved"
       },
       {
        "requirement": "proof_of_claim",
@@ -2234,7 +2234,8 @@
  ],
  "model": "llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
  "fingerprint": "gguf:3605803b982cb64a|llama-cpp-python 0.3.36|ctx 16384",
- "commit": "b7f7ce7",
+ "commit": "e9f9d40",
+ "timings_from": "b7f7ce7",
  "summary": {
   "rules": {
    "cases": 24,
@@ -2307,7 +2308,7 @@
   {
    "scenario": "a reviewer's approval is delivered twice, once more around the run",
    "expected": "applied once; both repeats refused",
-   "observed": "first: applied; again on the run: refused (run 1 is applied, not waiting for approval); directly: refused (proposal 1 is already applied)",
+   "observed": "first: applied; again on the run: refused (run 1 is applied, not waiting for approval); directly: refused (proposal 1 is already applied by reviewer)",
    "held": true
   },
   {
@@ -2372,11 +2373,66 @@
     }
    },
    "change": "each agent was shown its remaining steps, its last step was made the answer (the only action the model may take on it), and claim_summary was made to list the documents there are to read; the cases and their labels did not change"
+  },
+  {
+   "label": "run 2 as scored at v0.6.0",
+   "commit": "d585b07",
+   "summary": {
+    "rules": {
+     "cases": 24,
+     "success": 8,
+     "false_pass": 7,
+     "false_fail": 0,
+     "person": 15,
+     "pass_cases": 8
+    },
+    "single": {
+     "cases": 24,
+     "success": 11,
+     "false_pass": 3,
+     "false_fail": 0,
+     "person": 20,
+     "pass_cases": 8,
+     "citations": 85,
+     "citations_valid": 80,
+     "tool_calls": 161,
+     "refused": 0,
+     "violations": 0,
+     "p50_seconds": 223.9,
+     "p95_seconds": 316.1,
+     "tokens_per_case": 13680,
+     "stops": {
+      "finished": 22,
+      "step budget": 2
+     }
+    },
+    "pair": {
+     "cases": 24,
+     "success": 11,
+     "false_pass": 3,
+     "false_fail": 0,
+     "person": 20,
+     "pass_cases": 8,
+     "citations": 210,
+     "citations_valid": 202,
+     "tool_calls": 293,
+     "refused": 27,
+     "violations": 0,
+     "p50_seconds": 423.4,
+     "p95_seconds": 545.5,
+     "tokens_per_case": 25340,
+     "stops": {
+      "finished": 43,
+      "step budget": 3
+     }
+    }
+   },
+   "change": "the coordinator was made to count the verifier's support as agreement only with a citation of its own that holds, and a quote without a letter or a digit no longer holds; the same recording was scored again, and the cases, their labels and the model's calls did not change"
   }
  ],
  "meta": {
-  "generated": "2026-10-24 20:52 UTC",
-  "commit": "d585b07",
-  "command": "testamur evaluate report holdout-0.json holdout-1.json holdout-2.json holdout-3.json --earlier holdout-eval-run1.json"
+  "generated": "2026-10-25 15:22 UTC",
+  "commit": "378f7fc",
+  "command": "testamur evaluate report holdout-0.json holdout-1.json holdout-2.json holdout-3.json --earlier holdout-eval-run1.json --earlier holdout-eval-v0.6.0.json --timings-from holdout-eval-v0.6.0.json"
  }
 }

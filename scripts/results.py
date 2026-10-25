@@ -285,7 +285,10 @@ def render() -> str:
         rg = s["all"].get("ragas")
         if rg:
             def show(k):
-                return f"{rg[k]['mean']}" + (f" (AUROC {rg[k]['auroc_vs_right']})" if rg[k]["auroc_vs_right"] else "")
+                ci = rg[k].get("auroc_vs_right_95")
+                return f"{rg[k]['mean']}" + (f" (AUROC {rg[k]['auroc_vs_right']}"
+                                               + (f", 95% interval {ci[0]} to {ci[1]}" if ci else "") + ")"
+                                               if rg[k]["auroc_vs_right"] else "")
             out += ["", "RAGAS over all tasks, with each metric's AUROC against the ground truth's right and wrong "
                     f"answers (0.5: it cannot tell them apart): faithfulness {show('faithfulness')}, answer relevancy "
                     f"{show('answer_relevancy')}, context precision {show('context_precision')}, context recall "
