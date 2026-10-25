@@ -122,6 +122,21 @@ An earlier run 1 on the same cases (commit `121ef57`): one agent 8 of 24 right w
 
 Faults forced on purpose with a scripted model (a model timeout, an agent reaching outside its claim, approval of changed evidence, a decision delivered twice, a worker finishing after its lease was taken over): 5 of 5 contained.
 
+### Evidence QA on public datasets ([report](reports/evidence-eval.md), commit `69d6462`)
+
+160 tasks from five expert-labelled datasets in four domains, a stratified sample fixed before any model ran. Answers by `llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf` from the hybrid retriever's top 4 passages, every quote checked against its passage; RAGAS judged by `llama.cpp:Phi-4-mini-instruct-Q4_K_M.gguf`, a model of another family, on the same CPUs.
+
+| Dataset | Domain | Right, as answered | Right, evidence rule | Wrong answers, as answered | Wrong answers, evidence rule | Gold evidence retrieved (hybrid, top 4) |
+|---|---|---|---|---|---|---|
+| CUAD | legal | 20 of 32 | 18 of 32 | 8 | 5 | 15 of 16 |
+| ContractNLI | legal | 23 of 32 | 21 of 32 | 3 | 3 | 20 of 22 |
+| TAT-QA | finance | 22 of 32 | 21 of 32 | 10 | 8 | 32 of 32 |
+| PubMedQA | biomedical | 12 of 32 | 12 of 32 | 20 | 19 | 32 of 32 |
+| QASPER | science | 9 of 32 | 8 of 32 | 17 | 16 | 14 of 24 |
+| All |  | 86 of 160 | 80 of 160 | 58 | 51 | 113 of 126 |
+
+RAGAS over all tasks, with each metric's AUROC against the ground truth's right and wrong answers (0.5: it cannot tell them apart): faithfulness 0.832 (AUROC 0.476), answer relevancy 0.368 (AUROC 0.525), context precision 0.791 (AUROC 0.63), context recall 0.922 (AUROC 0.527), factual correctness 0.626 (AUROC 0.612).
+
 ### Delivery
 
 297 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 102 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, migrations, approvals and the engine tested on Postgres; the Compose stack built, started and driven as a client (upload, read, investigate, isolation, traces); the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
