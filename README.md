@@ -8,7 +8,7 @@ person, turn findings into work, and never say PASS without evidence.*
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Compute](https://img.shields.io/badge/compute-CPU%20only-lightgrey)
-![Status](https://img.shields.io/badge/status-v0.5-blue)
+![Status](https://img.shields.io/badge/status-v0.6-blue)
 
 > **In plain English:** when a company goes into insolvency in India, everyone it owes money to must prove what they
 > are owed. A resolution professional checks every claim against a short statutory clock, and the result decides who
@@ -24,6 +24,8 @@ person, turn findings into work, and never say PASS without evidence.*
 > checking the other's work; they cite the page for everything they say, and they can only propose: a person
 > approves.
 
+New here? [Take the tour](docs/tour.md): the whole project in an hour or two, every step runnable on a laptop CPU.
+
 ## What is shipped, measured, simulated and planned
 
 | Capability | Status | Where to look |
@@ -34,13 +36,15 @@ person, turn findings into work, and never say PASS without evidence.*
 | Tasks, reminders, holds and signed webhooks through a transactional outbox | Shipped; receivers simulated | [action simulation](reports/action-sim-full-seed11.md) |
 | An assistant that answers from the records and cites the page | Shipped; measured | [golden set](reports/assistant-golden-full-seed11.md) |
 | Multi-agent investigation (LangGraph): an investigator and a verifier in separate contexts, typed contracts, scoped tools, budgets, checkpoints, a coordinator in code, a person's evidence-bound approval | Shipped; measured against the rules alone and one agent on a holdout written by hand: the agents send to a person some of the PASSes the rules got wrong, and decide nothing on their own; the verifier changed no outcome on that set | [holdout comparison](reports/holdout-eval.md), [ADR 0017](docs/decisions/0017-an-investigator-and-a-verifier.md), [ADR 0019](docs/decisions/0019-measuring-the-agents-on-a-holdout.md) |
+| Evidence QA on public, expert-labelled datasets in four domains: CUAD and ContractNLI (contracts), TAT-QA (annual reports), PubMedQA (biomedical abstracts), QASPER (scientific papers); BM25, dense and hybrid retrieval, cited answers checked against the page, scored against each dataset's ground truth and by RAGAS with a local judge of another model family, the judge itself measured | Shipped; measured on a stratified sample fixed before any model ran: retrieval mostly found the evidence and the answers still went wrong, abstentions were right where the answer was absent, and the small judge's RAGAS scores barely track the ground truth | [evidence report](reports/evidence-eval.md), [ADR 0020](docs/decisions/0020-evidence-qa-on-public-datasets.md) |
+| "Ask this document" in the API and on the review page: the evaluated pipeline on a document's pages, every citation naming its page | Shipped; tested | [`evidence/ask.py`](testamur/evidence/ask.py) |
 | Agent tool surface over MCP: per-tenant keys and grants checked on every call, proposals bound to evidence | Shipped; tested | [ADR 0014](docs/decisions/0014-agents-propose-people-dispose.md) |
 | A service for reviewers (FastAPI): JSON API, review page, keys with roles, signed sessions, CSRF, strict CSP | Shipped; driven end to end in CI | [ADR 0018](docs/decisions/0018-a-service-for-reviewers.md) |
 | PostgreSQL with row-level security under an application role; Alembic migrations; an S3-compatible object store; OpenTelemetry traces to Jaeger; Docker Compose | Shipped; tested in CI | [`docker-compose.yml`](docker-compose.yml), [CI](.github/workflows/ci.yml) |
 | The demo's agents on a live model (llama.cpp serving an open-weight model) | Opt-in; not run in CI | [`compose.llm.yml`](compose.llm.yml) |
 | Votes, payments, e-mail, real webhook receivers | Simulated | |
 | Single sign-on, TLS, backups, alerting, load tests of the service | Not here | |
-| Real claim files, expert-labelled agreements, cases written by people other than the author | Not here: synthetic data and hand-written cases only | |
+| Real claim files, cases written by people other than the author | Not here: synthetic claim data and hand-written cases only (the evidence QA's contracts and labels are public and expert-made) | |
 
 <!-- RESULTS -->
 ## Results
@@ -118,9 +122,24 @@ An earlier run 1 on the same cases (commit `121ef57`): one agent 8 of 24 right w
 
 Faults forced on purpose with a scripted model (a model timeout, an agent reaching outside its claim, approval of changed evidence, a decision delivered twice, a worker finishing after its lease was taken over): 5 of 5 contained.
 
+### Evidence QA on public datasets ([report](reports/evidence-eval.md), commit `69d6462`)
+
+160 tasks from five expert-labelled datasets in four domains, a stratified sample fixed before any model ran. Answers by `llama.cpp:Qwen3-4B-Instruct-2507-Q4_K_M.gguf` from the hybrid retriever's top 4 passages, every quote checked against its passage; RAGAS judged by `llama.cpp:Phi-4-mini-instruct-Q4_K_M.gguf`, a model of another family, on the same CPUs.
+
+| Dataset | Domain | Right, as answered | Right, evidence rule | Wrong answers, as answered | Wrong answers, evidence rule | Gold evidence retrieved (hybrid, top 4) |
+|---|---|---|---|---|---|---|
+| CUAD | legal | 20 of 32 | 18 of 32 | 8 | 5 | 15 of 16 |
+| ContractNLI | legal | 23 of 32 | 21 of 32 | 3 | 3 | 20 of 22 |
+| TAT-QA | finance | 22 of 32 | 21 of 32 | 10 | 8 | 32 of 32 |
+| PubMedQA | biomedical | 12 of 32 | 12 of 32 | 20 | 19 | 32 of 32 |
+| QASPER | science | 9 of 32 | 8 of 32 | 17 | 16 | 14 of 24 |
+| All |  | 86 of 160 | 80 of 160 | 58 | 51 | 113 of 126 |
+
+RAGAS over all tasks, with each metric's AUROC against the ground truth's right and wrong answers (0.5: it cannot tell them apart): faithfulness 0.832 (AUROC 0.476), answer relevancy 0.368 (AUROC 0.525), context precision 0.791 (AUROC 0.63), context recall 0.922 (AUROC 0.527), factual correctness 0.626 (AUROC 0.612).
+
 ### Delivery
 
-286 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 98 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, migrations, approvals and the engine tested on Postgres; the Compose stack built, started and driven as a client (upload, read, investigate, isolation, traces); the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
+298 tests (a run that collects fewer, or skips one without a stated reason, fails; the Postgres-only tests skip locally and run in their own job); 102 hand-picked safety rules broken on purpose, one at a time, each caught by the tests (a proof that those tests fire, not a mutation score); the harness gates on every push; queue, tenancy, row-level security, migrations, approvals and the engine tested on Postgres; the Compose stack built, started and driven as a client (upload, read, investigate, isolation, traces); the pipeline itself checked by zizmor and actionlint; one aggregate check, `gate`, that passes only when every job did, meant to be the required check on main ([how a change ships](docs/delivery.md)).
 <!-- /RESULTS -->
 
 ## The problem
@@ -162,7 +181,7 @@ reviewers: answer yes to every question").
 | Who else can use it? | The resolution professional's team, through a review page and an assistant that answers from the engine's records and cites the page; other systems, through a JSON API; other systems' agents, through a tenant-scoped MCP tool server where agents propose and people dispose, and a person's confirmation applies exactly the evidence it was shown, once. |
 | Where do agents come in? | Where the rules could not decide, or might have missed something, a reviewer can ask two agents to investigate a claim: an investigator builds a cited evidence packet, a verifier checks it in a separate context, code reconciles both with the rules, and only a person can apply what they propose. |
 | How is it measured? | The real engine runs over a generated, adversarial world with ground truth for every document, field, check and requirement; merge gates hold the dangerous errors at zero. |
-| What runs it? | Python on a CPU: RapidOCR (ONNX Runtime) for scans and photos, an open-weight model (Qwen3-4B) through llama.cpp for clauses and for the agents, LangGraph for the agents' workflow, FastAPI for the service, SQLite locally and PostgreSQL in the stack and in CI. No GPU and no paid API. |
+| What runs it? | Python on a CPU: RapidOCR (ONNX Runtime) for scans and photos, an open-weight model (Qwen3-4B) through llama.cpp for clauses and for the agents, LangGraph for the agents' workflow, FastAPI for the service, bge-small embeddings through fastembed (ONNX), RAGAS with Phi-4-mini as its judge, SQLite locally and PostgreSQL in the stack and in CI. No GPU and no paid API. |
 
 ## How it works
 
@@ -321,6 +340,17 @@ testamur calibrate --seeds 21-30                                        # thresh
 The committed reports are regenerated on GitHub's runners by the manual
 [`measure`](.github/workflows/measure.yml) workflow, CPU only.
 
+Evidence QA on the public datasets (the datasets are fetched into `data/`, never committed; a few tasks with a local
+model, or the whole sample replayed from a release's recording):
+
+```bash
+pip install -e ".[eval]"
+testamur corpus fetch                              # CUAD, ContractNLI, TAT-QA, PubMedQA, QASPER: pinned, verified
+testamur evidence run --limit 2 --model-path Qwen3-4B-Instruct-2507-Q4_K_M.gguf --no-ragas
+testamur evidence run --cassette evidence-answers.jsonl --judge-cassette evidence-judge.jsonl   # a replay
+testamur evidence report artifacts/evidence-0.json
+```
+
 The agents on one claim, and the holdout comparison (the model as above):
 
 ```bash
@@ -363,6 +393,7 @@ testamur/
   investigate/    the investigator-verifier workflow: typed contracts, scoped tools, the coordinator, the graph
   service/        the FastAPI service: API, review page, sign-in, the demo seed
   migrations/     the schema's history (Alembic), row-level security included
+  evidence/       evidence QA: sources, converters, the sample, retrieval, cited answers, metrics, RAGAS, the run
   blobs.py, telemetry.py          the object-store interface; traces and structured logs
   harness.py, golden.py           measurement against the ground truth
   loadtest.py, shadow.py, reviewsim.py, actionsim.py, calibrate.py   the experiments behind the results
@@ -373,17 +404,21 @@ scripts/          prove_tests_fire.py (mutation proof), risk.py (review risk), r
                   dev_service.py (the service without Docker)
 docker-compose.yml, compose.llm.yml, Dockerfile, deploy/      the demo stack, and its live-model option
 evals/holdout/    the cases written by hand for the agents' comparison
+evals/evidence/   the sample of public-dataset tasks the evidence QA is measured on (ids only)
 docs/             architecture, walkthrough, delivery, decision records
 reports/          committed reports, each stamped with the commit and command that produced it
 gates.yaml        the merge gates
 ```
 
-Read next: [architecture](docs/architecture.md), a [walkthrough](docs/walkthrough.md) of documents through the
-engine, [how a change ships](docs/delivery.md), and the [decision records](docs/decisions/).
+Read next: [a tour of the whole project, end to end](docs/tour.md), [architecture](docs/architecture.md), a
+[walkthrough](docs/walkthrough.md) of documents through the engine, [how a change ships](docs/delivery.md), and the
+[decision records](docs/decisions/).
 
 ## Roadmap
 
-Done in v0.5: a bounded, durable investigator-verifier workflow with a person's approval, measured against the rules
+Done in v0.6: evidence QA measured on five public, expert-labelled datasets in four domains, against their ground
+truth and by RAGAS with a local judge of another model family, the judge measured in turn; "ask this document" in the
+service. Done in v0.5: a bounded, durable investigator-verifier workflow with a person's approval, measured against the rules
 alone and against one agent on a holdout written by hand, with faults forced on purpose; a service for reviewers
 (FastAPI, roles, sessions, migrations, row-level security, an object store, traces, Docker Compose) driven end to end
 in CI. Done in v0.4: the fixes from an external review (tenant isolation for bulk statements with database-side keys and
@@ -399,11 +434,18 @@ domain on the engine built in v0.1 and v0.2. Next:
    rules' wrong PASSes by sending them to a person, and no verdict of theirs replaced the rules'. A stronger model,
    or one narrow question per check instead of one open investigation per claim, before the verifier's cost is
    worth paying.
-3. **Cases from other people.** The holdout is independent of the generator, not of its author.
-4. **Operational creditors.** A full pack for Form B claims: invoices, delivery records and the demand notice.
-5. **Records from an information utility.** Read the record of default as evidence beside the creditor's own.
-6. **Real agreements.** Measure the clause tier on expert-labelled public contracts, not only synthetic clauses.
-7. **Accuracy from fewer labels.** Prediction-powered inference, combining the audit sample with the engine's other
+3. **A judge worth trusting.** On the public datasets the small local judge's RAGAS scores barely tracked the ground
+   truth ([what the run found](docs/decisions/0020-evidence-qa-on-public-datasets.md#what-the-first-run-found)). A
+   stronger judge, measured against the same ground truth before its scores count for more than a prompt to look.
+4. **Reading, not finding.** For most of the wrong answers the evidence had been retrieved (biomedical abstracts
+   most of all): a stronger answering model, or a question split into the checks it needs; for long papers,
+   retrieval that follows their sections.
+5. **Cases from other people.** The holdout is independent of the generator, not of its author.
+6. **Operational creditors.** A full pack for Form B claims: invoices, delivery records and the demand notice.
+7. **Records from an information utility.** Read the record of default as evidence beside the creditor's own.
+8. **The clause tier's verdicts on real agreements.** v0.6 measured finding and quoting clauses in CUAD's and
+   ContractNLI's contracts; the tier's verdicts (does this clause grant a vote) still rest on synthetic clauses.
+9. **Accuracy from fewer labels.** Prediction-powered inference, combining the audit sample with the engine's other
    verdicts, for tighter per-check intervals.
 
 ## What this is not

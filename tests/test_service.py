@@ -12,7 +12,7 @@ from sqlalchemy import select
 from testamur import agents, jobs
 from testamur.investigate import Investigations, sqlite_checkpointer
 from testamur.service import Runtime, Settings, create_app
-from testamur.store import AuditRow, Claim, Proposal
+from testamur.store import AuditRow, Claim, Document, Proposal
 from testamur.synth.render import DocContent, render_pdf
 from testamur.worker import work
 
@@ -210,6 +210,40 @@ def test_the_api_is_described_by_its_openapi_schema(svc):
               "/api/v1/investigations/{run_id}/decisions", "/api/v1/documents/{document_id}/pages/{page}"):
         assert p in paths
     assert "/login" not in paths and "/healthz" not in paths
+
+
+def test_a_reviewer_asks_a_document_and_gets_quotes_from_its_pages(svc, env):
+    """The evidence pipeline on a document: retrieval over its pages, a cited answer, the quote check; an answer whose
+    quote is not on the page is not given; a quarantined document is shown to no model."""
+    import re
+
+    from schema_fake import SchemaModel
+    from scripted import APPROVAL
+    world, store, engine = env
+    claim, doc = _conditional_authority(env)
+
+    def citing(quote, said):
+        def fill(msgs, schema, out):
+            if "citations" in out:
+                pid = re.search(r"\[(p1\.\d+)\]", msgs[-1]["content"]).group(1)
+                out |= {"citations": [{"passage": pid, "quote": quote}], "answer": said, "abstain": False}
+            return out
+        return SchemaModel(fill)
+    client, keys, _ = svc()
+    rv = _as(keys["reviewer"])
+    ask = {"question": "Did the board approve the vote?"}
+    assert client.post(f"/api/v1/documents/{doc}/ask", headers=rv, json=ask).status_code == 503     # no model
+    engine.model = citing(APPROVAL[:60], "Yes: the board approved the vote.")
+    good = client.post(f"/api/v1/documents/{doc}/ask", headers=rv, json=ask).json()
+    assert good["supported"] and not good["abstained"] and good["citations"][0]["page"] == 1
+    engine.model = citing("The board refused the vote and every other power.", "No.")
+    forged = client.post(f"/api/v1/documents/{doc}/ask", headers=rv, json=ask).json()
+    assert forged["abstained"] and forged["unverified"] == 1 and forged["answer"] == ""
+    assert client.post(f"/api/v1/documents/{doc}/ask", headers=_as(keys["uploader"]), json=ask).status_code == 403
+    assert client.post(f"/api/v1/documents/{doc}/ask", headers=_as(keys["other-firm"]), json=ask).status_code == 404
+    with store.tenant(1) as s:
+        s.get(Document, doc).hostile = True
+    assert client.post(f"/api/v1/documents/{doc}/ask", headers=rv, json=ask).status_code == 409
 
 
 def test_jobs_name_their_firm_and_kind(svc, env):

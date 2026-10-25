@@ -255,6 +255,20 @@ MUTANTS = [
     ("the sign-in form needs no token", "testamur/service/web.py",
      "    check_csrf(request, csrf)\n    try:\n        sign_in(request, key.strip())",
      "    try:\n        sign_in(request, key.strip())", "tests/test_service.py"),
+    # v0.6: evidence QA
+    ("a reviewer's question shows a quarantined document to a model", "testamur/service/api.py",
+     "        if d.hostile and not d.cleared:\n            raise HTTPException(409,",
+     "        if False:\n            raise HTTPException(409,", "tests/test_service.py"),
+    ("an answer no verified quote supports is given anyway", "testamur/evidence/answer.py",
+     "        if self.abstained or self.supported:\n            return self.answer, self.label, self.abstained",
+     "        if True:\n            return self.answer, self.label, self.abstained", "tests/test_evidence.py"),
+    ("a quote that is not on its passage counts as a citation", "testamur/evidence/answer.py",
+     'c.get("passage") in by_id and quote_in(str(c.get("quote", "")),',
+     'c.get("passage") in by_id and bool(str(c.get("quote", ""))) or quote_in(str(c.get("quote", "")),',
+     "tests/test_evidence.py"),
+    ("retrieval is credited for a passage without the evidence", "testamur/evidence/metrics.py",
+     "    return found / len(e) >= (1.0 if len(e) <= 12 else 0.6)", "    return found / len(e) >= 0.0",
+     "tests/test_evidence.py"),
 ]
 
 

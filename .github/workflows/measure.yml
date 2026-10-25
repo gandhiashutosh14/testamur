@@ -4,7 +4,9 @@ name: measure
 # live and every call recorded, the assistant's golden set, the review simulations, the threshold calibration, the
 # finding-to-action simulation, the load test, the shadow OCR trial, and the small-world recording the CI harness
 # replays (suite: reports); or the holdout comparison of the rules alone, one agent and the investigator-verifier pair
-# on the cases written by hand in evals/holdout/cases.yaml, in four shards side by side (suite: holdout). Manual: in
+# on the cases written by hand in evals/holdout/cases.yaml, in four shards side by side (suite: holdout); or the
+# evidence QA on public datasets in four domains, scored against their ground truth and by RAGAS with a judge of
+# another model family, in sixteen shards (suite: evidence). Manual: in
 # record mode it downloads a 2.5 GB model and takes a few hours; in replay mode it answers every model call from the
 # committed recordings (a call they do not hold fails the run) and needs no model. The reports come back as artifacts
 # and are committed by hand, each stamped with the commit and the command that produced it.
@@ -24,10 +26,22 @@ on:
         options: [record, replay]
         default: record
       suite:
-        description: reports (the committed measurements) or holdout (the agents against the rules)
+        description: reports (the committed measurements), holdout (the agents against the rules) or evidence (QA on public datasets, RAGAS)
         type: choice
-        options: [reports, holdout]
+        options: [reports, holdout, evidence]
         default: reports
+      judge_repo:
+        description: Hugging Face repository of the RAGAS judge's GGUF model (suite evidence)
+        default: unsloth/Phi-4-mini-instruct-GGUF
+      judge_file:
+        description: the judge's GGUF file name
+        default: Phi-4-mini-instruct-Q4_K_M.gguf
+      evidence_limit:
+        description: tasks per shard (suite evidence; empty for all ten)
+        default: ""
+      recording_release:
+        description: the release whose assets hold the evidence recording, for a replay (suite evidence)
+        default: v0.6.0
 
 permissions:
   contents: read
@@ -269,3 +283,177 @@ jobs:
             reports/holdout-eval.md
             reports/holdout-eval.json
             reports/cassettes/holdout.jsonl
+
+  evidence-prepare:
+    name: the evidence suite's models, corpus and embeddings, fetched once into the cache
+    if: inputs.suite == 'evidence'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      MODEL_REPO: ${{ inputs.model_repo }}
+      MODEL_FILE: ${{ inputs.model_file }}
+      JUDGE_REPO: ${{ inputs.judge_repo }}
+      JUDGE_FILE: ${{ inputs.judge_file }}
+      MODEL_MODE: ${{ inputs.model_mode }}
+      FASTEMBED_CACHE_PATH: embeddings
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[eval]"
+      - if: inputs.model_mode == 'record'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: models
+          key: gguf-${{ inputs.model_file }}
+      - if: inputs.model_mode == 'record'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: judge
+          key: gguf-judge-${{ inputs.judge_file }}
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: data/corpus/raw
+          key: corpus-${{ hashFiles('testamur/evidence/sources.py') }}
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: embeddings
+          key: fastembed-bge-small-en-v1.5
+      - name: The models, if not cached
+        if: inputs.model_mode == 'record'
+        run: |
+          case "$MODEL_FILE$MODEL_REPO$JUDGE_FILE$JUDGE_REPO" in *[!A-Za-z0-9._/-]*) echo "unexpected characters"; exit 1;; esac
+          mkdir -p models judge
+          [ -f "models/$MODEL_FILE" ] || curl -sSL -o "models/$MODEL_FILE" "https://huggingface.co/$MODEL_REPO/resolve/main/$MODEL_FILE"
+          [ -f "judge/$JUDGE_FILE" ] || curl -sSL -o "judge/$JUDGE_FILE" "https://huggingface.co/$JUDGE_REPO/resolve/main/$JUDGE_FILE"
+          ls -la models judge
+      - name: The corpus, fetched and verified against its pinned checksums
+        run: testamur corpus fetch
+      - name: The embedding model, downloaded once
+        run: python -c "from testamur.evidence.retrieve import FastEmbedder; FastEmbedder().embed_query('warm')"
+
+  evidence:
+    name: evidence shard ${{ matrix.shard }} of 16
+    if: inputs.suite == 'evidence'
+    needs: evidence-prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    env:
+      MODEL_FILE: ${{ inputs.model_file }}
+      JUDGE_FILE: ${{ inputs.judge_file }}
+      MODEL_MODE: ${{ inputs.model_mode }}
+      LIMIT: ${{ inputs.evidence_limit }}
+      SHARD: ${{ matrix.shard }}
+      FASTEMBED_CACHE_PATH: embeddings
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[eval]"
+      - if: inputs.model_mode == 'record'
+        run: python -m pip install "llama-cpp-python>=0.3" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+      - if: inputs.model_mode == 'record'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: models
+          key: gguf-${{ inputs.model_file }}
+          fail-on-cache-miss: true
+      - if: inputs.model_mode == 'record'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: judge
+          key: gguf-judge-${{ inputs.judge_file }}
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: data/corpus/raw
+          key: corpus-${{ hashFiles('testamur/evidence/sources.py') }}
+          fail-on-cache-miss: true
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: embeddings
+          key: fastembed-bge-small-en-v1.5
+          fail-on-cache-miss: true
+      - run: testamur corpus fetch
+      - name: The recording, from the release it is attached to, checked against its committed checksums
+        if: inputs.model_mode == 'replay'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE: ${{ inputs.recording_release }}
+        run: |
+          case "$RELEASE" in *[!A-Za-z0-9._-]*) echo "unexpected characters in the release"; exit 1;; esac
+          mkdir -p recording
+          gh release download "$RELEASE" --repo "$GITHUB_REPOSITORY" --pattern 'evidence-*.jsonl' --dir recording
+          sha256sum -c evals/evidence/recording.sha256
+      - name: Retrieval, answers, ground truth and RAGAS for this shard's tasks
+        run: |
+          mkdir -p artifacts
+          ARGS=(--shard "$SHARD/16" --out "artifacts/evidence-$SHARD.json")
+          if [ -n "$LIMIT" ]; then ARGS+=(--limit "$LIMIT"); fi
+          if [ "$MODEL_MODE" = record ]; then
+            testamur evidence run "${ARGS[@]}" --threads 4 \
+              --model-path "models/$MODEL_FILE" --cassette "artifacts/evidence-answers-$SHARD.jsonl" \
+              --judge-path "judge/$JUDGE_FILE" --judge-cassette "artifacts/evidence-judge-$SHARD.jsonl"
+          else
+            testamur evidence run "${ARGS[@]}" --cassette recording/evidence-answers.jsonl \
+              --judge-cassette recording/evidence-judge.jsonl
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: evidence-shard-${{ matrix.shard }}
+          path: artifacts/
+
+  evidence-report:
+    name: the evidence report
+    if: inputs.suite == 'evidence'
+    needs: evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MODEL_MODE: ${{ inputs.model_mode }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e ".[eval]"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: evidence-shard-*
+          path: artifacts
+          merge-multiple: true
+      - name: Merge the shards, write the report, join the recordings
+        run: |
+          ls -la artifacts
+          testamur evidence report artifacts/evidence-[0-9]*.json
+          mkdir -p recording
+          if [ "$MODEL_MODE" = record ]; then
+            cat artifacts/evidence-answers-*.jsonl > recording/evidence-answers.jsonl
+            cat artifacts/evidence-judge-*.jsonl > recording/evidence-judge.jsonl
+            (cd recording && sha256sum evidence-answers.jsonl evidence-judge.jsonl | sed 's|  |  recording/|') \
+              > recording/recording.sha256
+          else
+            git show HEAD:reports/evidence-eval.json > committed-evidence-eval.json
+            testamur evidence check artifacts/evidence-[0-9]*.json --against committed-evidence-eval.json
+          fi
+          cat reports/evidence-eval.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: evidence-report
+          path: |
+            reports/evidence-eval.md
+            reports/evidence-eval.json
+            recording/
