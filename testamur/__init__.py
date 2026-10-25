@@ -5,4 +5,4 @@ decide, and records a verdict with its evidence. It never says PASS without evid
 guesses.
 """
 
-__version__ = "0.6.0"
+__version__ = "0.6.1"

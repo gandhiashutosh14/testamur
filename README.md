@@ -8,7 +8,7 @@ person, turn findings into work, and never say PASS without evidence.*
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Compute](https://img.shields.io/badge/compute-CPU%20only-lightgrey)
-![Status](https://img.shields.io/badge/status-v0.6-blue)
+![Status](https://img.shields.io/badge/status-v0.6.1-blue)
 
 > **In plain English:** when a company goes into insolvency in India, everyone it owes money to must prove what they
 > are owed. A resolution professional checks every claim against a short statutory clock, and the result decides who
